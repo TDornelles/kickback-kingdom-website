@@ -28,11 +28,15 @@ try {
         exit;
     }
     
-    // Return Stripe publishable key
+    // Return Stripe publishable key and minimal payment configuration
     echo json_encode([
         'success' => true,
         'data' => [
-            'stripe_publishable_key' => StripeService::getPublishableKey()
+            'stripe_publishable_key' => StripeService::getPublishableKey(),
+            // Default currency for the site (whitelist enforced on client)
+            'currency' => 'USD',
+            // Supported currencies (keep minimal for now; expand later if needed)
+            'supported_currencies' => ['USD']
         ]
     ]);
     

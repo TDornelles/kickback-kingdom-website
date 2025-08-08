@@ -11,6 +11,9 @@ class StripeService
 {
     private static ?StripeClient $client = null;
     private static bool $initialized = false;
+    private const DEFAULT_CURRENCY = 'USD';
+    /** @var array<string> */
+    private const SUPPORTED_CURRENCIES = ['USD'];
 
     /**
      * Initialize Stripe with API key
@@ -62,5 +65,37 @@ class StripeService
         $secretKey = ServiceCredentials::get("stripe_secret_key");
         $publishableKey = ServiceCredentials::get("stripe_publishable_key");
         return !empty($secretKey) && !empty($publishableKey);
+    }
+
+    /**
+     * Get the default currency used by the site.
+     */
+    public static function getDefaultCurrency(): string
+    {
+        return self::DEFAULT_CURRENCY;
+    }
+
+    /**
+     * Get the list of supported currencies.
+     *
+     * @return array<string>
+     */
+    public static function getSupportedCurrencies(): array
+    {
+        return self::SUPPORTED_CURRENCIES;
+    }
+
+    /**
+     * Check if a given currency is supported (case-insensitive).
+     */
+    public static function isCurrencySupported(string $currency): bool
+    {
+        $upper = strtoupper($currency);
+        foreach (self::SUPPORTED_CURRENCIES as $supported) {
+            if ($upper === strtoupper($supported)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
