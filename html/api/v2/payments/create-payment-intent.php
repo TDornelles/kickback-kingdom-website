@@ -1,6 +1,10 @@
 <?php
 declare(strict_types=1);
 
+// Enable error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 require_once(($_SERVER["DOCUMENT_ROOT"] ?: __DIR__) . "/../../Kickback/init.php");
 
 use Kickback\Services\Session;
@@ -96,5 +100,6 @@ try {
     
 } catch (Exception $e) {
     http_response_code(400);
-    echo json_encode(['error' => $e->getMessage()]);
+    echo json_encode(['error' => $e->getMessage(), 'file' => $e->getFile(), 'line' => $e->getLine()]);
+    error_log("Payment Intent Error: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine());
 }
