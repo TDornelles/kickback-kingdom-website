@@ -70,7 +70,7 @@ try {
     $currentAccount = Session::getCurrentAccount();
     if ($currentAccount !== null) {
         $metadata['account_id'] = (string)$currentAccount->crand;
-        $metadata['account_name'] = $currentAccount->name;
+        $metadata['account_username'] = $currentAccount->username;
     }
 
     // Create PaymentIntent
