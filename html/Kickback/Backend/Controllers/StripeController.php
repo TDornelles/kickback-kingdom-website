@@ -18,7 +18,7 @@ class StripeController
      */
     public static function publicKey(): string
     {
-        return ServiceCredentials::get("stripe_public_key");
+        return ServiceCredentials::get("stripe_publishable_key");
     }
 
     /**
@@ -28,7 +28,7 @@ class StripeController
      */
     public static function privateKey(): string
     {
-        return ServiceCredentials::get("stripe_private_key");
+        return ServiceCredentials::get("stripe_secret_key");
     }
 }
 

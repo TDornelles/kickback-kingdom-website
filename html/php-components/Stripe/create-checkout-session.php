@@ -63,7 +63,7 @@ try {
     }
 
     // Create Stripe Checkout Session
-    $stripe = new StripeClient(ServiceCredentials::get("stripe_private_key"));
+    $stripe = new StripeClient(ServiceCredentials::get("stripe_secret_key"));
 
     $checkout_session = $stripe->checkout->sessions->create([
         'payment_method_types' => ['card'],
