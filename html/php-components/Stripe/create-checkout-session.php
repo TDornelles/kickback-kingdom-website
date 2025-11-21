@@ -7,7 +7,7 @@ require_once(($_SERVER["DOCUMENT_ROOT"] ?: __DIR__) . "/Kickback/init.php");
 use \Kickback\Backend\Config\ServiceCredentials;
 use \Kickback\Backend\Controllers\CartController;
 use \Kickback\Backend\Models\Response;
-use \Kickback\Backend\Models\CurrencyCode;
+use \Kickback\Backend\Models\Enums\CurrencyCode;
 use \Kickback\Backend\Views\vRecordId;
 
 use \Stripe\StripeClient;
