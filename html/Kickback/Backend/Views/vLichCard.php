@@ -68,7 +68,6 @@ class vLichCard extends vRecordId
         $this->item = null;
     }
 
-    /** @param array<string,mixed> $value */
     private function hydrateMixedValue(string $key, mixed $value) : void
     {
         // This is semantically equivalent to the code that this was refactored
