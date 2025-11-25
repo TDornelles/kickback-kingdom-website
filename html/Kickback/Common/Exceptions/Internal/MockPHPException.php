@@ -5,6 +5,7 @@ namespace Kickback\Common\Exceptions\Internal;
 
 use Kickback\Common\Exceptions\Internal\DefaultMethods;
 use Kickback\Common\Exceptions\Internal\IKickbackThrowableRaw;
+use Kickback\Common\Exceptions\ThrowableAssignableFieldsTrait;
 
 /**
 * Interface representing all accessors that can configure a `MockPHPException`.
@@ -21,12 +22,18 @@ use Kickback\Common\Exceptions\Internal\IKickbackThrowableRaw;
 */
 interface IMockPHPException__ConfigAccessors
 {
-    public function                file(?string $new_value = null) : string;
-    public function                line(?int    $new_value = null) : int;
+    /**
+    * @param  string|(\Closure():string)|null  $msg
+    */
+    public function             message(string|\Closure|null $msg = null) : string;
+    public function                file() : string;
+    public function                line() : int;
+    /** @param int<0,max> $line */
+    public function        set_location(string  $file,  string $func,  int $line) : void;
     public function                code(?int    $new_value = null) : int;
     public function caller_context_file(?string $new_value = null) : string;
+    public function caller_context_func(?string $new_value = null) : string;
     public function caller_context_line(?int    $new_value = null) : int;
-    public function             message(?string $new_value = null) : string;
     public function      mock_class_fqn(?string $new_value = null) : string;
     public function            previous(?IMockPHPException  ...$new_value) : ?IMockPHPException;
 
@@ -67,14 +74,14 @@ interface IMockPHPException extends IKickbackThrowableRaw, IMockPHPException__Co
 */
 class MockPHPException implements IMockPHPException
 {
+    // Defines things like `file(...)`, `line(...)`, `message(...)`, etc.
+    use ThrowableAssignableFieldsTrait;
+
     // Note: We don't _actually_ implement Throwable because it
     // will cause an error stating that we should extend \Exception or \Error,
     // which we can't because those don't allow us to override all of the
     // getMessage, getFile, getLine, getTrace, etc. functions.
-    private string                   $message_ = '';
     private int                      $code_ = 0;
-    private int                      $line_ = 0;
-    private string                   $file_ = '';
 
     private ?IMockPHPException       $previous_ = null;
 
@@ -84,15 +91,19 @@ class MockPHPException implements IMockPHPException
     // Mocking-specific state
     private string       $mock_class_fqn_;
     private string       $caller_context_file_ = '';
+    private string       $caller_context_func_ = '';
     private int          $caller_context_line_ = 0;
 
-    public function getMessage()  : string             { return $this->message_;  }
+    public function getMessage()  : string {
+        return $this->message_pure();
+    }
+
     public function getPrevious() : ?IMockPHPException { return $this->previous_; }
 
     /** @return int */
-    public function getCode() : int    { return $this->code_; }
-    public function getLine() : int    { return $this->line_; }
-    public function getFile() : string { return $this->file_; }
+    public function getCode() : int    { return $this->code_pure(); }
+    public function getLine() : int    { return $this->line(); }
+    public function getFile() : string { return $this->file(); }
 
     /** @return kkdebug_backtrace_a */
     public function getTrace() : array { return $this->trace_; }
@@ -101,34 +112,29 @@ class MockPHPException implements IMockPHPException
         return DefaultMethods::getTraceAsString($this);
     }
 
-    private function infer_file_and_line() : void {
+    /**
+    * @param      ?string    $path
+    * @param-out  string     $path
+    * @param      ?string    $func
+    * @param-out  string     $func
+    * @param      ?int       $line
+    * @param-out  int<0,max> $line
+    */
+    private function infer_location_into(?string &$path, ?string &$func, ?int &$line) : void {
         if(\count($this->trace_) < 2) {
-            $this->file_ = '';
-            $this->line_ = 0;
+            $path = '{unknown file}';
+            $func = '{unknown function}';
+            $line = 0;
             return;
         }
         $frame = $this->trace_[1];
-        $file = \array_key_exists('file',$frame) ? $frame['file'] : '{unknown file}';
+        $path = \array_key_exists('file',$frame) ? $frame['file'] : '{unknown file}';
         $line = \array_key_exists('line',$frame) ? $frame['line'] : 0;
-        $this->file_ = $file;
-        $this->line_ = $line;
     }
 
-
-    public function file(?string $new_value = null) : string {
-        if (!isset($new_value)) {
-            return $this->file_;
-        }
-        $this->file_ = $new_value;
-        return $this->file_;
-    }
-
-    public function line(?int $new_value = null) : int {
-        if (!isset($new_value)) {
-            return $this->line_;
-        }
-        $this->line_ = $new_value;
-        return $this->line_;
+    private function infer_file_and_line() : void {
+        $this->infer_file_and_line_into($path, $line);
+        $this->set_location($path,$line);
     }
 
     public function code(?int $new_value = null) : int {
@@ -147,20 +153,20 @@ class MockPHPException implements IMockPHPException
         return $this->caller_context_file_;
     }
 
+    public function caller_context_func(?string $new_value = null) : string {
+        if (!isset($new_value)) {
+            return $this->caller_context_func_;
+        }
+        $this->caller_context_func_ = $new_value;
+        return $this->caller_context_func_;
+    }
+
     public function caller_context_line(?int $new_value = null) : int {
         if (!isset($new_value)) {
             return $this->caller_context_line_;
         }
         $this->caller_context_line_ = $new_value;
         return $this->caller_context_line_;
-    }
-
-    public function message(?string $new_value = null) : string {
-        if (!isset($new_value)) {
-            return $this->message_;
-        }
-        $this->message_ = $new_value;
-        return $this->message_;
     }
 
     /**
@@ -233,18 +239,18 @@ class MockPHPException implements IMockPHPException
     public function __construct(?string $message = null, int $code = 0, ?IMockPHPException $previous = null, bool $do_backtrace = true)
     {
         if (!isset($message)) { $message = ''; }
-        $this->message_  = $message;
         $this->code_     = $code;
         $this->previous_ = $previous;
         if ( $do_backtrace ) {
             $this->trace_    = \debug_backtrace();
-            $this->infer_file_and_line();
+            $this->infer_file_and_line_into($path, $line);
         } else {
             $this->trace_ = [];
-            $this->file_ = '';
-            $this->line_ = 0;
+            $path = '{unknown file}';
+            $line = 0;
         }
         $this->mock_class_fqn_ = \get_class($this);
+        $this->ThrowableAssignableFieldsTrait_init($message, $path, $line);
     }
 }
 ?>

@@ -8,11 +8,18 @@ use Kickback\Common\Traits\StaticClassTrait;
 use Kickback\Common\Exceptions\Internal\IKickbackThrowableRaw;
 
 /**
+* @phpstan-import-type  kkdebug_frame_a               from \Kickback\Common\Exceptions\DebugBacktraceAliasTypes
+* @phpstan-import-type  kkdebug_backtrace_a           from \Kickback\Common\Exceptions\DebugBacktraceAliasTypes
+* @phpstan-import-type  kkdebug_frame_paranoid_a      from \Kickback\Common\Exceptions\DebugBacktraceAliasTypes
+* @phpstan-import-type  kkdebug_backtrace_paranoid_a  from \Kickback\Common\Exceptions\DebugBacktraceAliasTypes
+*
 * @internal
 */
 final class DefaultMethods
 {
     use StaticClassTrait;
+
+    // TODO: Where would it print \Throwable->getCode()? Does it print that at all? (untested)
 
     // Some notes about `Exception::__toString()`
     // and how exceptions are printed by PHP:
@@ -101,20 +108,76 @@ final class DefaultMethods
         return $strbuf;
     }
 
-    public static function toString(IKickbackThrowableRaw $exc, string $mock_class_fqn = null) : string
+    public static function toString(IKickbackThrowableRaw $exc, ?string $mock_class_fqn = null, ?string $msg_override = null) : string
     {
         if (isset($mock_class_fqn)) {
             $class_fqn = $mock_class_fqn;
         } else {
             $class_fqn = \get_class($exc);
         }
-        $message = $exc->getMessage();
-        $file = $exc->getFile();
-        $line = \strval($exc->getLine());
+
+        // Optimization: The `$msg_override` field allows us to avoid
+        // calling $exc->message() more than once if the caller _also_
+        // needed to call it already. This is especially notable when
+        // $exc has a `message()` value that is a string-returning-closure,
+        // because each call to $exc->message() may call that closure
+        // an additional time. If either `->__toString()` or `->message()`
+        // ever guarantee that the $msg closure will never be called more
+        // than once, then the $msg_override argument, and the below
+        // if-else code, are essential to providing such a guarantee.
+        if ( isset($msg_override) ) {
+            $message = $msg_override;
+        } else {
+            $message = $exc->message();
+        }
+
+        $file = $exc->file();
+        $line = \strval($exc->line());
         $trace = $exc->getTraceAsString();
         return $class_fqn
             . " $message in $file($line)\n"
             . "$trace";
+    }
+
+    public const UNKNOWN_FUNCTION_NAME = '{unknown function}';
+
+    /**
+    * @param  kkdebug_frame_paranoid_a  $frame
+    */
+    private static function file_line_mismatch_info(\Throwable $exc, array $frame) : string
+    {
+        $getFile = $exc->getFile();
+        $getLine = $exc->getLine();
+        $frameFile = \array_key_exists('file', $frame) ? $frame['file'] : '{unknown file}';
+        $frameLine = \array_key_exists('line', $frame) ? $frame['line'] : 0;
+        return "\n".
+            "exc->getFile and exc->getLine:   $getFile($getLine)\n".
+            "frame['file'] and frame['line']: $frameFile($frameLine)\n";
+    }
+
+    /**
+    * Attempt to determine the function name that would correspond to `getFile` and `getLine`.
+    * @param  kkdebug_backtrace_paranoid_a  $trace
+    */
+    public static function getFunc(
+        \Throwable $exc,
+        array      $trace
+    ) : string
+    {
+        // $exc->getTrace() was returning the caller's caller's frame instead of the caller's frame.
+        //$trace = $exc->getTrace();
+        if ( 0 === \count($trace) ) {
+            return self::UNKNOWN_FUNCTION_NAME;
+        }
+
+        $frame = $trace[0];
+        if ( \array_key_exists('function', $frame) ) {
+            assert(!\array_key_exists('file', $frame) || $frame['file'] === $exc->getFile(), self::file_line_mismatch_info($exc, $frame));
+            assert(!\array_key_exists('line', $frame) || $frame['line'] === $exc->getLine(), self::file_line_mismatch_info($exc, $frame));
+            return $frame['function'];
+        } else {
+            return self::UNKNOWN_FUNCTION_NAME;
+        }
     }
 }
 ?>
