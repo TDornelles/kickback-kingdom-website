@@ -29,6 +29,84 @@ class FlavorTextController
         return "🎉 Exciting Announcement! 🎉 The $raffleName has come to a thrilling conclusion. Congratulations to $winnerUsername, the lucky winner! We thank everyone who participated and encourage you to stay tuned for more exciting events and opportunities in the future.";
     }
 
+    public static function getLinkedAccountFlavorText(string $username) : string
+    {
+        $flavorTexts = [
+            "$username forges a powerful bond between realms, unlocking secret quests and rare markets.",
+            "Trumpets blare as $username links their accounts—enhanced trading and guild access are now theirs.",
+            "With accounts entwined, $username awakens new abilities and pathways across the kingdom.",
+            "A celebratory cheer rings out! $username's linked accounts reveal exclusive adventures awaiting.",
+            "$username's alliance is sealed; cross-realm privileges and hidden halls now stand open." 
+        ];
+
+        $randomIndex = array_rand($flavorTexts);
+        return $flavorTexts[$randomIndex];
+    }
+
+    public static function getDiscordLinkFlavorText(string $username) : string
+    {
+        $flavorTexts = [
+            "By decree of the Horsemen and the Guild Council, I, Lord Sedwyn of Kickback Kingdom, proclaim that $username has forged the noble bond to Discord, binding their voice to the Kingdom's great halls.",
+            "Let it be inscribed in the Royal Ledger: $username, now sworn to Discord, speaks with the authority and privileges of the Verified.",
+            "From the Emberwood docks to the far reaches of Obitus, word spreads—$username has joined their voice to Discord, the lifeblood of the Kingdom's councils.",
+            "By the charter of the Stewards' Guild, I, Lord Sedwyn, acknowledge $username's Discord oath, granting them voice in guild assemblies and the favor of the Horsemen.",
+            "Hear and heed! $username's bond to Discord is sealed, and the gates to the Kingdom's inner channels stand open before them.",
+            "Upon the binding of Discord's seal, $username is hereby recognized among the Verified, their voice carrying across the realm's channels and councils.",
+            "In the sight of nobles and guildmasters, I bear witness to $username's Discord tether—granting them audience in the High Hall and a place among the trusted.",
+            "Mark this day well—$username has been enjoined to Discord and is thus elevated in rank, earning a seat at the long tables of deliberation.",
+            "By command of the Horsemen, $username's name is etched into the Chronicle of the Verified, their presence now heard in every courtly discussion.",
+            "Let the horns sound! $username has sworn the Discord oath and is welcomed into the voices that guide the Kingdom's fate.",
+            "As Lord Sedwyn, I declare before the guild banners that $username's Discord link is forged, and their standing within the Kingdom rises henceforth.",
+            "Be it known across the Emberwood markets and the halls of Kickback Kingdom—$username is Verified, and their voice may now reach every corner of the universe.",
+            "To all who traverse the nebular currents, let this be heard—$username has bound their presence to Discord and is honored among the Kingdom's communicators.",
+            "By royal writ from the Horsemen and the consent of the guilds, $username's Discord seal is complete, granting them access to the councils where the realm's decisions are made.",
+            "Henceforth, $username shall be regarded as Verified—free to walk the courts, speak in the chambers, and be heard as one trusted and true.",
+            "Let all know that $username stands Verified, their Discord voice beyond the reach of the Lich's cold dominion.",
+            "In the name of the Horsemen, I declare $username bound to Discord—another voice the Lich shall never silence.",
+            "$username's bond to Discord is sealed; even the Lich's necrotic winds shall find no purchase against their station.",
+            "By council order, $username is welcomed into the Verified ranks of Discord, where the Lich's shadow dares not fall.",
+            "Trumpets resound as $username joins the Kingdom's trusted voices—an act the Lich will curse in vain.",
+            "By decree of the Adventurer's Guild, $username's Discord bond grants them right of passage to quests coordinated by the Kingdom's most valiant.",
+            "The Stewards' Guild takes note—$username's place in Discord marks them as a keeper of order within the Kingdom's channels.",
+            "With this bond, $username may tread the Hall of Banners in Discord, where the five guilds gather to shape the Kingdom's course."
+        ];
+    
+        $randomIndex = array_rand($flavorTexts);
+        return $flavorTexts[$randomIndex];
+    }
+    
+    
+    public static function getDiscordUnlinkFlavorText(string $username) : string
+    {
+        $flavorTexts = [
+            "Let the record show—$username has severed their Discord bond. Their voice no longer echoes in the Kingdom's great halls.",
+            "By my hand, I strike $username's name from the Discord Ledger of the Verified. Their presence in the Kingdom's channels is no more.",
+            "Henceforth, $username shall be known as one who has turned from the council halls of Discord, choosing instead the company of shadows.",
+            "Be it known—$username has forsaken the seal of Discord. The gates to the inner channels close behind them.",
+            "I, Lord Sedwyn, announce with measured caution: $username speaks in Discord no longer, and the guildmasters take note.",
+            "With the bond to Discord broken, $username fades from the herald's call, their seat in the Kingdom's councils left empty.",
+            "The royal scribes draw a line through $username's name in the Discord rolls, and the channels fall silent at their absence.",
+            "Mark it well—$username has stepped beyond the gates of the Verified Discord ranks, into the mists where the Kingdom's voice does not reach.",
+            "By decree of the Horsemen, $username's privileges in Discord are revoked, their words now spoken elsewhere, beyond our hearing.",
+            "Let the bells toll in warning—$username has turned from the Kingdom's Discord, where trust was once their shield.",
+            
+            "Let it be whispered—$username departs the Verified ranks, and the Lich's whispers may now reach them through darker channels.",
+            "$username has broken the Discord bond; the Lich's minions are said to listen for their voice now.",
+            "By absence of the seal, $username drifts toward the Lich's cold grasp, their words lost to the Kingdom's ears.",
+            "$username's name fades from the Chronicle of Discord, carried off on winds that smell of the Lich's tombs.",
+            "So it is proclaimed—$username walks beyond the torchlight, where the Lich's counsel is most often heard.",
+            
+            "Let it be known—$username has turned from the protection of the Kingdom's Discord halls, and walks now where the Lich's whispers may be heard.",
+            "Rumor rides the wind from Emberwood to the outer Rings of Obitus—$username has abandoned the halls of the Verified Discord ranks.",
+            "$username's absence is marked in the High Hall of Discord, their chair in the Guild Council left empty and cold.",
+            "Guild scribes close the Discord ledger on $username; the protection of the Kingdom's watch no longer follows them."
+        ];
+    
+        $randomIndex = array_rand($flavorTexts);
+        return $flavorTexts[$randomIndex];
+    }
+    
+
     public static function getNewcomerIntroduction(string $username) : string
     {
         $introductions = [
@@ -183,7 +261,7 @@ class FlavorTextController
             "The call of $questName is strong, but the call of lunch is stronger. $username heeds the latter, vowing to return.",
             "$username peers into the abyss of $questName and decides, 'I think I'm just going to stay in tonight.'",
             "Faced with the daunting expanse of $questName, $username opts for a strategic withdrawal to the nearest tavern.",
-            "‘To fight another day,' $username mutters, deciding that $questName's reward isn't worth the risk...for now.",
+            "'To fight another day,' $username mutters, deciding that $questName's reward isn't worth the risk...for now.",
             "As $username retreats from $questName, they console themselves with thoughts of quests less perilous and more profitable.",
             "With a casual glance back at $questName, $username decides some tales are best left untold, at least by them.",
             "$username, after careful consideration, delegates the daring deeds of $questName to a more enthusiastic hero.",
@@ -191,7 +269,7 @@ class FlavorTextController
             "A bittersweet smile on their lips, $username retreats from $questName, promising the winds they'll return... perhaps.",
             "With a dramatic flourish, $username bows out from $questName, citing creative differences with the storyline.",
             "$username's gaze lingers on $questName before turning away, their heart yearning for adventures of a different kind.",
-            "‘Next time, for sure,' $username pledges, their exit from $questName shadowed by the promise of future endeavors.",
+            "'Next time, for sure,' $username pledges, their exit from $questName shadowed by the promise of future endeavors.",
             "$username pauses at the edge of $questName, deciding some paths are best walked when the time is right.",
             "A twinkle in their eye, $username backs away from $questName, their story to be continued at a more opportune time.",
 
@@ -573,16 +651,16 @@ class FlavorTextController
             "$usernameFrom to $usernameTo: 'The arena of competition is unforgiving, yet it offers redemption. Seize it, and forge a legacy of integrity.'",
             "Seeing $usernameTo veer off course, $usernameFrom offers a map back to honor, their words a compass pointing towards integrity.",
             "$usernameFrom, disheartened by $usernameTo's actions, still holds a torch aloft, illuminating the road back to respect and sportsmanship.",
-            "‘Every champion stumbles,' $usernameFrom tells $usernameTo, ‘but the greatest of heroes are those who rise with lessons learned.'",
-            "‘The shadows you cast today can be outshone by the light of tomorrow's deeds,' $usernameFrom advises $usernameTo, a guidepost back to honor.",
+            "'Every champion stumbles,' $usernameFrom tells $usernameTo, 'but the greatest of heroes are those who rise with lessons learned.'",
+            "'The shadows you cast today can be outshone by the light of tomorrow's deeds,' $usernameFrom advises $usernameTo, a guidepost back to honor.",
             "In a world where actions echo, $usernameFrom reminds $usernameTo that echoes of dishonor can be silenced by acts of redemption.",
             "$usernameFrom sees in $usernameTo's falter a crossroads, with one path leading back to the light of respect and mutual admiration.",
-            "‘Your journey need not end in darkness,' declares $usernameFrom to $usernameTo, ‘for every end heralds a new beginning of honor.'",
+            "'Your journey need not end in darkness,' declares $usernameFrom to $usernameTo, 'for every end heralds a new beginning of honor.'",
             "$usernameFrom, watching $usernameTo's decline, signals a beacon of hope, a testament that faith in redemption burns eternal.",
             "$usernameFrom casts a somber glance at $usernameTo, their rebuke soft yet firm, a call to shed the cloak of dishonor for garments of integrity.",
-            "To $usernameTo, ensnared by folly, $usernameFrom offers a key to liberation: ‘Embrace humility, seek forgiveness, and rediscover honor.'",
+            "To $usernameTo, ensnared by folly, $usernameFrom offers a key to liberation: 'Embrace humility, seek forgiveness, and rediscover honor.'",
             "The missteps of $usernameTo draw a sigh from $usernameFrom, not of resignation, but of resolve to mentor them back to the light.",
-            "‘Let the ink of today's dishonor dry,' suggests $usernameFrom to $usernameTo, ‘and tomorrow, pen a new chapter of valor and respect.'",
+            "'Let the ink of today's dishonor dry,' suggests $usernameFrom to $usernameTo, 'and tomorrow, pen a new chapter of valor and respect.'",
             "$usernameFrom, once dismayed by $usernameTo's deeds, now fosters hope for their awakening to the dawn of renewed honor and dignity."
         ];
 

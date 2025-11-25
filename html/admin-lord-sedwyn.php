@@ -6,8 +6,7 @@ $session = require(\Kickback\SCRIPT_ROOT . "/api/v1/engine/session/verifySession
 require("php-components/base-page-pull-active-account-info.php");
 
 use Kickback\Services\Session;
-use Kickback\Backend\Controllers\SocialMediaController;
-use Kickback\Backend\Config\ServiceCredentials;
+use Kickback\Backend\Controllers\DiscordController;
 if (!Session::isMagisterOfTheAdventurersGuild())
 {
     header('Location: index.php');
@@ -45,10 +44,6 @@ $lordSedwynMessages = [
 ];
 
 
-$kk_credentials = ServiceCredentials::instance();
-    
-// Ex: $webhookURL = "https://discord.com/api/webhooks/<some_number>/<api_key>"
-$webhookURL = $kk_credentials["discord_api_url"] . '/' . $kk_credentials["discord_api_key"];
 
 ?>
 
@@ -83,7 +78,7 @@ $webhookURL = $kk_credentials["discord_api_url"] . '/' . $kk_credentials["discor
                 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["msg"])) {
                     $msg = trim($_POST["msg"]);
                     if ($msg !== "") {
-                        SocialMediaController::DiscordWebHook($msg);
+                        DiscordController::sendWebhook($msg);
                         echo '<div class="alert alert-success mt-3" role="alert">';
                         echo '<strong>Message sent:</strong> ' . htmlspecialchars($msg);
                         echo '</div>';

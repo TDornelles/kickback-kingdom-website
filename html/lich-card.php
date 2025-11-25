@@ -8,6 +8,7 @@ require("php-components/base-page-pull-active-account-info.php");
 use Kickback\Backend\Controllers\LichCardController;
 use Kickback\Backend\Models\Response;
 use Kickback\Backend\Views\vLichCard;
+use Kickback\Common\Version;
 
 if (!isset($thisLichCardData))
 {
@@ -76,7 +77,7 @@ if (!isset($thisLichCardData))
                                         </tr>
                                         <tr>
                                             <th scope="row">Set:</th>
-                                            <td><a href="/lich/set/<?= htmlspecialchars($thisLichCardData->set->locator); ?>"><?= htmlspecialchars($thisLichCardData->set->name); ?></a></td>
+                                            <td><a href="<?= Version::urlBetaPrefix() ?>/lich/set/<?= htmlspecialchars($thisLichCardData->set->locator); ?>"><?= htmlspecialchars($thisLichCardData->set->name); ?></a></td>
                                         </tr>
                                         <tr>
                                             <th scope="row">Type:</th>
@@ -210,7 +211,7 @@ if (!isset($thisLichCardData))
                         </div>
                         
                         <?php if (Kickback\Services\Session::isServantOfTheLich()) { ?>
-                        <a href="/lich/card/edit/<?= $thisLichCardData->locator;?>" class="btn btn-primary">Edit Card</a>
+                        <a href="<?= Version::urlBetaPrefix() ?>/lich/card/edit/<?= $thisLichCardData->locator;?>" class="btn btn-primary">Edit Card</a>
                         <?php } ?>
                     </div>
 

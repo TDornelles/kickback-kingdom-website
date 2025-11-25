@@ -5,20 +5,27 @@ namespace Kickback\Backend\Controllers;
 
 use Kickback\Common\Utility\IDCrypt;
 
-use Kickback\Backend\Models\Account;
 use Kickback\Backend\Views\vAccount;
 use Kickback\Backend\Views\vRecordId;
 use Kickback\Backend\Views\vMedia;
-use Kickback\Backend\Views\vMatchStats;
-use Kickback\Backend\Models\Response;
-use Kickback\Services\Database;
-use Kickback\Services\Session;
-use Kickback\Backend\Controllers\LootController;
-use Kickback\Backend\Config\ServiceCredentials;
 use Kickback\Backend\Views\vRaffle;
 use Kickback\Backend\Views\vGameStats;
+use Kickback\Backend\Controllers\DiscordController;
+use Kickback\Backend\Views\vMatchStats;
+
+use Kickback\Backend\Models\Response;
+use Kickback\Backend\Models\Account;
+
+use Kickback\Services\Database;
+use Kickback\Services\Session;
+
+use Kickback\Backend\Controllers\LootController;
 use Kickback\Backend\Controllers\SocialMediaController;
 use Kickback\Common\Primitives\Str;
+
+use Kickback\Backend\Config\ServiceCredentials;
+
+use Exception;
 
 class AccountController
 {
@@ -334,13 +341,14 @@ class AccountController
             $conn = Database::getConnection();
             // SQL statement with placeholders
             $sql = 'SELECT account.*, service.Name as \'ServiceName\', ? as SessionToken
-            FROM v_account_info as account 
-            LEFT JOIN service on service.PublicKey = ? 
-            LEFT JOIN account_sessions on account_sessions.SessionToken = ? 
-            and account_sessions.ServiceKey = service.PublicKey 
-            and account_sessions.account_id = account.Id 
-            WHERE account.Banned = 0 
-            AND account_sessions.login_time >= (NOW() - INTERVAL 7 DAY) 
+            FROM v_account_info as account
+            JOIN account as acct ON account.Id = acct.Id
+            LEFT JOIN service on service.PublicKey = ?
+            LEFT JOIN account_sessions on account_sessions.SessionToken = ?
+            and account_sessions.ServiceKey = service.PublicKey
+            and account_sessions.account_id = account.Id
+            WHERE account.Banned = 0
+            AND account_sessions.login_time >= (NOW() - INTERVAL 7 DAY)
             AND service.PublicKey = ?';
 
             // Prepare the SQL statement
@@ -1066,6 +1074,20 @@ class AccountController
         $account->expCurrent = (int) $row["exp_current"];
         $account->expGoal = (int) $row["exp_goal"];
 
+        if (array_key_exists('DiscordUserId', $row)) {
+            $account->discordUserId = $row['DiscordUserId'] !== null ? (string)$row['DiscordUserId'] : null;
+        }
+        if (array_key_exists('DiscordUsername', $row)) {
+            $account->discordUsername = $row['DiscordUsername'] !== null ? (string)$row['DiscordUsername'] : null;
+        }
+
+        if (array_key_exists('SteamUserId', $row)) {
+            $account->steamUserId = $row['SteamUserId'] !== null ? (string)$row['SteamUserId'] : null;
+        }
+        if (array_key_exists('SteamUsername', $row)) {
+            $account->steamUsername = $row['SteamUsername'] !== null ? (string)$row['SteamUsername'] : null;
+        }
+
         // Assign boolean properties
         $account->isAdmin = (bool) $row["IsAdmin"];
         $account->isMerchant = (bool) $row["IsMerchant"];
@@ -1302,7 +1324,7 @@ class AccountController
     
             // Additional actions within the transaction
             LootController::giveWritOfPassage($login);
-            SocialMediaController::DiscordWebHook(FlavorTextController::getNewcomerIntroduction($username));
+            DiscordController::sendWebhook(FlavorTextController::getNewcomerIntroduction($username));
     
             // Commit transaction
             $conn->commit();

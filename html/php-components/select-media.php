@@ -1,3 +1,8 @@
+<?php
+
+use Kickback\Common\Version;
+
+?>
 <div class="input-group">
   <select class="form-select" onchange="OnSelectMediaChangeSearchParams()" id="selectMediaSearchDirectory">
     <option value="" selected>All</option>
@@ -31,17 +36,13 @@
 
 
 <script type="module">
-import { initPixelEditor, LAYER_DEFAULTS } from '/assets/js/pixel-editor/index.js';
+import { initPixelEditor, LAYER_DEFAULTS } from '<?= Version::urlBetaPrefix(); ?>/assets/js/pixel-editor/index.js';
 
 const promptTemplates = {
   "lich card art": (desc, scenery, faction) =>
-  `Extremely detailed fantasy pixel art in the style of high-end 1990s arcade games (SNK, Capcom).
-   Crisp, clean pixel edges with dense detailing and visible dithering for shading.
-   Heavy dramatic lighting with deep shadows and bright highlights for epic contrast.
-   Foreground, midground, and background filled with intricate elements for depth.
-   Vivid, saturated focal colors, muted background tones.
-   Dynamic, cinematic scene set in ${scenery}.
-   Featuring ${faction}. No painterly or realistic textures. ${desc}`
+  `High-detail retro pixel art card in 1990s arcade style (SNK, Capcom).
+   Sharp pixels, purposeful dithering, dramatic contrast.
+   Layered scene set in ${scenery}, featuring ${faction}. ${desc}`
 };
 
 
@@ -79,6 +80,7 @@ function updatePromptPreview() {
     const sceneryEl = document.getElementById('imagePromptScenery');
     const factionEl = document.getElementById('imagePromptFaction');
     const promptEl = document.getElementById('imagePrompt');
+    const useCustomBtn = document.getElementById('usePromptAsCustom');
     const template = templateEl ? templateEl.value : '';
     const description = descriptionEl ? descriptionEl.value : '';
     const scenery = sceneryEl ? sceneryEl.value : '';
@@ -91,10 +93,16 @@ function updatePromptPreview() {
             promptEl.value = finalPrompt;
             promptEl.readOnly = true;
             promptDirty = false;
+            if (useCustomBtn) {
+                useCustomBtn.classList.remove('d-none');
+            }
         } else {
             promptEl.readOnly = false;
             if (!promptDirty) {
                 promptEl.value = finalPrompt;
+            }
+            if (useCustomBtn) {
+                useCustomBtn.classList.add('d-none');
             }
         }
     }
@@ -203,14 +211,18 @@ function GeneratePromptImage(prompt)
     const finalPrompt = promptTemplates[template]
         ? promptTemplates[template](description, scenery, faction)
         : description;
+    const promptEl = document.getElementById('imagePrompt');
     const sizeEl = document.getElementById('imageSize');
     const modelEl = document.getElementById('imageModel');
     const sessionToken = "<?php echo $_SESSION["sessionToken"]; ?>";
 
     const formData = new URLSearchParams();
-    const resolvedPrompt = (typeof prompt === 'string' && prompt.length > 0)
-        ? prompt
-        : finalPrompt;
+    const resolvedPrompt =
+        (typeof prompt === 'string' && prompt.length > 0)
+            ? prompt
+            : (promptEl && promptEl.value.trim()
+                ? promptEl.value.trim()
+                : finalPrompt);
     formData.append('prompt', resolvedPrompt);
     if (directoryEl) { formData.append('directory', directoryEl.value); }
     if (nameEl) { formData.append('name', nameEl.value); }
@@ -223,7 +235,7 @@ function GeneratePromptImage(prompt)
     }
     formData.append('sessionToken', sessionToken);
 
-    fetch('/api/v1/media/generate.php', {
+    fetch('<?= Version::urlBetaPrefix(); ?>/api/v1/media/generate.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: formData
@@ -266,8 +278,44 @@ function GeneratePromptImage(prompt)
         console.error('Generation error', err);
     });
 }
+function copyImagePrompt()
+{
+    const promptEl = document.getElementById('imagePrompt');
+    if (promptEl) {
+        navigator.clipboard.writeText(promptEl.value)
+            .then(() => {
+                alert('Prompt copied!');
+                const templateEl = document.getElementById('imagePromptTemplate');
+                const useCustomBtn = document.getElementById('usePromptAsCustom');
+                if (templateEl && templateEl.value && useCustomBtn) {
+                    useCustomBtn.classList.remove('d-none');
+                }
+            });
+    }
+}
+function usePromptAsCustom() {
+    const templateEl = document.getElementById('imagePromptTemplate');
+    const promptEl = document.getElementById('imagePrompt');
+    const useCustomBtn = document.getElementById('usePromptAsCustom');
+    if (templateEl) {
+        templateEl.value = '';
+        promptDirty = true;
+        templateEl.dispatchEvent(new Event('change'));
+    } else {
+        promptDirty = true;
+        updatePromptPreview();
+    }
+    if (promptEl) {
+        promptEl.readOnly = false;
+    }
+    if (useCustomBtn) {
+        useCustomBtn.classList.add('d-none');
+    }
+}
+window.copyImagePrompt = copyImagePrompt;
 window.GenerateImageFromPrompt = GeneratePromptImage;
 window.PromptGenerateWithAI = PromptGenerateWithAI;
+window.usePromptAsCustom = usePromptAsCustom;
 <?php } ?>
 function OpenMediaUploadModal()
 {
@@ -599,7 +647,7 @@ function UploadImageData() {
         formData.append("desc", desc);
         formData.append("sessionToken", sessionToken);
 
-        fetch('/api/v1/media/upload.php', {
+        fetch('<?= Version::urlBetaPrefix() ?>/api/v1/media/upload.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
@@ -673,7 +721,7 @@ function SearchForMedia()
         params.append(key, value);
     }
 
-    fetch('/api/v1/media/search.php?json', {
+    fetch('<?= Version::urlBetaPrefix() ?>/api/v1/media/search.php?json', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded'

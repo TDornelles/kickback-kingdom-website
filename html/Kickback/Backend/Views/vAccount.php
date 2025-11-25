@@ -24,6 +24,12 @@ class vAccount extends vRecordId
     public int $expCurrent;
     public int $expGoal;
 
+    public ?string $discordUserId = null;
+    public ?string $discordUsername = null;
+
+    public ?string $steamUserId = null;
+    public ?string $steamUsername = null;
+
     public string $title;
 
     public bool $isAdmin;
@@ -88,6 +94,24 @@ class vAccount extends vRecordId
     public function profilePictureURL() : ?string
     {
         return !is_null($this->avatar) ? $this->avatar->getFullPath() : null;
+    }
+
+    public function isDiscordLinked() : bool
+    {
+        return !is_null($this->discordUserId);
+    }
+
+    /**
+     * Determine whether the account has a linked Steam profile.
+     */
+    public function isSteamLinked() : bool
+    {
+        return $this->steamUserId !== null;
+    }
+
+    public function hasThirdPartyLinks() : bool
+    {
+        return $this->isDiscordLinked() || $this->isSteamLinked();
     }
 
     private function setDefaultProfilePicture() : void

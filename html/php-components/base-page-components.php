@@ -48,7 +48,12 @@ if (Session::isLoggedIn()) {
 
 $totalUnclaimedTasks = $unclaimedRecurringCount + $unclaimedAchievementsCount;
 
-
+// Calculate redirect path without the beta prefix so login returns to the correct page
+$redirectUri = ltrim($_SERVER['REQUEST_URI'], '/');
+$betaPrefix = ltrim(Version::urlBetaPrefix(), '/');
+if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaPrefix) + 1) === 0) {
+    $redirectUri = substr($redirectUri, strlen($betaPrefix) + 1);
+}
 
 ?>
 
@@ -64,7 +69,6 @@ $totalUnclaimedTasks = $unclaimedRecurringCount + $unclaimedAchievementsCount;
 
 
 <?php if(Session::isLoggedIn()) { ?>
-
 
 
     <?php require(\Kickback\SCRIPT_ROOT . "/php-components/league-viewer.php"); ?>
@@ -216,7 +220,11 @@ $totalUnclaimedTasks = $unclaimedRecurringCount + $unclaimedAchievementsCount;
                             </div>
                             <div class="mb-3">
                                 <label for="imagePrompt" class="form-label">Prompt</label>
-                                <textarea id="imagePrompt" class="form-control" rows="3"></textarea>
+                                <div class="input-group">
+                                    <textarea id="imagePrompt" class="form-control" rows="3"></textarea>
+                                    <button class="btn btn-outline-secondary" type="button" onclick="copyImagePrompt()">Copy</button>
+                                    <button id="usePromptAsCustom" class="btn btn-outline-secondary d-none" type="button" onclick="usePromptAsCustom()">Use as custom</button>
+                                </div>
                             </div>
                             <div class="mb-3">
                                 <label for="imagePromptDescription" class="form-label">Description</label>
@@ -265,6 +273,7 @@ $totalUnclaimedTasks = $unclaimedRecurringCount + $unclaimedAchievementsCount;
                                     <option value=".26">Desktop Banner</option>
                                     <option value=".463">Mobile Banner</option>
                                     <option value="1">Icon (Square)</option>
+                                    <option value="0.866">Lich Card Art (Hexagon)</option>
                                     <option value="0">Custom</option>
                                 </select>
                             </div>
@@ -1412,6 +1421,12 @@ $totalUnclaimedTasks = $unclaimedRecurringCount + $unclaimedAchievementsCount;
 
 
 <li class="nav-item">
+        <a class="nav-link mobile-menu-item" href="<?php echo Version::urlBetaPrefix(); ?>/account-settings.php">
+            <i class="nav-icon fa-solid fa-gear"></i> Account Settings 
+            <i class="fa-solid fa-chevron-right mobile-menu-item-arrow"></i>
+        </a>
+    </li>
+<li class="nav-item">
                 <a class="nav-link mobile-menu-item" href="<?php echo Version::urlBetaPrefix(); ?>/login.php"><i class="nav-icon fa-solid fa-right-from-bracket"></i> Logout <i class="fa-solid fa-chevron-right mobile-menu-item-arrow"></i></a>
             </li>
 <?php
@@ -1485,7 +1500,7 @@ $totalUnclaimedTasks = $unclaimedRecurringCount + $unclaimedAchievementsCount;
 ?>
 
 
-<a class="btn btn-lg btn-primary" type="button" href="<?php echo Version::urlBetaPrefix(); ?>/login.php">
+<a class="btn btn-lg btn-primary" type="button" href="<?php echo Version::urlBetaPrefix(); ?>/login.php?redirect=<?php echo urlencode($redirectUri); ?>">
             <i class="fa-solid fa-user"></i>
         </a>
 <?php
@@ -1527,6 +1542,20 @@ $totalUnclaimedTasks = $unclaimedRecurringCount + $unclaimedAchievementsCount;
                         <li><a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/craftsmen-guild.php"><i class="nav-icon fa-solid fa-hammer"></i> Craftsmen Guild</a></li>
                         <li><a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/apprentices-guild.php"><i class="nav-icon fa-solid fa-user-graduate"></i> Apprentices Guild</a></li>
                         <li><a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/stewards-guild.php"><i class="nav-icon fa-solid fa-person-digging"></i> Stewards Guild</a></li>-->
+                    </ul>
+                </li>
+                <li class="nav-item dropdown" data-bs-theme="light">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
+                        aria-expanded="false">
+                        <i class="nav-icon fa-solid fa-university "></i> Store
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li>
+                            <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/market.php?store-locator=kickback_market"><i class="nav-icon fa-solid fa fa-shopping-bag"></i>Kickback Market</a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/market.php"><i class="nav-icon fa-solid fa fa-space-shuttle"></i>Emberwood Dashboard</a>
+                        </li>
                     </ul>
                 </li>
                 <li class="nav-item dropdown" data-bs-theme="light">
@@ -1574,16 +1603,13 @@ $totalUnclaimedTasks = $unclaimedRecurringCount + $unclaimedAchievementsCount;
                         </button>
                     </li>
                     <li class="nav-item">
-                        <button class="btn btn-primary position-relative" type="button" data-bs-toggle="offcanvas"
-                            data-bs-target="#offcanvasMenuRightShoppingCart" aria-controls="offcanvasMenuRightShoppingCart"
-                            aria-label="Toggle navigation">
+                        <button class="btn btn-primary position-relative" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasMenuRightShoppingCart" aria-controls="offcanvasMenuRightShoppingCart" aria-label="Toggle navigation" style="background-color: transparent !important; border-color: transparent;">
+                            
                             <i class="fa-solid fa-cart-shopping"></i>
-                            <?php if (Kickback\Services\Session::isAdmin()) { ?>
-                            <span class="badge bg-danger position-absolute top-0 start-100 translate-middle rounded-pill">
-                                99+
+                            <span class="badge bg-secondary position-absolute top-0 start-100 translate-middle rounded-pill">
+                                99
                                 <span class="visually-hidden">unread messages</span>
                             </span>
-                            <?php } ?>
                         </button>
                     </li>
                     <li class="nav-item">
@@ -1627,6 +1653,11 @@ $totalUnclaimedTasks = $unclaimedRecurringCount + $unclaimedAchievementsCount;
                         <li>
                             <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/u/<?php echo Kickback\Services\Session::getCurrentAccount()->username; ?>">
                                 <i class="nav-icon fa-solid fa-user"></i> Profile
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/account-settings.php">
+                                <i class="nav-icon fa-solid fa-gear"></i> Account Settings
                             </a>
                         </li>
                         <?php if (Kickback\Services\Session::isAdmin()) { ?>
@@ -1682,7 +1713,7 @@ $totalUnclaimedTasks = $unclaimedRecurringCount + $unclaimedAchievementsCount;
                         ?>
 
                         <li>
-                            <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/login.php">
+                            <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/login.php?redirect=<?php echo urlencode($redirectUri); ?>">
                                 <i class="nav-icon fa-solid fa-right-from-bracket"></i> Login
                             </a>
                         </li>
