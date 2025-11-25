@@ -5,6 +5,7 @@ namespace Kickback\Common\Exceptions;
 
 use Kickback\Common\Exceptions\Internal\Misc;
 use Kickback\Common\Exceptions\ThrowableWithAssignableFields;
+use Kickback\Common\Meta\Location;
 
 // TODO: This ended up complicated enough that it could
 //         probably justify having its own unittests.
@@ -12,14 +13,19 @@ use Kickback\Common\Exceptions\ThrowableWithAssignableFields;
 //         pretty well covered by the tests in `ThrowableContextMessageHandlingTrait`
 //         and `Kickback\Common\Exceptions\Reporting\Report`.
 /**
-* @phpstan-import-type  kkdebug_frame_a      from \Kickback\Common\Exceptions\DebugBacktraceAliasTypes
-* @phpstan-import-type  kkdebug_backtrace_a  from \Kickback\Common\Exceptions\DebugBacktraceAliasTypes
+* @phpstan-import-type  kkdebug_frame_a               from \Kickback\Common\Exceptions\DebugBacktraceAliasTypes
+* @phpstan-import-type  kkdebug_backtrace_a           from \Kickback\Common\Exceptions\DebugBacktraceAliasTypes
+* @phpstan-import-type  kkdebug_frame_paranoid_a      from \Kickback\Common\Exceptions\DebugBacktraceAliasTypes
+* @phpstan-import-type  kkdebug_backtrace_paranoid_a  from \Kickback\Common\Exceptions\DebugBacktraceAliasTypes
 *
 * @phpstan-require-implements  \Kickback\Common\Exceptions\ThrowableWithAssignableFields
 */
 trait ThrowableAssignableFieldsTrait
 {
+    private int                $kk_code_;
     private string             $kk_main_message_path_;
+    private string             $kk_main_message_func_;
+    /** @var int<0,max> */
     private int                $kk_main_message_line_;
     private string|\Closure    $kk_main_message_;
 
@@ -126,14 +132,15 @@ trait ThrowableAssignableFieldsTrait
     * @throws void
     */
     protected function ThrowableAssignableFieldsTrait_init(
-        string|\Closure $msg, string|int $in_file_or_at_stack_depth, int $at_line = 0
-    ) : void {
-        if ( \is_int($in_file_or_at_stack_depth) ) {
-            // Compensate stack depth for the call to
-            // `ThrowableAssignableFieldsTrait_init`
-            $in_file_or_at_stack_depth++;
-        }
-        $this->message($msg, $in_file_or_at_stack_depth, $at_line);
+        string|\Closure|null   $msg = null,
+        int                    $code,
+        string                 $in_file,
+        string                 $in_function,
+        int                    $at_line = 0
+    ) : void
+    {
+        $this->code($code);
+        $this->message($msg, $in_file, $in_function, $at_line);
     }
 
     /**
@@ -156,14 +163,39 @@ trait ThrowableAssignableFieldsTrait
     * @see ThrowableWithAssignableFields::message
     *
     * @param  string|(\Closure():string)|null   $msg
-    * @param  string|int|null                   $in_file_or_at_stack_depth
-    * @param  int                               $at_line
+    * @param ?string                            $in_file
+    * @param ?string                            $in_function
+    * @param int                                $at_line
+    * @param ?int<0,max>                        $at_trace_depth
+    * @param ?array<array{
+    *       function? : string,
+    *       line?     : int,
+    *       file?     : string,
+    *       class?    : class-string,
+    *       type?     : '->'|'::',
+    *       args?     : array<array-key, mixed>,
+    *       object?   : object
+    *   }>                                      $trace
     *
     * @throws void
     */
-    public function message(string|\Closure|null $msg = null, string|int|null $in_file_or_at_stack_depth = null, int $at_line = 0) : string
+    public function message(
+        string|\Closure|null   $msg = null,
+        ?string                $in_file = null,
+        ?string                $in_function = null,
+        int                    $at_line = \PHP_INT_MIN,
+        ?int                   $at_trace_depth = null,
+        ?array                 $trace = null
+    ) : string
     {
         if (!isset($msg)) {
+            // If the message isn't being set, it suggests a getter call.
+            // To keep things simple, it is illegal to attempt to set
+            // location information during such a call.
+            assert(!Location::is_set(
+                $in_file, $in_function, $at_line, $at_trace_depth, $trace));
+
+            // All we need to do is return the existing message.
             return $this->message_pure();
         }
 
@@ -182,35 +214,39 @@ trait ThrowableAssignableFieldsTrait
         }
 
         // Return early if we're not doing anything with file/line info.
-        if (!isset($in_file_or_at_stack_depth)) {
+        if (!Location::is_set(
+            $in_file, $in_function, $at_line, $at_trace_depth, $trace))
+        {
+            // Caller does not wish to modify this exception's location info.
+
+            // If needed, calculate the message prefix
+            // using whatever file/line info is already present.
             if ( $is_multiline_msg ) {
-                // If needed, calculate the message prefix
-                // using whatever file/line info is already present.
                 $this->populate_message_prefix();
             }
+
+            // Get the newly assigned message.
             return $this->message_pure();
         }
 
-        // Update file/line information
-
-        // Optimization:
-        // We only care about file+line from the caller, so we can
-        // avoid taking too much memory/time with debug_backtrace
-        // by asking it to leave arguments out, and to only grab
-        // the frames that we need.
-        // (Also, if the caller provides us with file+line info,
-        // we can avoid calling \debug_backtrace entirely.)
-        // @var kkdebug_backtrace_a
-        $trace = null;
-        if (is_int($in_file_or_at_stack_depth))
-        {
-            $stack_depth = 2 + $in_file_or_at_stack_depth;
-            $trace = \debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, $stack_depth);
+        // Default this field, in case the caller passed explicit
+        // file + function + line info, but didn't specify trace depth.
+        // (which is fairly likely, actually.)
+        if (!isset($at_trace_depth)) {
+            $at_trace_depth = 0;
         }
 
+        // Update file/line information
+        if (Location::need_backtrace(
+            $in_file, $in_function, $at_line, $at_trace_depth, $trace))
+        {
+            $at_trace_depth = 2 + $at_trace_depth;
+            $trace = \debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, $at_trace_depth);
+        }
+        Location::process_info($in_file, $in_function, $at_line, $at_trace_depth, $trace);
+
         // Assumption: this indirectly calls `$this->invalidate_message_prefix()`.
-        ThrowableAssignableFields::
-            process_location_info($this, $trace, $in_file_or_at_stack_depth, $at_line);
+        $this->set_location($in_file, $in_function, $at_line);
 
         // If this call changes a single-line message into a multi-line
         // one, then the above indirect call to `invalidate_message_prefix`
@@ -232,6 +268,31 @@ trait ThrowableAssignableFieldsTrait
     }
 
     /**
+    * @see ThrowableWithAssignableFields::code_pure
+    *
+    * @phpstan-pure
+    * @throws void
+    */
+    public function code_pure() : int
+    {
+        return $this->kk_code_;
+    }
+
+    /**
+    * @see ThrowableWithAssignableFields::code
+    *
+    * @throws void
+    */
+    public function code(?int $new_code = null) : int
+    {
+        if(!isset($new_code)) {
+            return $this->kk_code_;
+        }
+        $this->kk_code_ = $new_code;
+        return $this->kk_code_;
+    }
+
+    /**
     * @see ThrowableWithAssignableFields::file
     *
     * @phpstan-pure
@@ -240,14 +301,33 @@ trait ThrowableAssignableFieldsTrait
     public function file() : string
     {
         // Note: This property isn't a setter because it will typically
-        // be paired with a call to `line`, and each one would need to
-        // call `invalidate_message_prefix`, thus doubling
+        // be paired with a call to `line` (and possibly also `function`),
+        // and each one would need to call `invalidate_message_prefix`,
+        // thus doubling (or tripling) the invalidation cost.
+        //
+        // By forcing the caller to use, for example, `set_location` instead,
+        // we make doubled/tripled (unnecessary) invalidation very unlikely.
+        //
+        return $this->kk_main_message_path_;
+    }
+
+    /**
+    * @see ThrowableWithAssignableFields::file
+    *
+    * @phpstan-pure
+    * @throws void
+    */
+    public function func() : string
+    {
+        // Note: This property isn't a setter because it will typically
+        // happen alongside calls to `file` and `line`, and each one would
+        // need to call `invalidate_message_prefix`, thus tripling
         // the invalidation cost.
         //
         // By forcing the caller to use, for example, `set_location` instead,
-        // we make doubled (unnecessary) invalidation very unlikely.
+        // we make tripled (unnecessary) invalidation very unlikely.
         //
-        return $this->kk_main_message_path_;
+        return $this->kk_main_message_func_;
     }
 
     /**
@@ -259,35 +339,52 @@ trait ThrowableAssignableFieldsTrait
     public function line() : int
     {
         // Note: This property isn't a setter because it will typically
-        // be paired with a call to `file`, and each one would need to
-        // call `invalidate_message_prefix`, thus doubling
-        // the invalidation cost.
+        // be paired with a call to `file` (and possibly also `function`),
+        // and each one would need to call `invalidate_message_prefix`,
+        // thus doubling (or tripling) the invalidation cost.
         //
         // By forcing the caller to use, for example, `set_location` instead,
-        // we make doubled (unnecessary) invalidation very unlikely.
+        // we make doubled/tripled (unnecessary) invalidation very unlikely.
         //
         return $this->kk_main_message_line_;
     }
 
     /**
-    * @see ThrowableWithAssignableFields::set_location
+    * @param string                             $in_file
+    * @param string                             $in_function
+    * @param int<0,max>                         $at_line
     *
     * @phpstan-impure
     * @throws void
     */
-    public function set_location(string $file_path, int $at_line) : void
+    public function set_location(
+        string    $in_file,
+        string    $in_function,
+        int       $at_line
+    ) : void
     {
-        $this->kk_main_message_path_ = $file_path;
+        $this->kk_main_message_path_ = $in_file;
+        $this->kk_main_message_func_ = $in_function;
         $this->kk_main_message_line_ = $at_line;
         $this->invalidate_message_prefix();
     }
 
-
     /**
     * @see ThrowableWithAssignableFields::calculate_location_from
     *
-    * @param  string|int   $in_file_or_at_stack_depth
-    * @param  int          $at_line
+    * @param ?string                            $in_file
+    * @param ?string                            $in_function
+    * @param int                                $at_line
+    * @param int<0,max>                         $at_trace_depth
+    * @param ?array<array{
+    *       function? : string,
+    *       line?     : int,
+    *       file?     : string,
+    *       class?    : class-string,
+    *       type?     : '->'|'::',
+    *       args?     : array<array-key, mixed>,
+    *       object?   : object
+    *   }>                                      $trace
     *
     * @phpstan-impure
     * @throws void
