@@ -7,6 +7,8 @@ use Kickback\Backend\Config\ServiceCredentials;
 use Kickback\Backend\Views\vRecordId;
 use Kickback\Backend\Models\Response;
 
+return new Response(false, "Claiming Host Rewards isn't available yet.");
+
 OnlyPOST();
 
 $contains = POSTContainsFields('sessionToken');

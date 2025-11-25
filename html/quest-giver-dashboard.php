@@ -993,7 +993,7 @@ $(document).ready(function () {
                     const statusContent = $('<div class="d-flex flex-column flex-sm-row align-items-sm-center gap-2"></div>');
 
                     if (r.hasReview) {
-                        const statusText = $('<span class="status-text"></span>').text(r.viewed ? 'Viewed' : 'Pending');
+                        const statusText = $('<span class="status-text"></span>').text(r.viewed ? 'Viewed' : 'Ready to Claim');
                         statusContent.append(statusText);
                     } else {
                         statusContent.append($('<span class="status-text"></span>').text('Pending Review'));

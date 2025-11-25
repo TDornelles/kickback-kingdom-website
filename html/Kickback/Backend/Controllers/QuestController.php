@@ -2173,6 +2173,9 @@ class QuestController
 
     public static function markReviewAsViewed(vRecordId $applicantId, vRecordId $accountId): Response
     {
+        
+        return new Response(false, "Claiming Host Rewards isn't available yet.");
+        
         $conn = Database::getConnection();
         $qaId = $applicantId->crand;
         $accountIdVal = $accountId->crand;
