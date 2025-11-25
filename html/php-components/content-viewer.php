@@ -26,7 +26,7 @@ if ($_vCanEditContent)
 ?>
 
 <!-- EDIT CODE MODAL -->
-<div class="modal modal-lg fade" id="modalEditCode" tabindex="-1" aria-labelledby="modalEditCodeLabel" aria-hidden="true">
+<div class="modal modal-lg fade" id="modalEditCode" tabindex="-1" aria-labelledby="modalEditCodeLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
@@ -46,7 +46,7 @@ if ($_vCanEditContent)
 </div>
 
 <!-- NEW ELEMENT MODAL -->
-<div class="modal modal-lg fade" id="modalNewElement" tabindex="-1" aria-labelledby="modalNewElementLabel" aria-hidden="true">
+<div class="modal modal-lg fade" id="modalNewElement" tabindex="-1" aria-labelledby="modalNewElementLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
@@ -75,7 +75,7 @@ if ($_vCanEditContent)
 </div>
 
 <!-- EDIT TITLE MODAL -->
-<div class="modal modal-lg fade" id="modalEditTitle" tabindex="-1" aria-labelledby="modalEditTitleLabel" aria-hidden="true">
+<div class="modal modal-lg fade" id="modalEditTitle" tabindex="-1" aria-labelledby="modalEditTitleLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
@@ -95,7 +95,7 @@ if ($_vCanEditContent)
 </div>
 
 <!-- EDIT SUBTITLE MODAL -->
-<div class="modal modal-lg fade" id="modalEditSubtitle" tabindex="-1" aria-labelledby="modalEditSubtitleLabel" aria-hidden="true">
+<div class="modal modal-lg fade" id="modalEditSubtitle" tabindex="-1" aria-labelledby="modalEditSubtitleLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
@@ -116,7 +116,7 @@ if ($_vCanEditContent)
 
 
 <!-- EDIT HEADER MODAL -->
-<div class="modal modal-lg fade" id="modalEditHeader" tabindex="-1" aria-labelledby="modalEditHeaderLabel" aria-hidden="true">
+<div class="modal modal-lg fade" id="modalEditHeader" tabindex="-1" aria-labelledby="modalEditHeaderLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
@@ -124,8 +124,8 @@ if ($_vCanEditContent)
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <label for="content-edit-heaeder-textbox" class="form-label">Enter a Header</label>
-        <input class="form-control form-control-lg" type="text" id="content-edit-heaeder-textbox">
+        <label for="content-edit-header-textbox" class="form-label">Enter a Header</label>
+        <input class="form-control form-control-lg" type="text" id="content-edit-header-textbox">
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
@@ -135,8 +135,34 @@ if ($_vCanEditContent)
   </div>
 </div>
 
+<!-- EDIT BUTTON MODAL -->
+<div class="modal modal-lg fade" id="modalEditButton" tabindex="-1" aria-labelledby="modalEditButtonLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="modalEditButtonLabel">Edit Button Content Element</h1>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="content-edit-button-label" class="form-label">Button Label</label>
+          <input class="form-control" type="text" id="content-edit-button-label">
+        </div>
+        <div class="mb-3">
+          <label for="content-edit-button-url" class="form-label">Link URL</label>
+          <input class="form-control" type="url" id="content-edit-button-url" placeholder="https://example.com">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn bg-ranked-1" id="modalEditButtonSaveButton" onclick="">Apply changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- EDIT PARAGRAPH MODAL -->
-<div class="modal modal-lg fade" id="modalEditParagraph" tabindex="-1" aria-labelledby="modalEditParagraphLabel" aria-hidden="true">
+<div class="modal modal-lg fade" id="modalEditParagraph" tabindex="-1" aria-labelledby="modalEditParagraphLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
@@ -155,8 +181,69 @@ if ($_vCanEditContent)
   </div>
 </div>
 
+<!-- EDIT MARKDOWN MODAL -->
+<div class="modal modal-lg fade" id="modalEditMarkdown" tabindex="-1" aria-labelledby="modalEditMarkdownLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="modalEditMarkdownLabel">Edit Markdown Content Element</h1>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="d-flex flex-column gap-3">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <label for="content-edit-markdown-textbox" class="form-label mb-0">Markdown Editor</label>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Markdown view toggle">
+              <button type="button" class="btn btn-outline-secondary active" id="markdown-view-toggle-code" onclick="SetMarkdownEditorView('code')">
+                <i class="fa-solid fa-code"></i> Markdown
+              </button>
+              <button type="button" class="btn btn-outline-secondary" id="markdown-view-toggle-preview" onclick="SetMarkdownEditorView('preview')">
+                <i class="fa-solid fa-eye"></i> Preview
+              </button>
+            </div>
+          </div>
+          <div class="btn-toolbar flex-wrap" id="content-edit-markdown-toolbar" role="toolbar" aria-label="Markdown toolbar">
+            <div class="btn-group btn-group-sm me-2 mb-2" role="group" aria-label="Text formatting">
+              <button type="button" class="btn btn-outline-secondary" title="Bold" onclick="ApplyMarkdownWrap('**','**','bold text')"><i class="fa-solid fa-bold"></i></button>
+              <button type="button" class="btn btn-outline-secondary" title="Italic" onclick="ApplyMarkdownWrap('*','*','italic text')"><i class="fa-solid fa-italic"></i></button>
+              <button type="button" class="btn btn-outline-secondary" title="Strikethrough" onclick="ApplyMarkdownWrap('~~','~~','strikethrough')"><i class="fa-solid fa-strikethrough"></i></button>
+              <button type="button" class="btn btn-outline-secondary" title="Inline code" onclick="ApplyMarkdownWrap('`','`','code')"><i class="fa-solid fa-terminal"></i></button>
+            </div>
+            <div class="btn-group btn-group-sm me-2 mb-2" role="group" aria-label="Headings">
+              <button type="button" class="btn btn-outline-secondary" title="Heading 1" onclick="ApplyMarkdownHeading(1)">H1</button>
+              <button type="button" class="btn btn-outline-secondary" title="Heading 2" onclick="ApplyMarkdownHeading(2)">H2</button>
+              <button type="button" class="btn btn-outline-secondary" title="Heading 3" onclick="ApplyMarkdownHeading(3)">H3</button>
+            </div>
+            <div class="btn-group btn-group-sm me-2 mb-2" role="group" aria-label="Blocks">
+              <button type="button" class="btn btn-outline-secondary" title="Blockquote" onclick="ApplyMarkdownPrefix('> ')"><i class="fa-solid fa-quote-left"></i></button>
+              <button type="button" class="btn btn-outline-secondary" title="Code block" onclick="ApplyMarkdownBlock('```\n','\n```','code block')"><i class="fa-solid fa-code"></i></button>
+              <button type="button" class="btn btn-outline-secondary" title="Horizontal rule" onclick="InsertMarkdownHorizontalRule()"><i class="fa-solid fa-grip-lines"></i></button>
+            </div>
+            <div class="btn-group btn-group-sm me-2 mb-2" role="group" aria-label="Lists">
+              <button type="button" class="btn btn-outline-secondary" title="Bulleted list" onclick="ApplyMarkdownList('unordered')"><i class="fa-solid fa-list-ul"></i></button>
+              <button type="button" class="btn btn-outline-secondary" title="Numbered list" onclick="ApplyMarkdownList('ordered')"><i class="fa-solid fa-list-ol"></i></button>
+              <button type="button" class="btn btn-outline-secondary" title="Task list" onclick="ApplyMarkdownList('task')"><i class="fa-regular fa-square-check"></i></button>
+            </div>
+            <div class="btn-group btn-group-sm mb-2" role="group" aria-label="Links and media">
+              <button type="button" class="btn btn-outline-secondary" title="Link" onclick="InsertMarkdownLink()"><i class="fa-solid fa-link"></i></button>
+              <button type="button" class="btn btn-outline-secondary" title="Image" onclick="InsertMarkdownImage()"><i class="fa-regular fa-image"></i></button>
+              <button type="button" class="btn btn-outline-secondary" title="Table" onclick="InsertMarkdownTable()"><i class="fa-solid fa-table"></i></button>
+            </div>
+          </div>
+          <textarea class="form-control" id="content-edit-markdown-textbox" rows="12" oninput="HandleMarkdownEditorInput()"></textarea>
+          <div id="content-edit-markdown-preview" class="border rounded p-3 bg-body-tertiary d-none"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn bg-ranked-1" id="modalEditMarkdownSaveButton" onclick="">Apply changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- EDIT LIST MODAL -->
-<div class="modal modal-lg fade" id="modalEditList" tabindex="-1" aria-labelledby="modalEditListLabel" aria-hidden="true">
+<div class="modal modal-lg fade" id="modalEditList" tabindex="-1" aria-labelledby="modalEditListLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
@@ -192,7 +279,7 @@ if ($_vCanEditContent)
 </div>
 
 <!-- EDIT MEDIA MODAL -->
-<div class="modal modal-lg fade" id="modalEditMedia" tabindex="-1" aria-labelledby="modalEditMediaLabel" aria-hidden="true">
+<div class="modal modal-lg fade" id="modalEditMedia" tabindex="-1" aria-labelledby="modalEditMediaLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
@@ -231,7 +318,7 @@ if ($_vCanEditContent)
 </div>
 
 <!-- EDIT YOUTUBE MODAL -->
-<div class="modal modal-lg fade" id="modalEditYoutube" tabindex="-1" aria-labelledby="modalEditYoutubeLabel" aria-hidden="true">
+<div class="modal modal-lg fade" id="modalEditYoutube" tabindex="-1" aria-labelledby="modalEditYoutubeLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
@@ -270,7 +357,7 @@ if ($_vCanEditContent)
 </div>
 
 <!-- EDIT SKETCH FAB MODAL -->
-<div class="modal modal-lg fade" id="modalEditSketchFab" tabindex="-1" aria-labelledby="modalEditSketchFabLabel" aria-hidden="true">
+<div class="modal modal-lg fade" id="modalEditSketchFab" tabindex="-1" aria-labelledby="modalEditSketchFabLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
@@ -318,7 +405,7 @@ if ($_vCanEditContent)
 </div>
 
 <!-- EDIT SLIDER MODAL -->
-<div class="modal modal-lg fade" id="modalEditSlider" tabindex="-1" aria-labelledby="modalEditSliderLabel" aria-hidden="true">
+<div class="modal modal-lg fade" id="modalEditSlider" tabindex="-1" aria-labelledby="modalEditSliderLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
@@ -329,34 +416,52 @@ if ($_vCanEditContent)
                 
                 <div class="row mb-3">
                     <div class="col-12">
-                        <div class="btn-group me-2" role="group" aria-label="First group">
-                            <button type="button" class="btn btn-primary">1</button>
-                            <button type="button" class="btn bg-ranked-1">2</button>
-                            <button type="button" class="btn btn-primary">3</button>
-                            <button type="button" class="btn btn-primary"><i class="fa-solid fa-plus"></i></button>
-                        </div>
-                            <button type="button" class="btn btn-danger float-end mx-1">Delete Slide</button>
-                            <button type="button" class="btn btn-primary float-end mx-1" onclick="OpenSelectMediaModal('modalEditSlider')">Select Media</button>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col-12">
-                        <div class="ratio ratio-16x9">
-                            <img src="/assets/media/" class="figure-img img-fluid rounded" style="background-color: black;">
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <div class="btn-group flex-wrap" id="slider-slide-buttons" role="group" aria-label="Slides"></div>
+                            <button type="button" class="btn btn-primary" id="modalEditSliderAddButton" aria-label="Add slide">
+                                <i class="fa-solid fa-plus"></i>
+                            </button>
+                            <div class="ms-auto d-flex flex-wrap gap-2">
+                                <button type="button" class="btn btn-primary" id="modalEditSliderSelectMediaButton">
+                                    <i class="fa-solid fa-image me-1"></i> Select Media
+                                </button>
+                                <button type="button" class="btn btn-danger" id="modalEditSliderDeleteButton">Delete Slide</button>
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div class="row mb-3">
-                    
                     <div class="col-12">
-                        <label for="content-edit-slide-textbox" class="form-label">Slide Text</label>
-                        <input type="text" class="form-control" id="content-edit-slide-textbox" >
+                        <div class="ratio ratio-16x9 border rounded bg-black overflow-hidden d-flex align-items-center justify-content-center">
+                            <img src="/assets/media/items/placeholder.png" class="figure-img img-fluid rounded" id="content-edit-slider-image" alt="Slider preview">
+                        </div>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <label for="content-edit-slide-textbox" class="form-label">Slide Title</label>
+                        <input type="text" class="form-control" id="content-edit-slide-textbox">
+                        <input type="hidden" id="content-edit-slider-media-id">
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <label for="content-edit-slide-subtext" class="form-label">Slide Subtitle</label>
+                        <input type="text" class="form-control" id="content-edit-slide-subtext">
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="content-edit-slider-auto-slide" checked>
+                            <label class="form-check-label" for="content-edit-slider-auto-slide">Auto Slide</label>
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn bg-ranked-1">Apply changes</button>
+                <button type="button" class="btn bg-ranked-1" id="modalEditSliderSaveButton">Apply changes</button>
             </div>
         </div>
     </div>
