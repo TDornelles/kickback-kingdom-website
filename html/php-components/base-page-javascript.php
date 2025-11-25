@@ -14,9 +14,10 @@ use Kickback\Common\Version;
     <script src="<?= Version::urlBetaPrefix(); ?>/assets/js/qrcode.js"></script>
     <script src="<?= Version::urlBetaPrefix(); ?>/api/v2/client/js/store-client.js"></script>
     <script src="<?= Version::urlBetaPrefix(); ?>/api/v2/client/js/kickback-client.js"></script>
-
+    <script src="<?= Version::urlBetaPrefix(); ?>/assets/js/kickback-kingdom-api.js"></script>
     <!--<script src="assets/owl-carousel/owl.carousel.js"></script>-->
     <script>
+        const KKAPI = new KickbackKingdomAPI("<?php echo ($_SESSION["sessionToken"] ?? ""); ?>");
         function arrayRemoveItem(array, itemToRemove) {
             let index = array.indexOf(itemToRemove);
 
@@ -920,6 +921,8 @@ use Kickback\Common\Version;
                     return item;
                 }
             }
+
+            //query the api
             return null;
         }
 
