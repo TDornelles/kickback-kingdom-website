@@ -268,9 +268,7 @@
 			gap: 1rem;
 			}
 			#joinRows[data-state="participant"] #joinFormSection,
-			#joinRows[data-state="participant"] #joinLoginPrompt,
-			#joinRows[data-state="host"] #joinFormSection,
-			#joinRows[data-state="host"] #joinLoginPrompt {
+			#joinRows[data-state="participant"] #joinLoginPrompt {
 			display: none !important;
 			}
 			#joinRows[data-state="host"] #joinHostPrompt {
@@ -807,7 +805,6 @@
 			const participantExclusionCrand = document.getElementById('participantExclusionCrand');
 			const interestInput = document.getElementById('interest');
 			const exclusionSelect = document.getElementById('exclusionSelect');
-			const exclusionBuilderCard = document.getElementById('exclusionBuilderCard');
 			const exclusionBuilder = document.getElementById('exclusionBuilder');
 			const exclusionBuilderStatus = document.getElementById('exclusionBuilderStatus');
 			const newExclusionName = document.getElementById('newExclusionName');
@@ -1160,17 +1157,11 @@
 
                 eventDetailsCard.style.display = 'block';
 
-                // Host-only card
-                if (exclusionBuilderCard) {
-                    exclusionBuilderCard.style.display = 'block';
-                }
-
                 // Load exclusion groups only if the UI exists
                 setExclusionGroup('', '');
                 exclusionGroups = event.exclusion_groups || [];
-                if (exclusionBuilderCard) {
-                    renderExclusionOptions(exclusionGroups);
-                }
+                
+                renderExclusionOptions(exclusionGroups);
 
                 // --- SAFE DATE PARSER FOR MYSQL DATETIME ---
                 function parseUtcDate(raw) {
@@ -1252,7 +1243,6 @@
 			    setStatus(inviteStatus, 'Checking invite...');
 			    if (eventDetailsCard) eventDetailsCard.style.display = 'none';
 			    if (joinRows) joinRows.style.display = 'none';
-			    if (exclusionBuilderCard) exclusionBuilderCard.style.display = 'none';
 			    if (countdownCard) countdownCard.style.display = 'none';
 			    currentEvent = null;
 			    exclusionGroups = [];
