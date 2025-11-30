@@ -3,11 +3,21 @@
     "type": "project",
     "license": "Boost",
     "require": {
+
+
+
+        "openai-php/client": "^0.8",
+        "symfony/http-client": "^7.3"
+
         "stripe/stripe-php": "^17.1",
         "cboden/ratchet": "^0.4"
+
     },
     "config": {
-        "vendor-dir": "html/vendor/composer"
+        "vendor-dir": "html/vendor/composer",
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
     },
     "require-dev": {
         "phpstan/phpstan": "^1.11",
