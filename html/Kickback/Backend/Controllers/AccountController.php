@@ -474,7 +474,7 @@ class AccountController
         $conn = Database::getConnection();
 
         $mainQuery = "SELECT v_account_info.*" . 
-        ($hasSearchTerm ? ", MATCH(Username, FirstName, LastName, Email) AGAINST (?) AS relevancy_score" : "") . "
+        ($hasSearchTerm ? ", (Username LIKE ? OR MATCH(Username, FirstName, LastName, Email) AGAINST (? IN BOOLEAN MODE)) AS relevancy_score" : "") . "
         FROM v_account_info
         $joinQuery
         $whereClause
@@ -513,10 +513,13 @@ class AccountController
         $hasSearchTerm = false;
         if (trim($searchTerm) !== "") {
             $hasSearchTerm = true;
-            $fulltextTerm = "+" . trim($searchTerm) . "*";
-            $filterConditions[] = "MATCH(Username, FirstName, LastName, Email) AGAINST (? IN BOOLEAN MODE)";
+            $trimmed = trim($searchTerm);
+            $fulltextTerm = "+" . $trimmed . "*";
+            $likeTerm = '%' . $trimmed . '%';
+            $filterConditions[] = "(Username LIKE ? OR MATCH(Username, FirstName, LastName, Email) AGAINST (? IN BOOLEAN MODE))";
+            $filterParams[] = $likeTerm;
             $filterParams[] = $fulltextTerm;
-            $paramTypes .= "s";
+            $paramTypes .= "ss";
         }
     
         $joinData = self::buildJoinsAndConditions($filters);
@@ -527,7 +530,8 @@ class AccountController
         $countTypes = $paramTypes . $joinData['paramTypes'];
 
         $whereClause = ' WHERE ' . implode(' AND ', $filterConditions);
-    
+                
+
         $count = self::executeCountQuery($joinQuery, $whereClause, $countParams, $countTypes);
         
         $mainParams = array_merge(
@@ -538,6 +542,9 @@ class AccountController
         );
         $mainTypes = $paramTypes . $paramTypes . $joinData['paramTypes'].'ii';
     
+        //return new Response(false, "", $mainParams);
+        //return new Response(false, "", $mainTypes);
+        //return new Response(false, "SELECT COUNT(*) AS total FROM v_account_info $joinQuery $whereClause");
         $accountItems = self::executeMainQuery($joinQuery, $whereClause, $mainParams, $mainTypes, $itemsPerPage, $offset, $hasSearchTerm);
     
         $newAccountItems = array_map(fn($row) => self::row_to_vAccount($row, true), $accountItems);
