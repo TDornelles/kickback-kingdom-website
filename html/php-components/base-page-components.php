@@ -71,7 +71,6 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
 <?php if(Session::isLoggedIn()) { ?>
 
 
-
     <?php require(\Kickback\SCRIPT_ROOT . "/php-components/league-viewer.php"); ?>
 
 <!--CHESTS-->
@@ -201,22 +200,30 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
                             </div>
                             <div id="lichPromptOptions" class="d-none">
                                 <div class="mb-3">
-                                    <label for="imagePromptScenery" class="form-label">Scenery</label>
-                                    <select id="imagePromptScenery" class="form-select">
-                                        <option value="Urban setting">Urban setting</option>
-                                        <option value="Jungle">Jungle</option>
-                                        <option value="Cavern">Cavern</option>
-                                        <option value="Dungeon">Dungeon</option>
-                                        <option value="Military base">Military base</option>
+                                    <label for="imagePromptPreset" class="form-label">Preset</label>
+                                    <select id="imagePromptPreset" class="form-select">
+                                        <option value="">Custom...</option>
                                     </select>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="imagePromptFaction" class="form-label">Faction</label>
-                                    <select id="imagePromptFaction" class="form-select">
-                                        <option value="Enforcers (SWAT, police, military)">Enforcers (SWAT, police, military)</option>
-                                        <option value="Civilians (librarian, common workers)">Civilians (librarian, common workers)</option>
-                                        <option value="Minions (undead and mystical creatures of the lich)">Minions (undead and mystical creatures of the lich)</option>
-                                    </select>
+                                    <label for="imagePromptSceneType" class="form-label">Scene Type</label>
+                                    <input id="imagePromptSceneType" class="form-control" type="text">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="imagePromptScenery" class="form-label">Scenery</label>
+                                    <input id="imagePromptScenery" class="form-control" type="text">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="imagePromptMainSubject" class="form-label">Main Subject</label>
+                                    <input id="imagePromptMainSubject" class="form-control" type="text">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="imagePromptAction" class="form-label">Action</label>
+                                    <input id="imagePromptAction" class="form-control" type="text">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="imagePromptExtraDetails" class="form-label">Extra Details</label>
+                                    <textarea id="imagePromptExtraDetails" class="form-control" rows="2"></textarea>
                                 </div>
                             </div>
                             <div class="mb-3">
@@ -226,10 +233,6 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
                                     <button class="btn btn-outline-secondary" type="button" onclick="copyImagePrompt()">Copy</button>
                                     <button id="usePromptAsCustom" class="btn btn-outline-secondary d-none" type="button" onclick="usePromptAsCustom()">Use as custom</button>
                                 </div>
-                            </div>
-                            <div class="mb-3">
-                                <label for="imagePromptDescription" class="form-label">Description</label>
-                                <textarea id="imagePromptDescription" class="form-control" rows="2"></textarea>
                             </div>
                             <div class="mb-3">
                                 <label for="imageSize" class="form-label">Size</label>
@@ -900,8 +903,8 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
                                                 <h5 class="card-title" id="quest-review-quest-title">Cpt. Longs' Barothon (Continued)</h5>
                                             </a>
                                             <p class="card-text">
-                                                <small class="text-body-secondary">Hosted by <a id="quest-review-quest-host-1" href="/beta/u/hansibaba" class="username">hansibaba</a>
-                                                <span id="quest-review-quest-host-2-span">and <a id="quest-review-quest-host-2" href="/beta/u/hansibaba" class="username">hansibaba</a></span>
+                                                <small class="text-body-secondary">Hosted by <a id="quest-review-quest-host-1" href="/beta/u/hansibaba" class="username" data-account-id="" data-username="hansibaba">hansibaba</a>
+                                                <span id="quest-review-quest-host-2-span">and <a id="quest-review-quest-host-2" href="/beta/u/hansibaba" class="username" data-account-id="" data-username="hansibaba">hansibaba</a></span>
                                                                                     on <span id="quest-review-quest-date" class="date">Jul 21, 2023</span>
                                                 </small>
                                             </p>
@@ -1080,7 +1083,7 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
                             <img id="inventoryItemImage" src="" class="img-fluid animate__animated" alt="Item Image" style="width: 100%;">
                             <img id="inventoryItemImageSecondary" src="" class="img-fluid animate__animated" alt="Item Image" style="width: 100%; display: none;">
                         </div>
-                        <p class="float-end" style="font-size: .8em;">Artwork by <a class="username" id="inventoryItemArtist" href="#">Artist: Artist Name</a></p>
+                        <p class="float-end" style="font-size: .8em;">Artwork by <a class="username" id="inventoryItemArtist" href="#" data-account-id="" data-username="Artist: Artist Name">Artist: Artist Name</a></p>
                     </div>
                     <div class="col-12 col-md-6">
                         
@@ -1548,6 +1551,20 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
                 <li class="nav-item dropdown" data-bs-theme="light">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
                         aria-expanded="false">
+                        <i class="nav-icon fa-solid fa-university "></i> Store
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li>
+                            <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/market.php?store-locator=kickback_market"><i class="nav-icon fa-solid fa fa-shopping-bag"></i>Kickback Market</a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/market.php"><i class="nav-icon fa-solid fa fa-space-shuttle"></i>Emberwood Dashboard</a>
+                        </li>
+                    </ul>
+                </li>
+                <li class="nav-item dropdown" data-bs-theme="light">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
+                        aria-expanded="false">
                         <i class="nav-icon fa-solid fa-chess"></i> About Us
                     </a>
                     <ul class="dropdown-menu">
@@ -1590,16 +1607,13 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
                         </button>
                     </li>
                     <li class="nav-item">
-                        <button class="btn btn-primary position-relative" type="button" data-bs-toggle="offcanvas"
-                            data-bs-target="#offcanvasMenuRightShoppingCart" aria-controls="offcanvasMenuRightShoppingCart"
-                            aria-label="Toggle navigation">
+                        <button class="btn btn-primary position-relative" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasMenuRightShoppingCart" aria-controls="offcanvasMenuRightShoppingCart" aria-label="Toggle navigation" style="background-color: transparent !important; border-color: transparent;">
+                            
                             <i class="fa-solid fa-cart-shopping"></i>
-                            <?php if (Kickback\Services\Session::isAdmin()) { ?>
-                            <span class="badge bg-danger position-absolute top-0 start-100 translate-middle rounded-pill">
-                                99+
+                            <span class="badge bg-secondary position-absolute top-0 start-100 translate-middle rounded-pill">
+                                99
                                 <span class="visually-hidden">unread messages</span>
                             </span>
-                            <?php } ?>
                         </button>
                     </li>
                     <li class="nav-item">

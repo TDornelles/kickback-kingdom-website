@@ -1,0 +1,140 @@
+/* Styles for the L.I.C.H. rulebook page */
+
+#rulebook-container {
+    /* Rule content will be inserted dynamically */
+}
+
+/* Section and page layout */
+#rulebook-container section {
+    margin-bottom: 2rem;
+}
+
+/* Rule cards */
+#rulebook-container article.rulebook-page {
+    margin-bottom: 1.5rem;
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    padding: 1rem 1.25rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Section headers */
+#rulebook-container h2,
+#rulebook-container h3,
+#rulebook-container h4 {
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+    font-weight: 700;
+}
+
+#rulebook-container h2 {
+    border-bottom: 3px solid var(--bs-primary);
+    padding-bottom: 0.5rem;
+    margin-top: 2rem;
+}
+
+#rulebook-container h3 {
+    color: var(--bs-primary);
+}
+
+#rulebook-container h4 {
+    color: var(--bs-tertiary);
+}
+
+#rulebook-container p,
+#rulebook-container ol {
+    margin-bottom: 1rem;
+}
+
+#rulebook-container img,
+#rulebook-container svg {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 1rem auto;
+    object-fit: contain;
+    image-rendering: auto;
+}
+
+#rulebook-container figure {
+    margin: 1.5rem auto;
+    text-align: center;
+}
+
+#rulebook-container figcaption {
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    font-style: italic;
+    color: #6c757d;
+}
+
+/* Search and filter UI */
+#rulebook-search {
+    border: 2px solid var(--bs-primary);
+}
+
+#rulebook-search:focus {
+    box-shadow: 0 0 0 0.2rem rgba(120, 81, 169, 0.25);
+    border-color: var(--bs-primary);
+}
+
+.rulebook-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+/* Pagination controls */
+.rulebook-pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: 1.5rem;
+}
+
+.rulebook-pagination .page-link {
+    color: var(--bs-primary);
+}
+
+.rulebook-pagination .active .page-link {
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+    color: #fff;
+}
+
+/* Highlight for search matches */
+.search-highlight {
+    background-color: #fff3cd;
+    padding: 0 0.2em;
+}
+
+/* Section icons */
+#rulebook-container .section-icon {
+    width: 32px;
+    height: 32px;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+}
+
+/* Page banner images */
+#rulebook-container .page-banner {
+    width: 100%;
+    display: block;
+    margin: 0 0 1rem;
+}
+
+/* Rule-level images */
+#rulebook-container .rule-icon {
+    width: 24px;
+    height: 24px;
+    margin: 0 0.5rem 0 0;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+#rulebook-container .rule-diagram {
+    display: block;
+    margin: 0.5rem auto 0;
+}
+

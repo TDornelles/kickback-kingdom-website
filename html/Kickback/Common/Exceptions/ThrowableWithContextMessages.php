@@ -3,6 +3,12 @@ declare(strict_types=1);
 
 namespace Kickback\Common\Exceptions;
 
+/**
+* @phpstan-import-type  kkdebug_frame_a               from \Kickback\Common\Exceptions\DebugBacktraceAliasTypes
+* @phpstan-import-type  kkdebug_backtrace_a           from \Kickback\Common\Exceptions\DebugBacktraceAliasTypes
+* @phpstan-import-type  kkdebug_frame_paranoid_a      from \Kickback\Common\Exceptions\DebugBacktraceAliasTypes
+* @phpstan-import-type  kkdebug_backtrace_paranoid_a  from \Kickback\Common\Exceptions\DebugBacktraceAliasTypes
+*/
 interface ThrowableWithContextMessages
 {
     /**
@@ -50,14 +56,48 @@ interface ThrowableWithContextMessages
     * to do exactly that: place high level and low level information together
     * in an error message.
     *
-    * @see say_after_message
+    * The `__toString()` method will print the file basename and line number
+    * for each method. It will not print the full file path, nor will it
+    * print the function name. This is for the sake of brevity, as the
+    * additional information would make it difficult to read the exception
+    * messages.
     *
-    * @param      string|\Closure():string          $msg
+    * If explicitly providing a file and/or line number, then the
+    * `$in_function` parameter is required. Although it isn't printed,
+    * it is still used to determine the correct order in which to
+    * print the "before" messages:
+    * * Messages from the same function will print as they appear
+    *     in the function: top to bottom.
+    * * Messages from different functions will be printed in "stack"
+    *     order: each call to `say_before_message` treats any previous
+    *     calls to `say_before_message` as part of the "message",
+    *     so earlier calls will print closer to the "main" message.
+    *
+    * The location parameters are defined by the `Uniform Transitive Source Location Parameters`
+    * convention which is currently documented in the class-level documentation
+    * of the `\Kickback\Common\Meta\Location` class.
+    *
+    * @see say_after_message
+    * @see \Kickback\Common\Meta\Location
+    *
+    * @param  string|\Closure():string          $msg
+    * @param ?string                            $in_file
+    * @param  ($in_file is string ? string : (?string)
+    *         )                                 $in_function
+    * @param int                                $at_line
+    * @param int<0,max>                         $at_trace_depth
+    * @param ?kkdebug_backtrace_paranoid_a      $trace
     *
     * @phpstan-impure
     * @throws void
     */
-    public function say_before_message(string|\Closure $msg) : void;
+    public function say_before_message(
+        string|\Closure   $msg,
+        ?string           $in_file = null,
+        ?string           $in_function = null,
+        int               $at_line = \PHP_INT_MIN,
+        int               $at_trace_depth = 0,
+        ?array            $trace = null) : void;
 
     /**
     * Cause uncaught exception to emit `$msg` after `getMessage()`.
@@ -74,12 +114,74 @@ interface ThrowableWithContextMessages
     * Even though this will print after `getMessage()`,
     * it will still print _before_ the backtrace portion
     * of the error message (e.g. `getTraceAsString()`).
+    * (At least, it will with PHP's default exception handler,
+    * or any exception handler that does not modify that
+    * behavior.)
     *
-    * @param      string|\Closure():string          $msg
+    * Although this method has an `$in_function` parameter similar
+    * to the one in `say_before_message`, it isn't actually used
+    * for anything in this case. ("After" messages will naturally print
+    * in the same order regardless of whether they were from the same
+    * function or not.) However, to mirror the signature of
+    * `say_after_message`, it is still present and also has
+    * the same argument-passing semantics as in `say_before_message`.
+    * (That is: it will be required or optional whenever the
+    * corresponding `say_before_message` is required or optional,
+    * respectively.)
+    *
+    * @param  string|\Closure():string          $msg
+    * @param ?string                            $in_file
+    * @param  ($in_file is string ? string : (?string)
+    *         )                                 $in_function
+    * @param int                                $at_line
+    * @param int<0,max>                         $at_trace_depth
+    * @param ?kkdebug_backtrace_paranoid_a      $trace
     *
     * @phpstan-impure
     * @throws void
     */
-    public function say_after_message(string|\Closure $msg) : void;
+    public function say_after_message(
+        string|\Closure   $msg,
+        ?string           $in_file = null,
+        ?string           $in_function = null,
+        int               $at_line = \PHP_INT_MIN,
+        int               $at_trace_depth = 0,
+        ?array            $trace = null) : void;
+
+    /**
+    * Whether or not either of `say_before_message` or `say_after_message` have been called.
+    *
+    * @phpstan-pure
+    * @throws void
+    */
+    public function have_context_messages() : bool;
+
+    // These methods are helpful for other abstractions to be able to
+    // use the `say_after`/`say_before` feature programmatically.
+    // One example is in `Kickback\Common\Exceptions\Reporting\Report`.
+
+    /**
+    * The number of messages that have been set with `say_before`.
+    *
+    * @phpstan-pure
+    * @throws void
+    */
+    public function say_before_message_count() : int;
+
+    /**
+    * The number of messages that have been set with `say_after`.
+    *
+    * @phpstan-pure
+    * @throws void
+    */
+    public function say_after_message_count() : int;
+
+    /**
+    * The number of messages that have been set with either `say_before` or `say_after`.
+    *
+    * @phpstan-pure
+    * @throws void
+    */
+    public function context_message_count() : int;
 }
 ?>
