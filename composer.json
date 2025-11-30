@@ -5,10 +5,14 @@
     "require": {
         "stripe/stripe-php": "^13.16",
         "cboden/ratchet": "^0.4",
-        "openai-php/client": "^0.8"
+        "openai-php/client": "^0.8",
+        "symfony/http-client": "^7.3"
     },
     "config": {
-        "vendor-dir": "html/vendor/composer"
+        "vendor-dir": "html/vendor/composer",
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
     },
     "require-dev": {
         "phpstan/phpstan": "^1.11",
