@@ -144,7 +144,7 @@ $account = Session::getCurrentAccount();
                 <div class="tab-pane fade" id="nav-review-inbox" role="tabpanel" aria-labelledby="nav-review-inbox-tab" tabindex="0">
                     <div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2 mb-3">
                         <div class="display-6 tab-pane-title mb-0">Review Inbox</div>
-                        <button id="claim-all-reviews" class="btn bg-ranked-1 btn-lg">Claim All</button>
+                        <button id="claim-all-reviews" class="btn bg-ranked-1 btn-lg" disabled>Claim All</button>
                     </div>
                     <div class="table-responsive">
                         <table id="datatable-review-inbox" class="table table-striped">

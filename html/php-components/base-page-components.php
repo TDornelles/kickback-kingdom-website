@@ -1548,17 +1548,14 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
                         <li><a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/stewards-guild.php"><i class="nav-icon fa-solid fa-person-digging"></i> Stewards Guild</a></li>-->
                     </ul>
                 </li>
-                <li class="nav-item dropdown" data-bs-theme="light">
+                <li class="nav-item dropdown d-none" data-bs-theme="light">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
                         aria-expanded="false">
                         <i class="nav-icon fa-solid fa-university "></i> Store
                     </a>
                     <ul class="dropdown-menu">
                         <li>
-                            <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/market.php?store-locator=kickback_market"><i class="nav-icon fa-solid fa fa-shopping-bag"></i>Kickback Market</a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/market.php"><i class="nav-icon fa-solid fa fa-space-shuttle"></i>Emberwood Dashboard</a>
+                            <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/market.php"><i class="nav-icon fa-solid fa fa-space-shuttle"></i>Emberwood Market</a>
                         </li>
                     </ul>
                 </li>
@@ -1664,6 +1661,16 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
                                 <i class="nav-icon fa-solid fa-gear"></i> Account Settings
                             </a>
                         </li>
+                        <?php if (Kickback\Services\Session::isQuestGiver()) { ?>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/quest-giver-dashboard.php">
+                                <i class="nav-icon fa-solid fa-chess-knight"></i> Quest Giver Dashboard
+                            </a>
+                        </li>
+                        <?php } ?>
                         <?php if (Kickback\Services\Session::isAdmin()) { ?>
                         <li>
                             <hr class="dropdown-divider">
