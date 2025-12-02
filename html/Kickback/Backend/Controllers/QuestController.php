@@ -919,7 +919,21 @@ class QuestController
         $questHostId2 = $data["edit-quest-options-host-2-id"];
         $questSummary = (string)$data["edit-quest-options-summary"];
         $hasADate = isset($data["edit-quest-options-has-a-date"]);
-        $dateTime = $data["edit-quest-options-datetime"];
+        $dateTimeRaw  = $data["edit-quest-options-datetime"] ?? null;
+
+        $end_date = null;
+
+        if ($hasADate && !Str::empty($dateTimeRaw)) {
+            try {
+                // This handles '2025-12-06 02:09:00Z', ISO strings, etc.
+                $vdt = new vDateTime($dateTimeRaw);
+                $end_date = $vdt->dbValue; // Always 'Y-m-d H:i:s' with no Z
+            } catch (\Throwable $e) {
+                return new Response(false, "Invalid quest end date/time format.", null);
+            }
+        }
+
+
         $playStyle = (int)$data["edit-quest-options-style"];
         $rankedOption = $data["edit-quest-options-ranked-type"] ?? 'match';
         $validRankedOptions = ['match', 'tournament', 'bracket'];
@@ -1056,7 +1070,7 @@ class QuestController
 
         // Determine the value for host_id_2 and end_date
         $host_id_2 = Str::empty($questHostId2) ? NULL : $questHostId2;
-        $end_date = $hasADate && !Str::empty($dateTime) ? $dateTime : NULL;
+        //$end_date = $hasADate && !Str::empty($dateTime) ? $dateTime : NULL;
 
         $tournamentIdParam = $tournamentIdValue;
 
