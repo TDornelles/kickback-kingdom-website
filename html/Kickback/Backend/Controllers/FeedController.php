@@ -30,7 +30,7 @@ class FeedController
                           FROM v_feed f 
                           LEFT JOIN quest q ON f.Id = q.Id 
                           LEFT JOIN tournament t ON q.tournament_id = t.Id 
-                          WHERE f.type = 'QUEST' AND t.game_id = ?";
+                          WHERE f.type = ? AND t.game_id = ?";
     
         $totalItemsStmt = $conn->prepare($totalItemsSql);
         if ($totalItemsStmt === false) {
@@ -38,7 +38,9 @@ class FeedController
         }
     
         $gameIdValue = $gameId->crand;
-        $totalItemsStmt->bind_param('i', $gameIdValue);
+        $feedType   = 'QUEST';
+
+        $totalItemsStmt->bind_param('si',$feedType, $gameIdValue);
     
         if (!$totalItemsStmt->execute()) {
             return new Response(false, "Failed to execute total items statement: " . $totalItemsStmt->error, []);
@@ -57,7 +59,7 @@ class FeedController
                 FROM v_feed f 
                 LEFT JOIN quest q ON f.Id = q.Id 
                 LEFT JOIN tournament t ON q.tournament_id = t.Id 
-                WHERE f.type = 'QUEST' AND t.game_id = ? 
+                WHERE f.type = ? AND t.game_id = ? 
                 ORDER BY f.date ASC 
                 LIMIT ? OFFSET ?";
     
@@ -66,7 +68,7 @@ class FeedController
             return new Response(false, "Failed to prepare statement: " . $conn->error, []);
         }
     
-        $stmt->bind_param('iii', $gameIdValue, $itemsPerPage, $offset);
+        $stmt->bind_param('siii', $feedType, $gameIdValue, $itemsPerPage, $offset);
     
         if (!$stmt->execute()) {
             return new Response(false, "Failed to execute statement: " . $stmt->error, []);
