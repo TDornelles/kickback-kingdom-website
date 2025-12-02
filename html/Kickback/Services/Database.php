@@ -34,14 +34,14 @@ class Database {
             }
             
              // Set charset and collation to ensure consistency
-             /*if (!self::$conn->set_charset("utf8mb4")) {
+            if (!self::$conn->set_charset("utf8mb4")) {
                 throw new \Exception("Error setting charset: " . self::$conn->error);
-            }*/
+            }
             
             // Set the collation to utf8mb4_unicode_ci for consistency
-            /*if (!self::$conn->query("SET collation_connection = 'utf8mb4_unicode_ci'")) {
+            if (!self::$conn->query("SET collation_connection = 'utf8mb4_unicode_ci'")) {
                 throw new \Exception("Error setting collation: " . self::$conn->error);
-            }*/
+            }
         }
 
         return self::$conn;
