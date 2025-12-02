@@ -30,7 +30,12 @@ trait KickbackThrowableTrait
             $message = '';
         }
         parent::__construct($message, $code, $previous);
-        $this->ThrowableAssignableFieldsTrait_init($message, $this->getFile(), $this->getLine());
+
+        $trace = \debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 1);
+        $func = DefaultMethods::getFunc($this, $trace);
+        $this->ThrowableAssignableFieldsTrait_init(
+            $message, $code,
+            $this->getFile(), $func, $this->getLine());
     }
 
     public function __toString() : string

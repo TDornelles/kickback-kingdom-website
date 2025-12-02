@@ -30,7 +30,7 @@ class FeedController
                           FROM v_feed f 
                           LEFT JOIN quest q ON f.Id = q.Id 
                           LEFT JOIN tournament t ON q.tournament_id = t.Id 
-                          WHERE f.type = 'QUEST' AND t.game_id = ?";
+                          WHERE f.type = ? AND t.game_id = ?";
     
         $totalItemsStmt = $conn->prepare($totalItemsSql);
         if ($totalItemsStmt === false) {
@@ -38,7 +38,9 @@ class FeedController
         }
     
         $gameIdValue = $gameId->crand;
-        $totalItemsStmt->bind_param('i', $gameIdValue);
+        $feedType   = 'QUEST';
+
+        $totalItemsStmt->bind_param('si',$feedType, $gameIdValue);
     
         if (!$totalItemsStmt->execute()) {
             return new Response(false, "Failed to execute total items statement: " . $totalItemsStmt->error, []);
@@ -57,7 +59,7 @@ class FeedController
                 FROM v_feed f 
                 LEFT JOIN quest q ON f.Id = q.Id 
                 LEFT JOIN tournament t ON q.tournament_id = t.Id 
-                WHERE f.type = 'QUEST' AND t.game_id = ? 
+                WHERE f.type = ? AND t.game_id = ? 
                 ORDER BY f.date ASC 
                 LIMIT ? OFFSET ?";
     
@@ -66,7 +68,7 @@ class FeedController
             return new Response(false, "Failed to prepare statement: " . $conn->error, []);
         }
     
-        $stmt->bind_param('iii', $gameIdValue, $itemsPerPage, $offset);
+        $stmt->bind_param('siii', $feedType, $gameIdValue, $itemsPerPage, $offset);
     
         if (!$stmt->execute()) {
             return new Response(false, "Failed to execute statement: " . $stmt->error, []);
@@ -88,8 +90,8 @@ class FeedController
     public static function getAvailableQuestsFeed(int $page = 1, int $itemsPerPage = 10) : Response {
         $conn = Database::getConnection();
         $offset = ($page - 1) * $itemsPerPage;
-        $sql = "SELECT * FROM kickbackdb.v_feed WHERE type = 'QUEST' AND date > CURRENT_TIMESTAMP AND published = 1 ORDER BY date ASC LIMIT ? OFFSET ?";
-
+        $sql = "SELECT * FROM kickbackdb.v_feed WHERE type COLLATE utf8mb4_unicode_ci in ('QUEST' COLLATE utf8mb4_unicode_ci,'BLOG-POST' COLLATE utf8mb4_unicode_ci) and published = 1 LIMIT ? OFFSET ?";
+        
         $stmt = $conn->prepare($sql);
         if ($stmt === false) {
             return new Response(false, "Failed to prepare statement: " . $conn->error, []);
@@ -114,7 +116,7 @@ class FeedController
     public static function getArchivedQuestsFeed(int $page = 1, int $itemsPerPage = 10) : Response {
         $conn = Database::getConnection();
         $offset = ($page - 1) * $itemsPerPage;
-        $sql = "SELECT * FROM kickbackdb.v_feed WHERE type = 'QUEST' AND date <= CURRENT_TIMESTAMP AND published = 1 AND finished = 1 ORDER BY date DESC LIMIT ? OFFSET ?";
+        $sql = "SELECT * FROM kickbackdb.v_feed WHERE type COLLATE utf8mb4_unicode_ci = 'QUEST' COLLATE utf8mb4_unicode_ci AND date <= CURRENT_TIMESTAMP AND published = 1 AND finished = 1 ORDER BY date DESC LIMIT ? OFFSET ?";
 
         $stmt = $conn->prepare($sql);
         if ($stmt === false) {
@@ -146,14 +148,14 @@ class FeedController
         }
 
         if (Session::isMagisterOfTheAdventurersGuild()) {
-            $sql = "SELECT * FROM kickbackdb.v_feed WHERE type = 'QUEST' AND published = 0 ORDER BY date DESC LIMIT ? OFFSET ?";
+            $sql = "SELECT * FROM kickbackdb.v_feed WHERE type COLLATE utf8mb4_unicode_ci = 'QUEST' COLLATE utf8mb4_unicode_ci AND published = 0 ORDER BY date DESC LIMIT ? OFFSET ?";
             $stmt = $conn->prepare($sql);
             if ($stmt === false) {
                 return new Response(false, "Failed to prepare statement: " . $conn->error, []);
             }
             $stmt->bind_param('ii', $itemsPerPage, $offset);
         } else {
-            $sql = "SELECT * FROM kickbackdb.v_feed WHERE type = 'QUEST' AND published = 0 AND (account_1_id = ? OR account_2_id = ?) ORDER BY date DESC LIMIT ? OFFSET ?";
+            $sql = "SELECT * FROM kickbackdb.v_feed WHERE type COLLATE utf8mb4_unicode_ci = 'QUEST' COLLATE utf8mb4_unicode_ci AND published = 0 AND (account_1_id = ? OR account_2_id = ?) ORDER BY date DESC LIMIT ? OFFSET ?";
             $stmt = $conn->prepare($sql);
             if ($stmt === false) {
                 return new Response(false, "Failed to prepare statement: " . $conn->error, []);
@@ -177,7 +179,7 @@ class FeedController
     public static function getAvailableQuestLinesFeed(int $page = 1, int $itemsPerPage = 10) : Response {
         $conn = Database::getConnection();
         $offset = ($page - 1) * $itemsPerPage;
-        $sql = "SELECT * FROM kickbackdb.v_feed WHERE type = 'QUEST-LINE' ORDER BY date ASC LIMIT ? OFFSET ?";
+        $sql = "SELECT * FROM kickbackdb.v_feed WHERE type COLLATE utf8mb4_unicode_ci = 'QUEST-LINE' COLLATE utf8mb4_unicode_ci ORDER BY date ASC LIMIT ? OFFSET ?";
     
         $stmt = $conn->prepare($sql);
         if ($stmt === false) {
@@ -246,7 +248,7 @@ class FeedController
     public static function getBlogsFeed(int $page = 1,int $itemsPerPage = 10) : Response {
         $conn = Database::getConnection();
         $offset = ($page - 1) * $itemsPerPage;
-        $sql = "SELECT * FROM kickbackdb.v_feed WHERE type = 'BLOG'";
+        $sql = "SELECT * FROM kickbackdb.v_feed WHERE type COLLATE utf8mb4_unicode_ci = 'BLOG' COLLATE utf8mb4_unicode_ci";
     
         
         $result = mysqli_query($conn,$sql);
@@ -263,7 +265,7 @@ class FeedController
         $conn = Database::getConnection();
         $offset = ($page - 1) * $itemsPerPage;
 
-        $sql = "SELECT * FROM kickbackdb.v_feed WHERE type in ('QUEST','BLOG-POST') and published = 1 LIMIT ? OFFSET ?";
+        $sql = "SELECT * FROM kickbackdb.v_feed WHERE type COLLATE utf8mb4_unicode_ci in ('QUEST' COLLATE utf8mb4_unicode_ci,'BLOG-POST' COLLATE utf8mb4_unicode_ci) and published = 1 LIMIT ? OFFSET ?";
 
         // Prepare the statement
         $stmt = mysqli_prepare($conn, $sql);
@@ -306,7 +308,7 @@ class FeedController
         // Prepare the SQL query with placeholders
         $conn = Database::getConnection();
         $offset = ($page - 1) * $itemsPerPage;
-        $sql = "SELECT * FROM kickbackdb.v_feed WHERE type = 'BLOG-POST' and `locator` LIKE ?";
+        $sql = "SELECT * FROM kickbackdb.v_feed WHERE type COLLATE utf8mb4_unicode_ci = 'BLOG-POST' COLLATE utf8mb4_unicode_ci and `locator` LIKE ?";
 
         // Prepare the statement
         $stmt = mysqli_prepare($conn, $sql);

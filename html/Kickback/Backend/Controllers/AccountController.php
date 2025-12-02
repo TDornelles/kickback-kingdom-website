@@ -5,20 +5,27 @@ namespace Kickback\Backend\Controllers;
 
 use Kickback\Common\Utility\IDCrypt;
 
-use Kickback\Backend\Models\Account;
 use Kickback\Backend\Views\vAccount;
 use Kickback\Backend\Views\vRecordId;
 use Kickback\Backend\Views\vMedia;
-use Kickback\Backend\Views\vMatchStats;
-use Kickback\Backend\Models\Response;
-use Kickback\Services\Database;
-use Kickback\Services\Session;
-use Kickback\Backend\Controllers\LootController;
-use Kickback\Backend\Config\ServiceCredentials;
 use Kickback\Backend\Views\vRaffle;
 use Kickback\Backend\Views\vGameStats;
 use Kickback\Backend\Controllers\DiscordController;
+use Kickback\Backend\Views\vMatchStats;
+
+use Kickback\Backend\Models\Response;
+use Kickback\Backend\Models\Account;
+
+use Kickback\Services\Database;
+use Kickback\Services\Session;
+
+use Kickback\Backend\Controllers\LootController;
+use Kickback\Backend\Controllers\SocialMediaController;
 use Kickback\Common\Primitives\Str;
+
+use Kickback\Backend\Config\ServiceCredentials;
+
+use Exception;
 
 class AccountController
 {
@@ -467,7 +474,7 @@ class AccountController
         $conn = Database::getConnection();
 
         $mainQuery = "SELECT v_account_info.*" . 
-        ($hasSearchTerm ? ", MATCH(Username, FirstName, LastName, Email) AGAINST (?) AS relevancy_score" : "") . "
+        ($hasSearchTerm ? ", (Username LIKE ? OR MATCH(Username, FirstName, LastName, Email) AGAINST (? IN BOOLEAN MODE)) AS relevancy_score" : "") . "
         FROM v_account_info
         $joinQuery
         $whereClause
@@ -506,10 +513,13 @@ class AccountController
         $hasSearchTerm = false;
         if (trim($searchTerm) !== "") {
             $hasSearchTerm = true;
-            $fulltextTerm = "+" . trim($searchTerm) . "*";
-            $filterConditions[] = "MATCH(Username, FirstName, LastName, Email) AGAINST (? IN BOOLEAN MODE)";
+            $trimmed = trim($searchTerm);
+            $fulltextTerm = "+" . $trimmed . "*";
+            $likeTerm = '%' . $trimmed . '%';
+            $filterConditions[] = "(Username LIKE ? OR MATCH(Username, FirstName, LastName, Email) AGAINST (? IN BOOLEAN MODE))";
+            $filterParams[] = $likeTerm;
             $filterParams[] = $fulltextTerm;
-            $paramTypes .= "s";
+            $paramTypes .= "ss";
         }
     
         $joinData = self::buildJoinsAndConditions($filters);
@@ -520,7 +530,8 @@ class AccountController
         $countTypes = $paramTypes . $joinData['paramTypes'];
 
         $whereClause = ' WHERE ' . implode(' AND ', $filterConditions);
-    
+                
+
         $count = self::executeCountQuery($joinQuery, $whereClause, $countParams, $countTypes);
         
         $mainParams = array_merge(
@@ -531,6 +542,9 @@ class AccountController
         );
         $mainTypes = $paramTypes . $paramTypes . $joinData['paramTypes'].'ii';
     
+        //return new Response(false, "", $mainParams);
+        //return new Response(false, "", $mainTypes);
+        //return new Response(false, "SELECT COUNT(*) AS total FROM v_account_info $joinQuery $whereClause");
         $accountItems = self::executeMainQuery($joinQuery, $whereClause, $mainParams, $mainTypes, $itemsPerPage, $offset, $hasSearchTerm);
     
         $newAccountItems = array_map(fn($row) => self::row_to_vAccount($row, true), $accountItems);

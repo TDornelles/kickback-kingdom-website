@@ -22,7 +22,7 @@ if ($shouldShowVersionPopup) {
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-      <select class="form-select" id="versionSelect" onchange="showChangelog()" aria-label="Select version">
+      <select class="form-select" id="versionSelect" onchange="LoadVersionIframe()" aria-label="Select version">
     <?php foreach (array_reverse(iterator_to_array(Version::history())) as $version): ?>
         <option value="<?= htmlspecialchars($version->blogpost_locator()) ?>"><?= htmlspecialchars($version->number()) ?></option>
     <?php endforeach; ?>
