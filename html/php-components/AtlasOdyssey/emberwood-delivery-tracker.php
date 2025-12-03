@@ -24,9 +24,10 @@ $imgStarMap = "https://png.pngtree.com/background/20230612/original/pngtree-sola
 $imgShip = "https://i0.wp.com/thelegocarblog.com/wp-content/uploads/2024/09/Screenshot-2024-09-19-at-13.52.59.png";
 
 // Calculate dynamic left positioning with boundaries for 0% and 100% to keep icon within bounds
-$shipWidth = 50; // Ship image width in pixels
+$shipWidth = 60; // Ship image width in pixels
+$shipIconPadding = 32; // breathing room to avoid clipping inside the route container
 $adjustedProgress = max(0, min($progressPercentage, 100));
-$leftPosition = $adjustedProgress === 0 ? '0%' : ($adjustedProgress === 100 ? "calc(100% - {$shipWidth}px)" : "{$adjustedProgress}%");
+$leftPosition = "clamp({$shipIconPadding}px, {$adjustedProgress}%, calc(100% - {$shipIconPadding}px))";
 
 $shipmentManifest = [];
 $itemInfos = [];
@@ -129,7 +130,7 @@ $journeyWaypoints = [
             </div>
             <div class="col-12 col-lg-5">
                 <div class="card h-100 border-0 glassy-panel text-center d-flex flex-column justify-content-center">
-                    <div class="card-body">
+                    <div class="card-body fleet-status-body">
                         <div class="d-flex justify-content-center align-items-center gap-3 mb-3">
                             <div class="display-6 mb-0 text-warning"><i class="<?= $shipStatus->icon; ?>"></i></div>
                             <div class="text-start">
@@ -182,6 +183,17 @@ $journeyWaypoints = [
     border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+.emberwood-tracker-card h2,
+.emberwood-tracker-card h4,
+.emberwood-tracker-card h5,
+.emberwood-tracker-card .tab-pane-title {
+    color: #f8fafc;
+}
+
+.emberwood-tracker-card .text-secondary {
+    color: #cbd5e1 !important;
+}
+
 .bg-gradient-primary {
     background: linear-gradient(135deg, #f59e0b 0%, #fb923c 50%, #f97316 100%);
 }
@@ -191,6 +203,10 @@ $journeyWaypoints = [
     border: 1px solid rgba(255, 255, 255, 0.08) !important;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
     backdrop-filter: blur(6px);
+}
+
+.glassy-panel h5 {
+    color: #fcd34d;
 }
 
 /* Info Box Container */
@@ -225,6 +241,11 @@ $journeyWaypoints = [
 .emberwood-tracker-info-text {
     font-size: 1.35rem;
     font-weight: bold;
+    color: #f8fafc;
+}
+
+.emberwood-tracker-info-box h5 {
+    color: #d6e0f0;
 }
 
 /* Ensure responsiveness: Stack boxes on small screens like phones */
@@ -245,10 +266,19 @@ $journeyWaypoints = [
     height: 240px;
     border-radius: 14px;
     margin-bottom: 1rem;
-    overflow: hidden;
+    overflow: visible;
+    padding: 0 1.5rem;
     background: linear-gradient(135deg, rgba(17, 24, 39, 0.95), rgba(15, 23, 42, 0.9)),
         url("<?= $imgStarMap; ?>") no-repeat center center;
     background-size: cover;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.emberwood-tracker-progress-route .progress {
+    left: 24px;
+    right: 24px;
+    width: auto;
+    height: 14px;
     border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -259,6 +289,7 @@ $journeyWaypoints = [
     transform: translate(-50%, -50%);
     transition: left 1s ease-in-out;
     text-align: center;
+    max-width: 160px;
 }
 
 .ship-progress-label {
@@ -318,5 +349,18 @@ $journeyWaypoints = [
     font-size: 1.1rem;
     line-height: 1.5;
     font-family: 'Poppins', sans-serif;
+}
+
+.fleet-status-body {
+    color: #e2e8f0;
+}
+
+.fleet-status-body h4 {
+    color: #f8fafc;
+}
+
+.fleet-status-body .badge {
+    white-space: normal;
+    line-height: 1.4;
 }
 </style>
