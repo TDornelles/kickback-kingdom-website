@@ -23,7 +23,7 @@ $isLoggedIn = Session::isLoggedIn();
     require("php-components/ad-carousel.php");
     ?>
 
-    <main class="container py-4" id="checkout-root" data-store-locator="<?= htmlspecialchars($locator) ?>">
+    <main class="container pt-3 bg-body" style="margin-bottom: 56px;" id="checkout-root" data-store-locator="<?= htmlspecialchars($locator) ?>">
         <div class="row mb-3">
             <div class="col-12 d-flex align-items-center justify-content-between">
                 <div>
@@ -83,6 +83,8 @@ $isLoggedIn = Session::isLoggedIn();
                 </div>
             </div>
         </div>
+
+        <?php require("php-components/base-page-footer.php"); ?>
     </main>
 
     <!-- ERROR MODAL -->
