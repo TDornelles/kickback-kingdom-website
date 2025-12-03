@@ -633,22 +633,24 @@ if (Session::isLoggedIn()) {
                 }
             }
 
-            async function fetchCart()
+            async function refreshCartFromShared()
             {
-                const fetchCartFn = window.fetchOffcanvasCart;
+                const fetchCartFn = window.fetchCart;
 
                 if (typeof fetchCartFn !== 'function')
                 {
-                    console.warn('Cart offcanvas handler unavailable; unable to refresh cart.');
-                    return;
+                    console.warn('Cart handler unavailable; unable to refresh cart.');
+                    return null;
                 }
 
                 const refreshedCart = await fetchCartFn({ storeLocatorOverride: storeLocator, showLoading: true });
 
-                if(refreshedCart)
+                if (refreshedCart)
                 {
                     cart = refreshedCart;
                 }
+
+                return refreshedCart;
             }
 
             async function addProductToCart(productLocator)
@@ -672,7 +674,7 @@ if (Session::isLoggedIn()) {
                 {
                     await StoreClient.addProductToCartByLocator(cart, productLocator);
                     showModal("successModal", "Successfully added product to cart.");
-                    await fetchCart();
+                    await refreshCartFromShared();
                     await refreshProducts();
                 }
                 catch(e)
