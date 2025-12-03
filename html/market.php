@@ -570,61 +570,6 @@ if (Session::isLoggedIn()) {
     </div>
   </div>
 
-  <div class="row mt-3">
-    <div class="col-12">
-      <section class="deliveries-panel" role="region" aria-label="Upcoming store deliveries">
-        <div class="deliveries-grid">
-          <div>
-            <div class="deliveries-chip">
-              <i class="fa-solid fa-satellite-dish"></i>
-              Logistics feed
-            </div>
-            <h2 class="deliveries-title">Upcoming Deliveries</h2>
-            <p class="deliveries-subtext mb-0">See what shipments are headed to Emberwood Market next and plan your haul.</p>
-
-            <div class="delivery-meta">
-              <span class="delivery-pill"><i class="fa-solid fa-sparkles"></i> Featured crates</span>
-              <span class="delivery-pill"><i class="fa-solid fa-fire"></i> Hot drop ETA</span>
-              <span class="delivery-pill"><i class="fa-solid fa-shield-heart"></i> Guild dispatch</span>
-            </div>
-
-            <div class="delivery-timeline">
-              <div class="timeline-card">
-                <div class="timeline-icon"><i class="fa-solid fa-truck-fast"></i></div>
-                <h4>Supply Run</h4>
-                <p class="mb-0">Priority delivery from Emberwood docks with fresh stock rotations.</p>
-              </div>
-              <div class="timeline-card">
-                <div class="timeline-icon"><i class="fa-solid fa-box-open"></i></div>
-                <h4>Premium Crates</h4>
-                <p class="mb-0">Limited bundles and rare artifacts getting queued for the next sale window.</p>
-              </div>
-              <div class="timeline-card">
-                <div class="timeline-icon"><i class="fa-solid fa-people-carry-box"></i></div>
-                <h4>Community Picks</h4>
-                <p class="mb-0">Top-voted items from guild requests will ship with this convoy.</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="deliveries-cta">
-            <div class="cta-card">
-              <h3 class="mb-1">Track the convoy</h3>
-              <p class="mb-0">Live schedule with drop times and crate manifests.</p>
-              <a class="btn btn-warning mt-3" href="<?= Version::urlBetaPrefix(); ?>/emberwood-delivery.php">
-                <i class="fa-solid fa-route me-1"></i>
-                View schedule
-              </a>
-              <div class="cta-footer mt-3">
-                <i class="fa-regular fa-clock"></i>
-                Updated hourly via Emberwood dispatch
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-    </div>
-  </div>
 
   <div class="row">
     <div class="col-12">
@@ -749,6 +694,62 @@ if (Session::isLoggedIn()) {
           Nothing in stock here... yet. Check back soon, traveler.
         </div>
 
+      </section>
+    </div>
+  </div>
+  
+  <div class="row mt-3">
+    <div class="col-12">
+      <section class="deliveries-panel" role="region" aria-label="Upcoming store deliveries">
+        <div class="deliveries-grid">
+          <div>
+            <div class="deliveries-chip">
+              <i class="fa-solid fa-satellite-dish"></i>
+              Logistics feed
+            </div>
+            <h2 class="deliveries-title">Upcoming Deliveries</h2>
+            <p class="deliveries-subtext mb-0">See what shipments are headed to Emberwood Market next and plan your haul.</p>
+
+            <div class="delivery-meta">
+              <span class="delivery-pill"><i class="fa-solid fa-sparkles"></i> Featured crates</span>
+              <span class="delivery-pill"><i class="fa-solid fa-fire"></i> Hot drop ETA</span>
+              <span class="delivery-pill"><i class="fa-solid fa-shield-heart"></i> Guild dispatch</span>
+            </div>
+
+            <div class="delivery-timeline">
+              <div class="timeline-card">
+                <div class="timeline-icon"><i class="fa-solid fa-truck-fast"></i></div>
+                <h4>Supply Run</h4>
+                <p class="mb-0">Priority delivery from Emberwood docks with fresh stock rotations.</p>
+              </div>
+              <div class="timeline-card">
+                <div class="timeline-icon"><i class="fa-solid fa-box-open"></i></div>
+                <h4>Premium Crates</h4>
+                <p class="mb-0">Limited bundles and rare artifacts getting queued for the next sale window.</p>
+              </div>
+              <div class="timeline-card">
+                <div class="timeline-icon"><i class="fa-solid fa-people-carry-box"></i></div>
+                <h4>Community Picks</h4>
+                <p class="mb-0">Top-voted items from guild requests will ship with this convoy.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="deliveries-cta">
+            <div class="cta-card">
+              <h3 class="mb-1">Track the convoy</h3>
+              <p class="mb-0">Live schedule with drop times and crate manifests.</p>
+              <a class="btn btn-warning mt-3" href="<?= Version::urlBetaPrefix(); ?>/emberwood-delivery.php">
+                <i class="fa-solid fa-route me-1"></i>
+                View schedule
+              </a>
+              <div class="cta-footer mt-3">
+                <i class="fa-regular fa-clock"></i>
+                Updated hourly via Emberwood dispatch
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
     </div>
   </div>
