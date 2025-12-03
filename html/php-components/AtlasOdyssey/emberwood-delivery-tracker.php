@@ -56,12 +56,8 @@ else{
 $itemInformationJSON = json_encode($itemInfos);
 $itemStackInformationJSON = json_encode($shipmentManifest);
 
-$journeyWaypoints = [
-    ['label' => 'Port of Emberwood', 'icon' => 'fa-fire-alt'],
-    ['label' => 'Mistwind Isles', 'icon' => 'fa-water'],
-    ['label' => 'Driftglass Bay', 'icon' => 'fa-ship'],
-    ['label' => 'Kingdom Docks', 'icon' => 'fa-flag-checkered'],
-];
+$journeyWaypoints = $emberwoodShip->getJourneyWaypoints();
+$waypointCount = max(count($journeyWaypoints) - 1, 1);
 
 ?>
 
@@ -121,7 +117,7 @@ $journeyWaypoints = [
                         <h5 class="fw-bold mb-3 emberwood-tracker-label"><i class="fas fa-route me-2 text-warning"></i>Journey Waypoints</h5>
                         <div class="timeline">
                             <?php foreach ($journeyWaypoints as $index => $waypoint): ?>
-                                <?php $isReached = $adjustedProgress >= (($index) * (100 / (count($journeyWaypoints) - 1))); ?>
+                                <?php $isReached = $adjustedProgress >= ($index * (100 / $waypointCount)); ?>
                                 <div class="timeline-item <?= $isReached ? 'active' : ''; ?>">
                                     <div class="timeline-icon"><i class="fas <?= $waypoint['icon']; ?>"></i></div>
                                     <div>
