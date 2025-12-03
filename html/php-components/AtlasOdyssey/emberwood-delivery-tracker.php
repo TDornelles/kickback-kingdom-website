@@ -112,13 +112,23 @@ $currentWaypointIndex = min((int) floor($adjustedProgress / $segmentPercentage),
                 </div>
             </div>
 
+        <div class="alert alert-<?= $shipStatus->bootstrapColorClass; ?> bg-<?= $shipStatus->bootstrapColorClass; ?> bg-opacity-10 border-0 text-light d-flex align-items-center gap-3 mb-4">
+            <div class="display-6 mb-0 text-warning"><i class="<?= $shipStatus->icon; ?>"></i></div>
+            <div class="flex-grow-1">
+                <p class="text-uppercase text-secondary small mb-1">Fleet Status</p>
+                <h4 class="mb-0">Currently <?= strtolower($shipStatus->text); ?></h4>
+            </div>
+            <span class="badge bg-<?= $shipStatus->bootstrapColorClass; ?> text-bg-<?= $shipStatus->bootstrapColorClass; ?> px-3 py-2 shadow-sm text-wrap"><?= $shipStatus->text; ?></span>
+        </div>
+
         <div class="row g-3 align-items-stretch mb-4">
-            <div class="col-12 col-lg-7">
+            <div class="col-12">
                 <div class="card h-100 border-0 glassy-panel">
                     <div class="card-body">
                         <h5 class="fw-bold mb-3 emberwood-tracker-label"><i class="fas fa-route me-2 text-warning"></i>Journey Waypoints</h5>
-                        <div class="timeline timeline-scroll">
-                            <?php foreach ($journeyWaypoints as $index => $waypoint): ?>
+                        <div class="timeline-scroll">
+                            <div class="timeline">
+                                <?php foreach ($journeyWaypoints as $index => $waypoint): ?>
                                 <?php
                                     $segmentStart = $index * $segmentPercentage;
                                     $segmentEnd = ($index + 1) * $segmentPercentage;
@@ -148,22 +158,9 @@ $currentWaypointIndex = min((int) floor($adjustedProgress / $segmentPercentage),
                                         </div>
                                     </div>
                                 </div>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12 col-lg-5">
-                <div class="card h-100 border-0 glassy-panel text-center d-flex flex-column justify-content-center">
-                    <div class="card-body fleet-status-body">
-                        <div class="d-flex justify-content-center align-items-center gap-3 mb-3">
-                            <div class="display-6 mb-0 text-warning"><i class="<?= $shipStatus->icon; ?>"></i></div>
-                            <div class="text-start">
-                                <p class="text-uppercase text-secondary small mb-1">Fleet Status</p>
-                                <h4 class="mb-0"><?= $shipStatus->text; ?></h4>
+                                <?php endforeach; ?>
                             </div>
                         </div>
-                        <div class="badge bg-<?= $shipStatus->bootstrapColorClass; ?> text-bg-<?= $shipStatus->bootstrapColorClass; ?> px-3 py-2 shadow-sm">Currently <?= strtolower($shipStatus->text); ?></div>
                     </div>
                 </div>
             </div>
@@ -559,26 +556,4 @@ $currentWaypointIndex = min((int) floor($adjustedProgress / $segmentPercentage),
     font-family: 'Poppins', sans-serif;
 }
 
-.fleet-status-body {
-    color: #e2e8f0;
-    background: rgba(255, 255, 255, 0.04);
-    border-radius: 14px;
-    padding: 1.25rem 1.5rem;
-    overflow: hidden;
-    word-break: break-word;
-}
-
-.fleet-status-body h4 {
-    color: #f8fafc;
-}
-
-.fleet-status-body .badge {
-    white-space: normal;
-    line-height: 1.4;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    max-width: 100%;
-    width: 100%;
-}
 </style>
