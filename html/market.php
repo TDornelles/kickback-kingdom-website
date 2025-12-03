@@ -413,8 +413,7 @@ if (Session::isLoggedIn()) {
           class="store-grid"
           data-store-ctime="<?= htmlspecialchars($store->ctime ?? '') ?>"
           data-store-crand="<?= htmlspecialchars((string)($store->crand ?? '')) ?>"
-          data-cart-ctime="<?= htmlspecialchars($cart?->ctime ?? '') ?>"
-          data-cart-crand="<?= htmlspecialchars((string)($cart?->crand ?? '')) ?>"
+          data-store-locator="<?= htmlspecialchars($locator ?? '') ?>"
         >
           <?php foreach ($products as $product): ?>
             <?php
@@ -493,6 +492,7 @@ if (Session::isLoggedIn()) {
                         <button class="buy-btn"
                                 data-product-ctime="<?= htmlspecialchars($product->ctime) ?>"
                                 data-product-crand="<?= htmlspecialchars($product->crand) ?>"
+                                data-product-locator="<?= htmlspecialchars((string)($product->locator ?? '')) ?>"
                                 title="Add to Cart">
                           <i class="fas fa-cart-plus"></i>
                         </button>
@@ -537,17 +537,76 @@ if (Session::isLoggedIn()) {
                 return;
             }
 
+            const storeLocator = productsGrid.dataset.storeLocator || '';
             const storeCtime = productsGrid.dataset.storeCtime || '';
             const storeCrand = productsGrid.dataset.storeCrand || '';
-            const cartCtime = productsGrid.dataset.cartCtime || '';
-            const cartCrand = productsGrid.dataset.cartCrand || '';
+            let cart = <?php echo json_encode($cart, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR); ?>;
 
             async function refreshProducts()
             {
-                console.log("refresh products");
+                if(!storeLocator)
+                {
+                    console.error("Missing store locator; unable to refresh products");
+                    return;
+                }
+
+                try
+                {
+                    const storeResp = await StoreClient.getStoreByLocator(storeLocator);
+                    const products = Array.isArray(storeResp?.data?.products) ? storeResp.data.products : [];
+                    const productMap = new Map(products.map((p) => [p.locator, p]));
+
+                    productsGrid.dataset.storeCtime = storeResp?.data?.ctime ?? '';
+                    productsGrid.dataset.storeCrand = storeResp?.data?.crand ?? '';
+
+                    productsGrid.querySelectorAll('.card-flip').forEach((card) =>
+                    {
+                        const addButton = card.querySelector('.buy-btn');
+                        const productLocator = addButton?.dataset.productLocator || '';
+                        const product = productMap.get(productLocator);
+                        const stockEl = card.querySelector('.item-stock');
+
+                        if(!product)
+                        {
+                            card.style.display = 'none';
+                            return;
+                        }
+
+                        const available = product.amountAvailable;
+                        const hasStockInfo = available !== null && available !== undefined;
+
+                        if(stockEl)
+                        {
+                            if(hasStockInfo)
+                            {
+                                stockEl.textContent = `In Stock: ${available}`;
+                                stockEl.style.display = '';
+                            }
+                            else
+                            {
+                                stockEl.style.display = 'none';
+                            }
+                        }
+
+                        if(addButton)
+                        {
+                            const disablePurchase = hasStockInfo && Number(available) <= 0;
+                            addButton.disabled = disablePurchase;
+                            addButton.title = disablePurchase ? 'Out of stock' : 'Add to Cart';
+                        }
+                    });
+                }
+                catch(e)
+                {
+                    console.error("Failed to refresh products", e);
+                }
             }
 
-            const requireLogin = cartCtime === '' || cartCrand === '';
+
+            function requireLogin()
+            {
+                return cart === null;
+            }
 
             function showModal(modalId, message)
             {
@@ -565,15 +624,42 @@ if (Session::isLoggedIn()) {
                 }
             }
 
-            async function addProductToCart(productCtime, productCrand)
+            async function fetchCart()
             {
-                if(productCtime === undefined || productCrand === undefined || productCtime === '' || productCrand === '')
+                if(!storeLocator)
+                {
+                    console.error("Missing store locator; unable to refresh cart");
+                    return;
+                }
+
+                try
+                {
+                    const cartResp = await StoreClient.getCart(storeLocator);
+                    cart = cartResp.data ?? cart;
+                }
+                catch (e)
+                {
+                    console.error("Failed to fetch cart", e);
+                }
+            }
+
+            const cartOffcanvas = document.getElementById('offcanvasMenuRightShoppingCart');
+            if(cartOffcanvas)
+            {
+                cartOffcanvas.addEventListener('show.bs.offcanvas', async () => {
+                    await fetchCart();
+                });
+            }
+
+            async function addProductToCart(productLocator)
+            {
+                if(productLocator === undefined || productLocator === '')
                 {
                     console.error("Missing product identifiers for cart action");
                     return;
                 }
 
-                if(requireLogin)
+                if(requireLogin())
                 {
                     const redirectUrl = encodeURIComponent("market.php");
                     window.location.href = `<?= Version::urlBetaPrefix(); ?>/login.php?redirect=${redirectUrl}`;
@@ -584,48 +670,16 @@ if (Session::isLoggedIn()) {
 
                 try
                 {
-                    const formData = new FormData();
-
-                    formData.append("storeCtime", storeCtime);
-                    formData.append("storeCrand", storeCrand);
-                    formData.append("cartCtime", cartCtime);
-                    formData.append("cartCrand", cartCrand);
-                    formData.append("productCtime", productCtime);
-                    formData.append("productCrand", productCrand);
-
-                    const response = await fetch('/php-components/store/add-to-cart.php',
-                        {
-                            method: 'POST',
-                            body: formData
-                        }
-                    );
-
-                    if(response.ok)
-                    {
-                        const respJson = await response.json();
-                        const message = respJson.message;
-
-                        if(respJson.success === true)
-                        {
-                            showModal("successModal", "Successfully added product to cart.");
-                            await refreshProducts();
-                        }
-                        else
-                        {
-                            showModal("errorModal", "Error adding product to cart: " + message);
-                            console.error("Failed to add product to cart", message);
-                        }
-                    }
-                    else
-                    {
-                        showModal("errorModal", "An error occurred attempting to add product to cart.");
-                        console.error("Failed to add product to cart:", await response.text());
-                    }
+                    await StoreClient.addProductToCartByLocator(cart, productLocator);
+                    showModal("successModal", "Successfully added product to cart.");
+                    await fetchCart();
+                    await refreshProducts();
                 }
                 catch(e)
                 {
                     console.error("Exception caught while adding product to cart", e);
-                    showModal("errorModal", "An unexpected error occurred while adding the product to your cart.");
+                    const message = e?.message || "An unexpected error occurred while adding the product to your cart.";
+                    showModal("errorModal", message);
                 }
             }
 
@@ -635,9 +689,8 @@ if (Session::isLoggedIn()) {
                 {
                     event.preventDefault();
 
-                    const productCtime = button.dataset.productCtime;
-                    const productCrand = button.dataset.productCrand;
-                    await addProductToCart(productCtime, productCrand);
+                    const productLocator = button.dataset.productLocator || '';
+                    await addProductToCart(productLocator);
                 });
             });
         })();
