@@ -617,12 +617,19 @@ if (Session::isLoggedIn()) {
                 return cart === null;
             }
 
-            function showModal(modalId, message)
+            function showModal(modalId, message, title)
             {
                 const modalBody = document.getElementById(modalId + "Message");
                 if(modalBody)
                 {
                     modalBody.textContent = message;
+                }
+
+                const modalTitle = document.getElementById(modalId + "Label");
+                if(modalTitle)
+                {
+                    const fallbackTitle = modalId === "errorModal" ? "Error" : modalId === "successModal" ? "Success" : modalTitle.textContent;
+                    modalTitle.textContent = title || fallbackTitle;
                 }
 
                 const modalElement = document.getElementById(modalId);
@@ -665,15 +672,15 @@ if (Session::isLoggedIn()) {
                 {
                     const redirectUrl = encodeURIComponent("market.php");
                     window.location.href = `<?= Version::urlBetaPrefix(); ?>/login.php?redirect=${redirectUrl}`;
-                    showModal("errorModal", "You must be logged in to add items to your cart.");
-                    
+                    showModal("errorModal", "You must be logged in to add items to your cart.", "Login required");
+
                     return;
                 }
 
                 try
                 {
                     await StoreClient.addProductToCartByLocator(cart, productLocator);
-                    showModal("successModal", "Successfully added product to cart.");
+                    showModal("successModal", "Successfully added product to cart.", "Added to cart");
                     await refreshCartFromShared();
                     await refreshProducts();
                 }
@@ -681,7 +688,7 @@ if (Session::isLoggedIn()) {
                 {
                     console.error("Exception caught while adding product to cart", e);
                     const message = e?.message || "An unexpected error occurred while adding the product to your cart.";
-                    showModal("errorModal", message);
+                    showModal("errorModal", message, "Unable to add to cart");
                 }
             }
 
@@ -704,7 +711,7 @@ if (Session::isLoggedIn()) {
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header text-bg-danger">
-                        <h1 class="modal-title fs-5" id="errorModalLabel">Modal title</h1>
+                        <h1 class="modal-title fs-5" id="errorModalLabel">Error</h1>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
@@ -722,7 +729,7 @@ if (Session::isLoggedIn()) {
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="successModalLabel">Modal title</h1>
+                        <h1 class="modal-title fs-5" id="successModalLabel">Success</h1>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
