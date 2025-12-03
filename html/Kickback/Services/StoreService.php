@@ -4,6 +4,7 @@ namespace Kickback\Services;
 use Exception;
 use Kickback\Backend\Controllers\AccountController;
 use Kickback\Backend\Controllers\StoreController;
+
 use Kickback\Backend\Models\Enums\CurrencyCode;
 use Kickback\Backend\Models\Response;
 use Kickback\Backend\Views\vAccount;
@@ -388,7 +389,7 @@ class StoreService
             return 400;
         }
 
-        if(!key_exists("productId", $body))
+        if(!key_exists("productLocator", $body))
         {
             $resp->message = "Request body must contain the key : 'productId'";
             return 400;
