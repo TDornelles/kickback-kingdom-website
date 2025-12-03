@@ -4,7 +4,6 @@ declare(strict_types = 1);
 
 namespace Kickback\Backend\Models;
 
-use Kickback\Backend\Models\Enums\TransactionType;
 use Kickback\Backend\Views\vAccount;
 use Kickback\Backend\Views\vRecordId;
 

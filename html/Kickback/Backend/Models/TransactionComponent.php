@@ -13,7 +13,7 @@ use Kickback\Backend\Views\vTransaction;
 
 class TransactionComponent extends RecordId
 {
-    public vTransaction $transaction;
+    public Transaction $transaction;
     public vAccount $fromAccount;
     public vAccount $toAccount;
     public int $amount;

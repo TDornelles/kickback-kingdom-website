@@ -4,14 +4,12 @@ declare(strict_types = 1);
 
 namespace Kickback\Backend\Views;
 
-use Kickback\Backend\Models\Enums\TransactionType;
-
 class vTransaction extends vRecordId
 {
     public bool $complete;
     public bool $void;
     public string $description;
-    public TransactionType $type;
+    public string $type;
     public vAccount $firstAccount;
     public vAccount $secondAccount;
 
