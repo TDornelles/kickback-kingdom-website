@@ -13,6 +13,7 @@ use Kickback\Backend\Views\vCartItem;
 use Kickback\Backend\Views\vItem;
 use Kickback\Backend\Views\vMedia;
 use Kickback\Backend\Views\vPrice;
+use Kickback\Backend\Views\vPriceComponent;
 use Kickback\Backend\Views\vProduct;
 use Kickback\Backend\Views\vRecordId;
 use Kickback\Backend\Views\vStore;
@@ -419,14 +420,15 @@ class StoreService
             return 500;
         }
 
+        $cart = $cartResp->data;
+
         if($cart->account->equals($account));
         {
             $resp->message = "Retrieved Cart does not belong to account";
             return 500;
         }
 
-        $cart = $cartResp->data;
-
+    
         $addProductToCartResp = StoreController::addProductToCart($productResp->data, $cart);
 
         if(!$addProductToCartResp->success)
