@@ -382,14 +382,10 @@ if (Session::isLoggedIn()) {
 .deliveries-panel {
   position: relative;
   margin-top: 0.5rem;
-  padding: 1.75rem 1.5rem;
+  padding: 2rem 1.5rem 2.25rem;
   border-radius: 18px;
-  background: radial-gradient(circle at 20% 20%, rgba(51, 255, 238, 0.08), transparent 30%),
-              radial-gradient(circle at 80% 0%, rgba(255, 215, 0, 0.08), transparent 25%),
-              linear-gradient(135deg, #0a1a26 0%, #0d2533 50%, #0b1d29 100%);
-  border: 1px solid #33ffee55;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45), 0 0 25px rgba(51, 255, 238, 0.25);
   overflow: hidden;
+  color: #cceeff;
 }
 
 .deliveries-panel::before,
@@ -401,20 +397,22 @@ if (Session::isLoggedIn()) {
 }
 
 .deliveries-panel::before {
-  background: linear-gradient(120deg, transparent 0%, rgba(51, 255, 238, 0.15) 40%, transparent 70%);
-  filter: blur(10px);
+  background: radial-gradient(circle at 20% 20%, rgba(51, 255, 238, 0.12), transparent 30%),
+              radial-gradient(circle at 80% 0%, rgba(255, 215, 0, 0.1), transparent 28%);
   opacity: 0.6;
+  filter: blur(6px);
 }
 
 .deliveries-panel::after {
-  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.03) 0 2px, transparent 2px 6px);
-  mix-blend-mode: soft-light;
+  background: linear-gradient(120deg, transparent 0%, rgba(51, 255, 238, 0.2) 40%, transparent 72%),
+              repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0 2px, transparent 2px 8px);
+  mix-blend-mode: screen;
   opacity: 0.6;
 }
 
 .deliveries-grid {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   display: grid;
   grid-template-columns: 2.2fr 1fr;
   gap: 1.25rem;
@@ -700,7 +698,7 @@ if (Session::isLoggedIn()) {
   
   <div class="row mt-3">
     <div class="col-12">
-      <section class="deliveries-panel" role="region" aria-label="Upcoming store deliveries">
+      <section class="emberwood-store theme-default deliveries-panel" role="region" aria-label="Upcoming store deliveries">
         <div class="deliveries-grid">
           <div>
             <div class="deliveries-chip">
