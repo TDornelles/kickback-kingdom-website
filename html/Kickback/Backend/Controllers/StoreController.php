@@ -29,6 +29,8 @@ use Kickback\Backend\Models\CouponPriceComponentLink;
 
 use Kickback\Backend\Models\Enums\CurrencyCode;
 use Kickback\Backend\Models\ProductPriceComponentLink;
+use Kickback\Backend\Models\Transaction;
+use Kickback\Backend\Models\TransactionComponent;
 use Kickback\Backend\Views\vProductLootLink;
 use Kickback\Backend\Views\vAccount;
 use Kickback\Backend\Views\vCart;
@@ -326,6 +328,8 @@ class StoreController
 
             $priceComponentLootsResp = static::materializePriceComponentReservations($priceComponentReservations);
             $priceComponentLoots = $priceComponentLootsResp->data;
+
+            $transaction = static::createTransactionForCart($cart, $productLoots, $priceComponentLoots);
  
             $conn->begin_transaction();
 
@@ -352,6 +356,9 @@ class StoreController
             static::markUsesForCartCoupons($cart);
             static::markCouponCartProductLinksAsCheckedOut($cart);
 
+            //transactions
+            TransactionController::markTransactionAsComplete($transaction);
+
             $conn->commit();
 
             $resp->success = true;
@@ -360,7 +367,8 @@ class StoreController
         catch(Exception $e)
         {
             $conn->rollback();
-
+            TransactionController::markTransactionAsVoid($transaction);
+            
             throw new Exception("Exception caught while attempting to transact product reservations : $e");
         }
 
@@ -6127,4 +6135,55 @@ class StoreController
 
         return $result->num_rows > 0;
     }
+
+
+    public static function createTransactionForCart(vCart $cart, array $productLoots, array $priceComponentLoots) : vTransaction
+    {
+        $products = $cart->cartProducts;
+
+        $transaction = new Transaction();
+        $transaction->complete = false;
+        $transaction->void = false;
+        $transaction->description = "Cart Checkout Transaction For ".$cart->account->username."'s Cart. Cart Id : ($cart->ctime, $cart->crand). Transaction ".($i+1)."/".count($products);
+        $transaction->type = "CART";
+        $transaction->firstAccount = $cart->account;
+        $transaction->secondAccount = $cart->store->owner;
+
+        for($i = 0; $i < count($productLoots); $i++)
+        {
+            $loot = $productLoots[$i];
+
+            $productTransactionComponent = new TransactionComponent();
+            $productTransactionComponent->transaction = $transaction;
+            $productTransactionComponent->fromAccount = $cart->store->owner;
+            $productTransactionComponent->toAccount = $cart->account;
+            $productTransactionComponent->amount = $loot->quantity;
+            $productTransactionComponent->loot = $loot;
+
+            $transaction->addComponent($productTransactionComponent);
+        }
+
+        for($i = 0; $i < count($priceComponentLoots); $i++)
+        {
+            $loot = $priceComponentLoots[$i];
+
+            $productTransactionComponent = new TransactionComponent();
+            $productTransactionComponent->transaction = $transaction;
+            $productTransactionComponent->fromAccount = $cart->store->owner;
+            $productTransactionComponent->toAccount = $cart->account;
+            $productTransactionComponent->amount = $loot->quantity;
+            $productTransactionComponent->loot = $loot;
+
+            $transaction->addComponent($productTransactionComponent);
+        }
+
+        TransactionController::insertTransaction($transaction);
+
+        $transactionResp = TransactionController::getTransactionById($transaction);
+
+        if(!$transactionResp->success) throw new Exception("Failed to retreive transaction after insertion");
+
+        return $transactionResp->data;
+    }
+
 }
