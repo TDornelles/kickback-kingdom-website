@@ -48,7 +48,7 @@ else{
 
         array_push($itemInfos, $accountInventoryItemStack->item);
     }
-
+    
 }
 
 
@@ -56,29 +56,11 @@ else{
 $itemInformationJSON = json_encode($itemInfos);
 $itemStackInformationJSON = json_encode($shipmentManifest);
 
-$journeyWaypoints = [
-    ['label' => 'Port of Emberwood', 'icon' => 'fa-fire-alt'],
-    ['label' => 'Mistwind Isles', 'icon' => 'fa-water'],
-    ['label' => 'Driftglass Bay', 'icon' => 'fa-ship'],
-    ['label' => 'Kingdom Docks', 'icon' => 'fa-flag-checkered'],
-];
-
 ?>
 
 
-<div class="card mt-4 shadow-lg rounded emberwood-tracker-card overflow-hidden">
-    <div class="card-body p-4">
-        <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-4">
-            <div>
-                <p class="text-uppercase fw-semibold text-secondary small mb-1">Atlas Odyssey · Emberwood Fleet</p>
-                <h2 class="fw-bold mb-2">Cargo Delivery Status</h2>
-                <p class="mb-0 text-secondary">Updated ATC <strong><?= $currentATCDate; ?></strong></p>
-            </div>
-            <div class="text-lg-end">
-                <span class="badge bg-gradient-primary fs-6 px-3 py-2 shadow-sm">Journey <?= number_format($progressPercentage, 1); ?>%</span>
-                <div class="mt-2 text-secondary">Tracking #<?= $trackingNumber; ?></div>
-            </div>
-        </div>
+<div class="card mt-4 shadow-lg rounded emberwood-tracker-card">
+    <div class="card-body text-center py-4">
 
         <!-- Information Display with Ship Location, Shipment Number, and ETA -->
         <div class="emberwood-tracker-info-container mb-4">
@@ -97,50 +79,16 @@ $journeyWaypoints = [
         </div>
 
         <!-- Star Map and Ship Progress Display -->
-        <div class="emberwood-tracker-progress-route mb-3">
-            <div class="progress bg-dark bg-opacity-50 position-absolute top-50 start-0 w-100 translate-middle-y rounded-pill shadow-sm" style="height: 12px;">
-                <div class="progress-bar bg-warning" role="progressbar" style="width: <?= $adjustedProgress; ?>%;"></div>
-            </div>
+        <div class="emberwood-tracker-progress-route mb-4">
             <div class="emberwood-tracker-ship-icon" style="left: <?= $leftPosition; ?>;">
                 <img src="<?= $imgShip; ?>" alt="Emberwood Ship" class="emberwood-tracker-ship-image">
-                <span class="ship-progress-label badge bg-dark bg-opacity-75 text-light mt-2"><?= $progressPercentage; ?>% complete</span>
             </div>
         </div>
 
-        <div class="row g-3 align-items-stretch mb-4">
-            <div class="col-12 col-lg-7">
-                <div class="card h-100 border-0 glassy-panel">
-                    <div class="card-body">
-                        <h5 class="fw-bold mb-3"><i class="fas fa-route me-2 text-warning"></i>Journey Waypoints</h5>
-                        <div class="timeline">
-                            <?php foreach ($journeyWaypoints as $index => $waypoint): ?>
-                                <?php $isReached = $adjustedProgress >= (($index) * (100 / (count($journeyWaypoints) - 1))); ?>
-                                <div class="timeline-item <?= $isReached ? 'active' : ''; ?>">
-                                    <div class="timeline-icon"><i class="fas <?= $waypoint['icon']; ?>"></i></div>
-                                    <div>
-                                        <div class="fw-semibold mb-1"><?= $waypoint['label']; ?></div>
-                                        <small class="text-secondary">Checkpoint <?= $index + 1; ?> of <?= count($journeyWaypoints); ?></small>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12 col-lg-5">
-                <div class="card h-100 border-0 glassy-panel text-center d-flex flex-column justify-content-center">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-center align-items-center gap-3 mb-3">
-                            <div class="display-6 mb-0 text-warning"><i class="<?= $shipStatus->icon; ?>"></i></div>
-                            <div class="text-start">
-                                <p class="text-uppercase text-secondary small mb-1">Fleet Status</p>
-                                <h4 class="mb-0"><?= $shipStatus->text; ?></h4>
-                            </div>
-                        </div>
-                        <div class="badge bg-<?= $shipStatus->bootstrapColorClass; ?> text-bg-<?= $shipStatus->bootstrapColorClass; ?> px-3 py-2 shadow-sm">Currently <?= strtolower($shipStatus->text); ?></div>
-                    </div>
-                </div>
-            </div>
+        <!-- Enhanced Ship Status with Bootstrap Color and Icon on the Left -->
+        <div class="d-flex align-items-center justify-content-center p-3 rounded bg-<?= $shipStatus->bootstrapColorClass; ?> text-bg-<?= $shipStatus->bootstrapColorClass; ?>">
+            <i class="<?= $shipStatus->icon; ?> me-3" style="font-size: 2rem;"></i>
+            <span class="ship-status-text"><?= $shipStatus->text; ?></span>
         </div>
     </div>
 </div>
@@ -174,52 +122,31 @@ $journeyWaypoints = [
 </div>
 
 <style>
-.emberwood-tracker-card {
-    background: radial-gradient(circle at 20% 20%, rgba(255, 200, 100, 0.12), transparent 35%),
-        radial-gradient(circle at 80% 0%, rgba(0, 123, 255, 0.08), transparent 30%),
-        linear-gradient(180deg, #0c1524 0%, #0f172a 35%, #0b1220 100%);
-    color: #e9edf5;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.bg-gradient-primary {
-    background: linear-gradient(135deg, #f59e0b 0%, #fb923c 50%, #f97316 100%);
-}
-
-.glassy-panel {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-    backdrop-filter: blur(6px);
-}
-
 /* Info Box Container */
 .emberwood-tracker-info-container {
     display: flex;
     justify-content: space-between;
     flex-wrap: wrap;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid #ddd;
     padding-bottom: 1rem;
     margin-bottom: 1rem;
-    gap: 0.5rem;
 }
 
 /* Info Box Styling */
 .emberwood-tracker-info-box {
     flex: 1 1 30%;
-    padding: 0.75rem;
+    padding: 0.5rem;
     text-align: center;
-    background: rgba(255, 255, 255, 0.04);
-    border-radius: 12px;
-    margin: 0.5rem 0;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    background-color: #ffffff;
+    border-radius: 8px;
+    margin: 0.5rem;
+    box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s ease-in-out;
 }
 
 .emberwood-tracker-info-box:hover {
-    transform: translateY(-3px);
-    box-shadow: 0px 8px 18px rgba(0, 0, 0, 0.2);
+    transform: translateY(-4px);
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .emberwood-tracker-info-text {
@@ -242,81 +169,69 @@ $journeyWaypoints = [
 /* Star Map and Ship Progress */
 .emberwood-tracker-progress-route {
     position: relative;
-    height: 240px;
-    border-radius: 14px;
+    height: 300px;
+    border: 2px solid #ddd;
+    border-radius: 10px;
     margin-bottom: 1rem;
     overflow: hidden;
-    background: linear-gradient(135deg, rgba(17, 24, 39, 0.95), rgba(15, 23, 42, 0.9)),
-        url("<?= $imgStarMap; ?>") no-repeat center center;
+    background: url("<?= $imgStarMap; ?>") no-repeat center center;
     background-size: cover;
-    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 /* Ship Icon */
 .emberwood-tracker-ship-icon {
     position: absolute;
     top: 50%;
-    transform: translate(-50%, -50%);
+    transform: translateY(-50%);
     transition: left 1s ease-in-out;
-    text-align: center;
-}
-
-.ship-progress-label {
-    display: inline-block;
-    margin-top: 0.35rem;
-    font-size: 0.85rem;
 }
 
 .emberwood-tracker-ship-image {
-    width: 60px;
+    width: 50px;
     border-radius: 50%;
-    box-shadow: 0px 0px 18px rgba(255, 200, 50, 0.9);
+    box-shadow: 0px 0px 15px rgba(255, 200, 50, 0.8);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .emberwood-tracker-ship-image:hover {
-    transform: scale(1.15) rotate(8deg);
-    box-shadow: 0px 0px 24px rgba(255, 150, 0, 1);
+    transform: scale(1.2) rotate(10deg);
+    box-shadow: 0px 0px 20px rgba(255, 150, 0, 1);
     cursor: pointer;
 }
 
-.timeline {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.timeline-item {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem;
+/* Enhanced Ship Status Styling */
+.enhanced-status {
+    font-size: 1.35rem;
+    text-align: center;
+    font-weight: bold;
     border-radius: 12px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    transition: border-color 0.2s ease, transform 0.2s ease;
+    padding: 20px;
+    margin-top: 1.5rem;
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.5s ease, transform 0.2s ease;
 }
 
-.timeline-item.active {
-    border-color: #fbbf24;
-    box-shadow: 0 10px 20px rgba(251, 191, 36, 0.15);
-    transform: translateY(-2px);
+.enhanced-status:hover {
+    transform: scale(1.02);
 }
 
-.timeline-icon {
-    width: 42px;
-    height: 42px;
-    display: grid;
-    place-items: center;
-    border-radius: 50%;
-    background: rgba(251, 191, 36, 0.14);
-    color: #fbbf24;
-    font-size: 1.1rem;
+.status-icon-container {
+    margin-bottom: 0.5rem;
 }
 
 .ship-status-text {
-    font-size: 1.1rem;
+    font-size: 1.4rem;
     line-height: 1.5;
     font-family: 'Poppins', sans-serif;
+}
+
+@media (max-width: 768px) {
+    .enhanced-status {
+        padding: 15px;
+        font-size: 1.25rem;
+    }
+    .status-icon-container {
+        font-size: 2rem;
+    }
 }
 </style>
