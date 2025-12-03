@@ -25,7 +25,7 @@ $imgShip = "https://i0.wp.com/thelegocarblog.com/wp-content/uploads/2024/09/Scre
 
 // Calculate dynamic left positioning with boundaries for 0% and 100% to keep icon within bounds
 $shipWidth = 60; // Ship image width in pixels
-$shipIconPadding = 48; // breathing room to avoid clipping inside the route container
+$shipIconPadding = 64; // breathing room to avoid clipping inside the route container
 $adjustedProgress = max(0, min($progressPercentage, 100));
 $leftPosition = "clamp({$shipIconPadding}px, {$adjustedProgress}%, calc(100% - {$shipIconPadding}px))";
 
@@ -99,7 +99,7 @@ $journeyWaypoints = [
 
         <!-- Star Map and Ship Progress Display -->
         <div class="emberwood-tracker-progress-route mb-3">
-            <div class="progress bg-dark bg-opacity-50 position-absolute top-50 start-0 w-100 translate-middle-y rounded-pill shadow-sm" style="height: 12px;">
+            <div class="progress bg-dark bg-opacity-50 position-absolute top-50 start-0 translate-middle-y rounded-pill shadow-sm emberwood-progress-track">
                 <div class="progress-bar bg-warning" role="progressbar" style="width: <?= $adjustedProgress; ?>%;"></div>
             </div>
             <div class="emberwood-tracker-ship-icon" style="left: <?= $leftPosition; ?>;">
@@ -272,19 +272,20 @@ $journeyWaypoints = [
     border-radius: 14px;
     margin-bottom: 1rem;
     overflow: visible;
-    padding: 1.25rem 3rem;
+    padding: 1.5rem 2rem;
     background: linear-gradient(135deg, rgba(17, 24, 39, 0.95), rgba(15, 23, 42, 0.9)),
         url("<?= $imgStarMap; ?>") no-repeat center center;
     background-size: cover;
     border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.emberwood-tracker-progress-route .progress {
-    left: 2.75rem;
-    right: 2.75rem;
+.emberwood-progress-track {
+    left: 2.5rem;
+    right: 2.5rem;
     width: auto;
-    height: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    height: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
 }
 
 /* Ship Icon */
@@ -294,7 +295,7 @@ $journeyWaypoints = [
     transform: translate(-50%, -50%);
     transition: left 1s ease-in-out;
     text-align: center;
-    max-width: 180px;
+    max-width: 220px;
 }
 
 .ship-progress-label {
@@ -331,6 +332,10 @@ $journeyWaypoints = [
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.06);
     transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.timeline-item .fw-semibold {
+    color: #f1f5f9;
 }
 
 .timeline-item.active {
@@ -376,5 +381,6 @@ $journeyWaypoints = [
     align-items: center;
     justify-content: center;
     max-width: 100%;
+    width: 100%;
 }
 </style>
