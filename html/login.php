@@ -14,7 +14,11 @@ $redirectUrl = 'index.php';
 
 if (isset($_GET["redirect"]))
 {
-    $redirectUrl = urldecode($_GET["redirect"]);
+    $potentialRedirect = urldecode($_GET["redirect"]);
+    if (!empty($potentialRedirect))
+    {
+        $redirectUrl = $potentialRedirect;
+    }
 }
 if (isset($_POST["submit"]))
 {
