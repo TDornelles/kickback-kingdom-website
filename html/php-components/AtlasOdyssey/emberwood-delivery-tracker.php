@@ -68,7 +68,6 @@ extract($trackerData, EXTR_SKIP);
                     <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
                         <div>
                             <p class="text-uppercase text-secondary small mb-1">Fleet Status</p>
-                            <h4 class="mb-2"><?= $fleetStatusHeadline; ?></h4>
                             <div class="text-secondary">Current condition: <span class="text-light fw-semibold"><?= $shipStatus->text; ?></span></div>
                             <div class="text-secondary">Location: <span class="text-light fw-semibold"><?= $shipLocation; ?></span></div>
                         </div>
@@ -77,8 +76,6 @@ extract($trackerData, EXTR_SKIP);
                                 <?= ucfirst($shipStatus->type); ?> mode
                             </span>
                             <div class="mt-2 small text-secondary">Updated ATC <?= $currentATCDate; ?></div>
-                            <div class="small text-secondary">Next delivery ETA: <?= $timeUntilNextDelivery; ?></div>
-                            <div class="small text-secondary">Tracking #<?= $trackingNumber; ?></div>
                         </div>
                     </div>
                     <div class="response-callout mt-3">
