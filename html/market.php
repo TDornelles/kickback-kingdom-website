@@ -385,7 +385,16 @@ if (Session::isLoggedIn()) {
 
 <!-- HTML -->
 <main class="container pt-3 bg-body" style="margin-bottom: 56px;">
-  
+
+  <div class="row">
+    <div class="col-12">
+      <?php
+      $activePageName = htmlspecialchars($store->name ?? "Market");
+      require("php-components/base-page-breadcrumbs.php");
+      ?>
+    </div>
+  </div>
+
   <div class="row">
     <div class="col-12">
       <button id="open-store-json" class="btn btn-primary">
