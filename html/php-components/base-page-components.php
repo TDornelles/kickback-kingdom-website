@@ -1898,7 +1898,13 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
 
         window.fetchCart = fetchCart;
 
-        fetchCart({ showLoading: false });
+        const preloadCart = () => fetchCart({ showLoading: false });
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', preloadCart);
+        } else {
+            preloadCart();
+        }
     })();
 </script>
 <?php } ?>
