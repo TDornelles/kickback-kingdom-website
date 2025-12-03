@@ -99,7 +99,7 @@ $journeyWaypoints = [
 
         <!-- Star Map and Ship Progress Display -->
         <div class="emberwood-tracker-progress-route mb-3">
-            <div class="progress bg-dark bg-opacity-50 position-absolute top-50 start-0 translate-middle-y rounded-pill shadow-sm emberwood-progress-track">
+            <div class="progress bg-dark bg-opacity-50 position-absolute top-50 translate-middle-y rounded-pill shadow-sm emberwood-progress-track">
                 <div class="progress-bar bg-warning" role="progressbar" style="width: <?= $adjustedProgress; ?>%;"></div>
             </div>
             <div class="emberwood-tracker-ship-icon" style="left: <?= $leftPosition; ?>;">
