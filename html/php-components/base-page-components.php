@@ -972,8 +972,10 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
             aria-label="Close"></button>
     </div>
     <div class="offcanvas-body">
+        <div id="offcanvasCartStatus" class="alert alert-info d-none" role="alert"></div>
+
         <!-- Shopping Cart Items -->
-        <div class="shopping-cart-items">
+        <div class="shopping-cart-items" id="shoppingCartItems">
 
             <?php
             // Placeholder for your cart items array
@@ -1032,7 +1034,7 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
             <p class="summary-line fw-bold total-line">Total: <span class="final-total-amount">0 </span></p>
         </div>
         <!-- Proceed to Checkout Button -->
-        <a class="btn btn-primary w-100 disabled" href="<?php echo Version::urlBetaPrefix(); ?>/checkout.php" disabled>Proceed to Checkout</a>
+        <a class="btn btn-primary w-100" id="offcanvasCheckoutButton" href="<?php echo Version::urlBetaPrefix(); ?>/checkout.php?store-locator=kickback-market">Proceed to Checkout</a>
     </div>
 
 </div>
@@ -1766,62 +1768,123 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
     (() => {
         const navbarCartBadgeElement = document.getElementById('navbarCartBadge');
         const navbarCartButtonElement = document.getElementById('navbarCartButton');
+        const offcanvasCartStatus = document.getElementById('offcanvasCartStatus');
+        const cartOffcanvas = document.getElementById('offcanvasMenuRightShoppingCart');
+        const offcanvasCheckoutButton = document.getElementById('offcanvasCheckoutButton');
         const userIsLoggedIn = <?php echo json_encode(Session::isLoggedIn()); ?>;
-
-        if (!navbarCartBadgeElement || !navbarCartButtonElement) {
-            return;
-        }
-
-        if (!userIsLoggedIn) {
-            navbarCartBadgeElement.classList.add('d-none');
-            return;
-        }
 
         const queryParams = new URLSearchParams(window.location.search);
         const storeLocatorQueryParam = queryParams.get('store-locator');
-        const navbarStoreLocator = storeLocatorQueryParam || navbarCartButtonElement.dataset.storeLocator || 'kickback-market';
+        const navbarStoreLocator = storeLocatorQueryParam || navbarCartButtonElement?.dataset.storeLocator || 'kickback-market';
 
-        const showNavbarCartBadge = (htmlContent, title) => {
-            navbarCartBadgeElement.innerHTML = htmlContent;
-            navbarCartBadgeElement.title = title;
-            navbarCartBadgeElement.classList.remove('d-none');
+        if (offcanvasCheckoutButton) {
+            const checkoutBaseUrl = `<?= Version::urlBetaPrefix(); ?>/checkout.php`;
+            offcanvasCheckoutButton.href = `${checkoutBaseUrl}?store-locator=${encodeURIComponent(navbarStoreLocator)}`;
+        }
+
+        const setOffcanvasStatus = (message, state = 'info') => {
+            if (!offcanvasCartStatus) {
+                return;
+            }
+
+            offcanvasCartStatus.className = `alert alert-${state}`;
+            offcanvasCartStatus.textContent = message;
+            offcanvasCartStatus.classList.remove('d-none');
         };
 
-        const showNavbarCartLoading = () => {
-            showNavbarCartBadge('<i class="fa-solid fa-spinner fa-spin"></i><span class="visually-hidden">Loading cart</span>', 'Loading cart');
+        const clearOffcanvasStatus = () => {
+            if (!offcanvasCartStatus) {
+                return;
+            }
+
+            offcanvasCartStatus.className = 'alert alert-info d-none';
+            offcanvasCartStatus.textContent = '';
         };
 
-        const showNavbarCartError = (errorMessage) => {
-            const errorText = errorMessage || 'Unable to load cart';
-            showNavbarCartBadge('<i class="fa-solid fa-triangle-exclamation"></i><span class="visually-hidden">' + errorText + '</span>', errorText);
-        };
+        const fetchOffcanvasCart = async ({ showLoading = true, storeLocatorOverride = null } = {}) => {
+            const locatorToUse = storeLocatorOverride || navbarStoreLocator;
 
-        const showNavbarCartCount = (count) => {
-            const accessibleText = `Cart has ${count} item${count === 1 ? '' : 's'}`;
-            navbarCartBadgeElement.innerHTML = '';
-            navbarCartBadgeElement.textContent = `${count}`;
-            const screenReaderText = document.createElement('span');
-            screenReaderText.className = 'visually-hidden';
-            screenReaderText.textContent = accessibleText;
-            navbarCartBadgeElement.appendChild(screenReaderText);
-            navbarCartBadgeElement.title = accessibleText;
-            navbarCartBadgeElement.classList.remove('d-none');
-        };
+            if (!locatorToUse) {
+                setOffcanvasStatus('Missing store information for this cart.', 'danger');
+                return null;
+            }
 
-        const fetchNavbarCartCount = async () => {
-            showNavbarCartLoading();
+            if (!userIsLoggedIn) {
+                setOffcanvasStatus('Log in to view your cart.', 'info');
+                return null;
+            }
+
+            if (showLoading) {
+                setOffcanvasStatus('Loading your cart...', 'info');
+            }
 
             try {
-                const cartResponse = await StoreClient.getCart(navbarStoreLocator);
-                const cartProductsList = Array.isArray(cartResponse?.data?.cartProducts) ? cartResponse.data.cartProducts : [];
-                showNavbarCartCount(cartProductsList.length);
+                const cartResponse = await StoreClient.getCart(locatorToUse);
+                clearOffcanvasStatus();
+                return cartResponse?.data ?? null;
             } catch (cartLoadError) {
-                console.error('Failed to load navbar cart count', cartLoadError);
-                showNavbarCartError(cartLoadError?.message);
+                console.error('Failed to fetch cart', cartLoadError);
+                setOffcanvasStatus(cartLoadError?.message || 'Unable to load cart right now.', 'danger');
+                return null;
             }
         };
 
-        fetchNavbarCartCount();
+        if (cartOffcanvas) {
+            cartOffcanvas.addEventListener('show.bs.offcanvas', () => {
+                fetchOffcanvasCart();
+            });
+        }
+
+        window.fetchOffcanvasCart = fetchOffcanvasCart;
+
+        if (navbarCartBadgeElement && navbarCartButtonElement) {
+            if (!userIsLoggedIn) {
+                navbarCartBadgeElement.classList.add('d-none');
+                return;
+            }
+
+            const showNavbarCartBadge = (htmlContent, title) => {
+                navbarCartBadgeElement.innerHTML = htmlContent;
+                navbarCartBadgeElement.title = title;
+                navbarCartBadgeElement.classList.remove('d-none');
+            };
+
+            const showNavbarCartLoading = () => {
+                showNavbarCartBadge('<i class="fa-solid fa-spinner fa-spin"></i><span class="visually-hidden">Loading cart</span>', 'Loading cart');
+            };
+
+            const showNavbarCartError = (errorMessage) => {
+                const errorText = errorMessage || 'Unable to load cart';
+                showNavbarCartBadge('<i class="fa-solid fa-triangle-exclamation"></i><span class="visually-hidden">' + errorText + '</span>', errorText);
+            };
+
+            const showNavbarCartCount = (count) => {
+                const accessibleText = `Cart has ${count} item${count === 1 ? '' : 's'}`;
+                navbarCartBadgeElement.innerHTML = '';
+                navbarCartBadgeElement.textContent = `${count}`;
+                const screenReaderText = document.createElement('span');
+                screenReaderText.className = 'visually-hidden';
+                screenReaderText.textContent = accessibleText;
+                navbarCartBadgeElement.appendChild(screenReaderText);
+                navbarCartBadgeElement.title = accessibleText;
+                navbarCartBadgeElement.classList.remove('d-none');
+            };
+
+            const fetchNavbarCartCount = async () => {
+                showNavbarCartLoading();
+
+                try {
+                    const cartResponse = await StoreClient.getCart(navbarStoreLocator);
+                    const cartProductsList = Array.isArray(cartResponse?.data?.cartProducts) ? cartResponse.data.cartProducts : [];
+                    showNavbarCartCount(cartProductsList.length);
+                } catch (cartLoadError) {
+                    console.error('Failed to load navbar cart count', cartLoadError);
+                    showNavbarCartError(cartLoadError?.message);
+                }
+            };
+
+            fetchNavbarCartCount();
+        }
     })();
 </script>
 <?php } ?>

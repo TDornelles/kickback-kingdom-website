@@ -635,29 +635,20 @@ if (Session::isLoggedIn()) {
 
             async function fetchCart()
             {
-                if(!storeLocator)
+                const fetchCartFn = window.fetchOffcanvasCart;
+
+                if (typeof fetchCartFn !== 'function')
                 {
-                    console.error("Missing store locator; unable to refresh cart");
+                    console.warn('Cart offcanvas handler unavailable; unable to refresh cart.');
                     return;
                 }
 
-                try
-                {
-                    const cartResp = await StoreClient.getCart(storeLocator);
-                    cart = cartResp.data ?? cart;
-                }
-                catch (e)
-                {
-                    console.error("Failed to fetch cart", e);
-                }
-            }
+                const refreshedCart = await fetchCartFn({ storeLocatorOverride: storeLocator, showLoading: true });
 
-            const cartOffcanvas = document.getElementById('offcanvasMenuRightShoppingCart');
-            if(cartOffcanvas)
-            {
-                cartOffcanvas.addEventListener('show.bs.offcanvas', async () => {
-                    await fetchCart();
-                });
+                if(refreshedCart)
+                {
+                    cart = refreshedCart;
+                }
             }
 
             async function addProductToCart(productLocator)
