@@ -492,7 +492,6 @@ $currentWaypointIndex = min((int) floor($adjustedProgress / $segmentPercentage),
     max-height: 360px;
     overflow-y: auto;
     padding-right: 6px;
-    scroll-snap-type: y mandatory;
 }
 
 .timeline-scroll::-webkit-scrollbar {
@@ -519,7 +518,6 @@ $currentWaypointIndex = min((int) floor($adjustedProgress / $segmentPercentage),
     border: 1px solid rgba(255, 255, 255, 0.06);
     transition: border-color 0.2s ease, transform 0.2s ease;
     min-height: 110px;
-    scroll-snap-align: start;
 }
 
 .timeline-item .fw-semibold {
