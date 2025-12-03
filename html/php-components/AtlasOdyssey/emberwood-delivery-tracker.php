@@ -1,66 +1,13 @@
 <?php
 declare(strict_types=1);
 
-use Kickback\AtlasOdyssey\Emberwood\EmberwoodTradingCargoship;
-use Kickback\Backend\Controllers\AccountController;
 use Kickback\Backend\Controllers\ShipmentController;
-use Kickback\Backend\Views\vRecordId;
-use Kickback\AtlasOdyssey\AtlasDateTime;
-// Create an instance of the EmberwoodTradingCargoship
-$emberwoodShip = new EmberwoodTradingCargoship(2);
-
-// Journey progress and ATC date
-$progressPercentage = $emberwoodShip->getJourneyPercentage();
-$roundedProgress = round($progressPercentage, 1);
-$timeUntilNextDelivery = $emberwoodShip->getTimeUntilNextDeliveryInATC();
-$currentATCDate = $emberwoodShip->getCurrentATCDateTime();
-
-// Get status details with color and icon
-$shipLocation = $emberwoodShip->getLocation();
-$shipStatus = $emberwoodShip->getShipStatusWithDetails();
-$trackingNumber = $emberwoodShip->getTrackingNumber();
-
-
 $imgStarMap = "https://png.pngtree.com/background/20230612/original/pngtree-solar-system-with-many-planets-picture-image_3362535.jpg";
 $imgShip = "https://i0.wp.com/thelegocarblog.com/wp-content/uploads/2024/09/Screenshot-2024-09-19-at-13.52.59.png";
 
-// Calculate dynamic left positioning with boundaries for 0% and 100% to keep icon within bounds
-$adjustedProgress = max(0, min($roundedProgress, 100));
-$leftPosition = "{$adjustedProgress}%";
+$trackerData = ShipmentController::getEmberwoodTrackerData();
 
-$shipmentManifest = [];
-$itemInfos = [];
-
-
-$profile = AccountController::getAccountByUsername("Alibaba");
-$profile = $profile->data;
-
-$shipmentManifestResp = ShipmentController::getShipmentManifest($trackingNumber);
-
-if ($shipmentManifestResp->success == false)
-{
-    print_r($shipmentManifestResp);
-}
-else{
-
-    $shipmentManifest = $shipmentManifestResp->data;
-    foreach ($shipmentManifest as $accountInventoryItemStack) {
-
-        array_push($itemInfos, $accountInventoryItemStack->item);
-    }
-
-}
-
-
-
-$itemInformationJSON = json_encode($itemInfos);
-$itemStackInformationJSON = json_encode($shipmentManifest);
-
-$journeyWaypoints = $emberwoodShip->getJourneyWaypoints();
-$waypointCount = max(count($journeyWaypoints) - 1, 1);
-$segmentPercentage = 100 / $waypointCount;
-$currentWaypointIndex = min((int) floor($adjustedProgress / $segmentPercentage), count($journeyWaypoints) - 1);
-
+extract($trackerData, EXTR_SKIP);
 ?>
 
 
@@ -116,9 +63,9 @@ $currentWaypointIndex = min((int) floor($adjustedProgress / $segmentPercentage),
             <div class="display-6 mb-0 text-warning"><i class="<?= $shipStatus->icon; ?>"></i></div>
             <div class="flex-grow-1">
                 <p class="text-uppercase text-secondary small mb-1">Fleet Status</p>
-                <h4 class="mb-0">Currently <?= strtolower($shipStatus->text); ?></h4>
+                <h4 class="mb-0"><?= $fleetStatusHeadline; ?></h4>
             </div>
-            <span class="badge bg-<?= $shipStatus->bootstrapColorClass; ?> text-bg-<?= $shipStatus->bootstrapColorClass; ?> px-3 py-2 shadow-sm text-wrap"><?= $shipStatus->text; ?></span>
+            <span class="badge bg-<?= $shipStatus->bootstrapColorClass; ?> text-bg-<?= $shipStatus->bootstrapColorClass; ?> px-3 py-2 shadow-sm text-wrap"><?= $fleetStatusBadge; ?></span>
         </div>
 
         <div class="row g-3 align-items-stretch mb-4">

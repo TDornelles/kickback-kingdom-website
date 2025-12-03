@@ -7,6 +7,7 @@ namespace Kickback\Backend\Controllers;
 use Kickback\Backend\Controllers\LootController;
 use Kickback\Backend\Controllers\ItemController;
 use Kickback\AtlasOdyssey\Emberwood\EmberwoodTradingCargoship;
+use Kickback\AtlasOdyssey\Emberwood\ShipStatus;
 use Kickback\Backend\Models\Response;
 use Kickback\Backend\Models\ShipmentManifestItem;
 use Kickback\Services\Database;
@@ -123,7 +124,56 @@ class ShipmentController
             return new Response(false, "Error validating tracking number: " . $e->getMessage());
         }
     }
-    
+
+    public static function getEmberwoodTrackerData(int $shipId = 2, string $username = 'Alibaba'): array
+    {
+        $emberwoodShip = new EmberwoodTradingCargoship($shipId);
+
+        $progressPercentage = $emberwoodShip->getJourneyPercentage();
+        $roundedProgress = round($progressPercentage, 1);
+        $adjustedProgress = max(0, min($roundedProgress, 100));
+        $leftPosition = "{$adjustedProgress}%";
+
+        $timeUntilNextDelivery = $emberwoodShip->getTimeUntilNextDeliveryInATC();
+        $currentATCDate = $emberwoodShip->getCurrentATCDateTime();
+        $shipLocation = $emberwoodShip->getLocation();
+        $shipStatus = $emberwoodShip->getShipStatusWithDetails();
+        $trackingNumber = $emberwoodShip->getTrackingNumber();
+
+        $shipmentManifestResp = self::getShipmentManifest($trackingNumber);
+        $shipmentManifest = $shipmentManifestResp->success ? $shipmentManifestResp->data : [];
+
+        $journeyWaypoints = $emberwoodShip->getJourneyWaypoints();
+        $waypointCount = max(count($journeyWaypoints) - 1, 1);
+        $segmentPercentage = 100 / $waypointCount;
+        $currentWaypointIndex = min((int) floor($adjustedProgress / $segmentPercentage), count($journeyWaypoints) - 1);
+
+        [$fleetStatusHeadline, $fleetStatusBadge] = self::buildFleetStatusPair(
+            $shipStatus,
+            $shipLocation,
+            $trackingNumber
+        );
+
+        return [
+            'progressPercentage' => $progressPercentage,
+            'roundedProgress' => $roundedProgress,
+            'adjustedProgress' => $adjustedProgress,
+            'leftPosition' => $leftPosition,
+            'timeUntilNextDelivery' => $timeUntilNextDelivery,
+            'currentATCDate' => $currentATCDate,
+            'shipLocation' => $shipLocation,
+            'shipStatus' => $shipStatus,
+            'trackingNumber' => $trackingNumber,
+            'shipmentManifest' => $shipmentManifest,
+            'journeyWaypoints' => $journeyWaypoints,
+            'segmentPercentage' => $segmentPercentage,
+            'currentWaypointIndex' => $currentWaypointIndex,
+            'fleetStatusHeadline' => $fleetStatusHeadline,
+            'fleetStatusBadge' => $fleetStatusBadge,
+            'username' => $username,
+        ];
+    }
+
     private static function calculateItemCount(float $probability, int $maxCount): int
     {
         $count = 0;
@@ -133,5 +183,145 @@ class ShipmentController
             }
         }
         return $count;
+    }
+
+    private static function buildFleetStatusPair(ShipStatus $shipStatus, string $shipLocation, string $seed): array
+    {
+        $templates = [
+            'left' => [
+                'Currently %statusLower near %location',
+                'Live update: %status (%location)',
+                'Bridge reports "%status" in-sector',
+                'Fleet log shows %statusLower over %location',
+                'Situation: %statusLower in this corridor',
+            ],
+            'right' => [
+                '%response',
+                'Response: %response',
+                'Ops note: %response',
+                'Action: %response',
+                'Command focus: %response',
+            ],
+        ];
+
+        $context = self::buildFleetStatusContext($shipStatus, $shipLocation, $seed);
+
+        $leftTemplates = $templates['left'];
+        $rightTemplates = $templates['right'];
+
+        $seedValue = crc32($context['status'] . $context['location'] . $context['seed']);
+        $leftIndex = $seedValue % count($leftTemplates);
+        $rightIndex = ($seedValue >> 3) % count($rightTemplates);
+
+        $headline = self::renderFleetStatusTemplate($leftTemplates[$leftIndex], $context);
+        $badge = self::renderFleetStatusTemplate($rightTemplates[$rightIndex], $context);
+
+        if ($badge === $headline) {
+            $badge = self::renderFleetStatusTemplate($rightTemplates[($rightIndex + 1) % count($rightTemplates)], $context);
+        }
+
+        return [$headline, $badge];
+    }
+
+    private static function buildFleetStatusContext(ShipStatus $shipStatus, string $shipLocation, string $seed): array
+    {
+        $responseOptions = self::getFleetResponseLines($shipStatus);
+        $responseIndex = crc32($seed . $shipStatus->text) % count($responseOptions);
+
+        return [
+            'status' => $shipStatus->text,
+            'location' => $shipLocation,
+            'response' => $responseOptions[$responseIndex],
+            'seed' => $seed,
+        ];
+    }
+
+    private static function getFleetResponseLines(ShipStatus $shipStatus): array
+    {
+        $statusKey = strtolower($shipStatus->text);
+
+        $typeResponses = [
+            'combat' => [
+                'Weapons teams are rotating shield facings and tracking hostiles',
+                'Tactical is coordinating countermeasures and drone screens',
+                'Security has teams at key bulkheads and evacuation routes',
+            ],
+            'science' => [
+                'Science bay is crunching scans and uplinking findings',
+                'Sensor arrays are running deep-spectrum passes',
+                'Research teams are cataloging samples and anomalies',
+            ],
+            'normal' => [
+                'Ops is maintaining thrust and nav corrections',
+                'Bridge is running continuous course checks',
+                'Crew logging drive temps and hull telemetry',
+            ],
+        ];
+
+        $statusResponses = [
+            'delayed' => [
+                'Command dispatched override to regain schedule',
+                'Engineering is rebalancing thrust to claw back time',
+                'Ops is resequencing cargo drops to avoid impact',
+            ],
+            'holding' => [
+                'Traffic control has us staged and comms are open',
+                'Bridge is waiting on new vector clearance',
+                'Ops is using the pause to run quick diagnostics',
+            ],
+            'docked' => [
+                'Port crew is guiding the cargo unload',
+                'Ops is confirming manifests with station logistics',
+                'Systems are idling while the bay teams work',
+            ],
+            'loading' => [
+                'Cargo teams are locking down the bay for departure',
+                'Ops is sequencing pallets for fastest exit',
+                'Quartermasters are double-checking manifests',
+            ],
+            'unloading' => [
+                'Cargo teams are clearing holds in priority order',
+                'Ops is reconciling delivered containers',
+                'Port liaison is verifying custody transfers',
+            ],
+            'maintenance' => [
+                'Engineering has diagnostics running shipwide',
+                'Ops queued hot-swap spares from onboard stores',
+                'Bridge is holding until systems sign off',
+            ],
+            'en route' => [
+                'Helm is trimming the sails for smoother current riding',
+                'Navigation is plotting micro-corrections on the fly',
+                'Ops is balancing power between sails and comms',
+            ],
+        ];
+
+        $matchedStatusResponses = [];
+        foreach ($statusResponses as $key => $responses) {
+            if (str_contains($statusKey, $key)) {
+                $matchedStatusResponses = array_merge($matchedStatusResponses, $responses);
+            }
+        }
+
+        $typeBucket = $typeResponses[$shipStatus->type] ?? $typeResponses['normal'];
+        $fallback = [
+            'Ops is monitoring systems and ready to pivot',
+            'Bridge is coordinating with nearby relays',
+            'Crew is standing by for the next directive',
+        ];
+
+        $responsePool = array_unique(array_merge($matchedStatusResponses, $typeBucket, $fallback));
+
+        return $responsePool ?: $fallback;
+    }
+
+    private static function renderFleetStatusTemplate(string $template, array $context): string
+    {
+        return strtr($template, [
+            '%status' => $context['status'],
+            '%statusLower' => strtolower($context['status']),
+            '%location' => $context['location'],
+            '%response' => $context['response'],
+        ]);
     }
 }
