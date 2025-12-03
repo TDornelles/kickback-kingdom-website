@@ -269,6 +269,7 @@ $itemOptions = $itemOptionsResp->success ? $itemOptionsResp->data : [];
             const poolForm = document.getElementById('poolItemForm');
             const probabilityInput = document.getElementById('probability');
             const maxCountInput = document.getElementById('max_count');
+            let shouldReopenPoolAfterSelect = false;
 
             function updatePreview(item) {
                 if (!selectedPreview || !selectedTitle || !selectedMeta) {
@@ -319,6 +320,10 @@ $itemOptions = $itemOptionsResp->success ? $itemOptionsResp->data : [];
             if (openSearchButton) {
                 openSearchButton.addEventListener('click', () => {
                     if (!selectorModal) return;
+                    shouldReopenPoolAfterSelect = poolModalEl?.classList.contains('show') ?? false;
+                    if (shouldReopenPoolAfterSelect) {
+                        poolModal?.hide();
+                    }
                     const modalInstance = bootstrap.Modal.getOrCreateInstance(selectorModal);
                     modalInstance.show();
                 });
@@ -334,6 +339,13 @@ $itemOptions = $itemOptionsResp->success ? $itemOptionsResp->data : [];
                     itemIdInput.value = item.crand;
                 }
                 updatePreview(item);
+
+                const modalInstance = bootstrap.Modal.getOrCreateInstance(selectorModal);
+                modalInstance.hide();
+                if (shouldReopenPoolAfterSelect && poolModal) {
+                    poolModal.show();
+                }
+                shouldReopenPoolAfterSelect = false;
             });
 
             if (poolForm) {
