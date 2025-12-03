@@ -98,13 +98,18 @@ $journeyWaypoints = [
 
         <!-- Star Map and Ship Progress Display -->
             <div class="emberwood-tracker-progress-route mb-3">
+                <div class="emberwood-progress-ambient">
+                    <div class="emberwood-progress-glow"></div>
+                    <div class="emberwood-progress-glow emberwood-progress-glow-secondary"></div>
+                    <div class="emberwood-progress-stars"></div>
+                </div>
                 <div class="progress bg-dark bg-opacity-50 position-absolute top-50 translate-middle-y rounded-pill shadow-sm emberwood-progress-track">
                     <div class="progress-bar bg-warning" role="progressbar" style="width: <?= $adjustedProgress; ?>%;"></div>
                 </div>
                 <div class="emberwood-progress-overlay">
                     <div class="emberwood-tracker-ship-icon" style="left: <?= $leftPosition; ?>;">
+                        <div class="emberwood-ship-trail"></div>
                         <img src="<?= $imgShip; ?>" alt="Emberwood Ship" class="emberwood-tracker-ship-image">
-                        <span class="ship-progress-label badge bg-dark bg-opacity-75 text-light mt-2"><?= number_format($roundedProgress, 1); ?>% complete</span>
                     </div>
                 </div>
             </div>
@@ -280,6 +285,57 @@ $journeyWaypoints = [
     border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.emberwood-progress-ambient {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    border-radius: 14px;
+}
+
+.emberwood-progress-ambient::before,
+.emberwood-progress-ambient::after {
+    content: "";
+    position: absolute;
+    inset: 5%;
+    background: conic-gradient(from 180deg, rgba(251, 191, 36, 0.04), rgba(249, 115, 22, 0.12), rgba(14, 165, 233, 0.08), rgba(251, 191, 36, 0.04));
+    filter: blur(24px);
+    animation: emberwood-aurora 12s ease-in-out infinite;
+    opacity: 0.6;
+}
+
+.emberwood-progress-ambient::after {
+    animation-direction: reverse;
+    animation-duration: 16s;
+    opacity: 0.35;
+}
+
+.emberwood-progress-glow {
+    position: absolute;
+    inset: 18% 8%;
+    background: radial-gradient(circle at 40% 50%, rgba(251, 191, 36, 0.35), transparent 50%);
+    filter: blur(16px);
+    animation: emberwood-pulse 5s ease-in-out infinite;
+}
+
+.emberwood-progress-glow-secondary {
+    inset: 55% 20% 10% 45%;
+    background: radial-gradient(circle at 60% 50%, rgba(59, 130, 246, 0.25), transparent 45%);
+    animation-duration: 7s;
+}
+
+.emberwood-progress-stars {
+    position: absolute;
+    inset: 0;
+    background-image:
+        radial-gradient(1px 1px at 10% 20%, rgba(255, 255, 255, 0.8), transparent),
+        radial-gradient(2px 2px at 25% 60%, rgba(255, 220, 150, 0.75), transparent),
+        radial-gradient(1px 1px at 70% 35%, rgba(255, 255, 255, 0.6), transparent),
+        radial-gradient(2px 2px at 85% 75%, rgba(255, 255, 255, 0.7), transparent);
+    animation: emberwood-twinkle 8s ease-in-out infinite;
+    opacity: 0.7;
+}
+
 .emberwood-progress-track {
     left: 2.5rem;
     right: 2.5rem;
@@ -287,6 +343,23 @@ $journeyWaypoints = [
     height: 16px;
     border: 1px solid rgba(255, 255, 255, 0.12);
     box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+.emberwood-progress-track .progress-bar {
+    background: linear-gradient(90deg, #fbbf24 0%, #f97316 50%, #fbbf24 100%);
+    background-size: 220% 100%;
+    animation: emberwood-progress-flow 6s ease-in-out infinite;
+    box-shadow: 0 0 18px rgba(251, 191, 36, 0.6), 0 0 40px rgba(249, 115, 22, 0.35);
+}
+
+.emberwood-progress-track::after {
+    content: "";
+    position: absolute;
+    inset: -6px;
+    border-radius: 999px;
+    border: 1px solid rgba(251, 191, 36, 0.25);
+    animation: emberwood-track-glow 4s ease-in-out infinite;
+    pointer-events: none;
 }
 
 .emberwood-progress-overlay {
@@ -305,12 +378,20 @@ $journeyWaypoints = [
     transition: left 1s ease-in-out;
     text-align: center;
     max-width: 220px;
+    animation: emberwood-ship-bob 5s ease-in-out infinite;
 }
 
-.ship-progress-label {
-    display: inline-block;
-    margin-top: 0.35rem;
-    font-size: 0.85rem;
+.emberwood-ship-trail {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-65%, -45%);
+    width: 110px;
+    height: 24px;
+    background: radial-gradient(circle at 0% 50%, rgba(251, 191, 36, 0.75), transparent 55%);
+    filter: blur(12px);
+    opacity: 0.75;
+    animation: emberwood-trail-fade 2.5s ease-in-out infinite;
 }
 
 .emberwood-tracker-ship-image {
@@ -324,6 +405,44 @@ $journeyWaypoints = [
     transform: scale(1.15) rotate(8deg);
     box-shadow: 0px 0px 24px rgba(255, 150, 0, 1);
     cursor: pointer;
+}
+
+@keyframes emberwood-progress-flow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 120% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+@keyframes emberwood-track-glow {
+    0%, 100% { box-shadow: 0 0 12px rgba(251, 191, 36, 0.25); opacity: 0.9; }
+    50% { box-shadow: 0 0 24px rgba(249, 115, 22, 0.35); opacity: 0.55; }
+}
+
+@keyframes emberwood-ship-bob {
+    0%, 100% { transform: translate(-50%, -50%) translateY(0); }
+    50% { transform: translate(-50%, -50%) translateY(-6px); }
+}
+
+@keyframes emberwood-trail-fade {
+    0% { opacity: 0.85; transform: translate(-65%, -45%) scaleX(1); }
+    50% { opacity: 0.45; transform: translate(-65%, -45%) scaleX(0.7); }
+    100% { opacity: 0.85; transform: translate(-65%, -45%) scaleX(1); }
+}
+
+@keyframes emberwood-aurora {
+    0% { transform: translateX(-6%) rotate(0deg); }
+    50% { transform: translateX(6%) rotate(180deg); }
+    100% { transform: translateX(-6%) rotate(360deg); }
+}
+
+@keyframes emberwood-pulse {
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50% { opacity: 0.85; transform: scale(1.15); }
+}
+
+@keyframes emberwood-twinkle {
+    0%, 100% { opacity: 0.45; filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.6)); }
+    50% { opacity: 0.9; filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.9)); }
 }
 
 .timeline {
