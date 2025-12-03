@@ -708,7 +708,7 @@ if (Session::isLoggedIn()) {
             <h2 class="deliveries-title">Upcoming Deliveries</h2>
             <p class="deliveries-subtext mb-0">See what shipments are headed to Emberwood Market next and plan your haul.</p>
 
-            <div class="delivery-meta">
+            <div class="delivery-meta mt-2">
               <span class="delivery-pill"><i class="fa-solid fa-sparkles"></i> Featured crates</span>
               <span class="delivery-pill"><i class="fa-solid fa-fire"></i> Hot drop ETA</span>
               <span class="delivery-pill"><i class="fa-solid fa-shield-heart"></i> Guild dispatch</span>
@@ -743,7 +743,7 @@ if (Session::isLoggedIn()) {
               </a>
               <div class="cta-footer mt-3">
                 <i class="fa-regular fa-clock"></i>
-                Updated hourly via Emberwood dispatch
+                Live via Emberwood dispatch
               </div>
             </div>
           </div>
