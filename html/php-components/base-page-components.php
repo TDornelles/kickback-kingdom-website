@@ -1559,6 +1559,9 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
                         <li>
                             <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/market.php"><i class="nav-icon fa-solid fa fa-space-shuttle"></i>Emberwood Market</a>
                         </li>
+                        <li>
+                            <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/emberwood-delivery.php"><i class="nav-icon fa-solid fa-truck-fast"></i>Emberwood Delivery Schedule</a>
+                        </li>
                     </ul>
                 </li>
                 <li class="nav-item dropdown" data-bs-theme="light">
