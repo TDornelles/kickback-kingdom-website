@@ -65,11 +65,19 @@ extract($trackerData, EXTR_SKIP);
                     <i class="<?= $shipStatus->icon; ?>"></i>
                 </div>
                 <div class="flex-grow-1">
-                    <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
-                        <div>
-                            <p class="text-uppercase text-secondary small mb-1">Fleet Status</p>
-                            <div class="text-secondary">Current condition: <span class="text-light fw-semibold"><?= $shipStatus->text; ?></span></div>
-                            <div class="text-secondary">Location: <span class="text-light fw-semibold"><?= $shipLocation; ?></span></div>
+                    <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-start">
+                        <div class="flex-grow-1">
+                            <p class="text-uppercase text-secondary small mb-2">Fleet Status</p>
+                            <ul class="fleet-status-list mb-0">
+                                <li>
+                                    <span class="label">Condition</span>
+                                    <span class="value text-light fw-semibold"><?= $shipStatus->text; ?></span>
+                                </li>
+                                <li>
+                                    <span class="label">Location</span>
+                                    <span class="value text-light fw-semibold"><?= $shipLocation; ?></span>
+                                </li>
+                            </ul>
                         </div>
                         <div class="text-lg-end">
                             <span class="badge rounded-pill bg-<?= $shipStatus->bootstrapColorClass; ?> bg-opacity-75 text-dark fw-semibold">
@@ -242,6 +250,27 @@ extract($trackerData, EXTR_SKIP);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 10px;
     padding: 0.65rem 0.85rem;
+}
+
+.fleet-status-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 0.35rem;
+}
+
+.fleet-status-list .label {
+    color: #cbd5e1;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-size: 0.8rem;
+    display: inline-block;
+    min-width: 110px;
+}
+
+.fleet-status-list .value {
+    font-size: 1rem;
 }
 
 .response-callout {
