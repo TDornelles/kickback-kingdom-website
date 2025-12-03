@@ -8,6 +8,10 @@
         return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_PAGE_SIZE;
     }
 
+    function normalizeFilterValue(value) {
+        return (value ?? '').toString().trim().toLowerCase();
+    }
+
     function getFilterValues(modalEl) {
         const searchInput = modalEl.querySelector('[data-item-selector-search]');
         const typeFilter = modalEl.querySelector('[data-item-selector-filter="type"]');
@@ -15,10 +19,10 @@
         const equipmentFilter = modalEl.querySelector('[data-item-selector-filter="equipment"]');
 
         return {
-            search: (searchInput?.value || '').trim().toLowerCase(),
-            type: (typeFilter?.value || '').toLowerCase(),
-            category: (categoryFilter?.value || '').toLowerCase(),
-            equipment: (equipmentFilter?.value || '').toLowerCase(),
+            search: normalizeFilterValue(searchInput?.value),
+            type: normalizeFilterValue(typeFilter?.value),
+            category: normalizeFilterValue(categoryFilter?.value),
+            equipment: normalizeFilterValue(equipmentFilter?.value),
         };
     }
 
@@ -44,11 +48,11 @@
         const matchingCards = [];
 
         cards.forEach(card => {
-            const name = (card.dataset.itemName || '').toLowerCase();
-            const id = (card.dataset.itemId || '').toLowerCase();
-            const cardType = (card.dataset.itemType || '').toLowerCase();
-            const cardCategory = (card.dataset.itemCategory || '').toLowerCase();
-            const cardEquipment = (card.dataset.itemEquipment || '').toLowerCase();
+            const name = normalizeFilterValue(card.dataset.itemName);
+            const id = normalizeFilterValue(card.dataset.itemId);
+            const cardType = normalizeFilterValue(card.dataset.itemType);
+            const cardCategory = normalizeFilterValue(card.dataset.itemCategory);
+            const cardEquipment = normalizeFilterValue(card.dataset.itemEquipment);
 
             const matchesSearch = !search || name.includes(search) || id.includes(search);
             const matchesType = !type || cardType === type;
