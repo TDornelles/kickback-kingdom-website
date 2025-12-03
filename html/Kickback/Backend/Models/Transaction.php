@@ -2,22 +2,24 @@
 
 declare(strict_types = 1);
 
-namespace Kickback\Backend\Views;
+namespace Kickback\Backend\Models;
 
 use Kickback\Backend\Models\Enums\TransactionType;
+use Kickback\Backend\Views\vAccount;
+use Kickback\Backend\Views\vRecordId;
 
-class vTransaction extends vRecordId
+class Transaction extends RecordId
 {
     public bool $complete;
     public bool $void;
     public string $description;
-    public TransactionType $type;
+    public string $type;
     public vAccount $firstAccount;
     public vAccount $secondAccount;
 
     /**
-     * Access $transactionComponets through functions in order to allow type-checking when adding components.
-     * Only vTransactionComponents should be in the array
+     * Access $transactionComponents through functions in order to allow type-checking when adding components.
+     * Only TransactionComponents should be in the array
      */
     private array $transactionComponents;
 
@@ -27,7 +29,7 @@ class vTransaction extends vRecordId
         return $this->transactionComponents;
     }
 
-    public function addComponent(vTransactionComponent $component) : void
+    public function addComponent(TransactionComponent $component) : void
     {
         array_push($this->transactionComponents, $component);
     }

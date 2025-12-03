@@ -352,6 +352,8 @@ class StoreController
             static::markUsesForCartCoupons($cart);
             static::markCouponCartProductLinksAsCheckedOut($cart);
 
+            //transactions
+
             $conn->commit();
 
             $resp->success = true;
@@ -6127,4 +6129,5 @@ class StoreController
 
         return $result->num_rows > 0;
     }
+
 }
