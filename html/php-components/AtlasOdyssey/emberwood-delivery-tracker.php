@@ -58,6 +58,8 @@ $itemStackInformationJSON = json_encode($shipmentManifest);
 
 $journeyWaypoints = $emberwoodShip->getJourneyWaypoints();
 $waypointCount = max(count($journeyWaypoints) - 1, 1);
+$segmentPercentage = 100 / $waypointCount;
+$currentWaypointIndex = min((int) floor($adjustedProgress / $segmentPercentage), count($journeyWaypoints) - 1);
 
 ?>
 
@@ -115,14 +117,39 @@ $waypointCount = max(count($journeyWaypoints) - 1, 1);
                 <div class="card h-100 border-0 glassy-panel">
                     <div class="card-body">
                         <h5 class="fw-bold mb-3 emberwood-tracker-label"><i class="fas fa-route me-2 text-warning"></i>Journey Waypoints</h5>
-                        <div class="timeline">
+                        <div class="timeline timeline-scroll">
                             <?php foreach ($journeyWaypoints as $index => $waypoint): ?>
-                                <?php $isReached = $adjustedProgress >= ($index * (100 / $waypointCount)); ?>
-                                <div class="timeline-item <?= $isReached ? 'active' : ''; ?>">
+                                <?php
+                                    $segmentStart = $index * $segmentPercentage;
+                                    $segmentEnd = ($index + 1) * $segmentPercentage;
+                                    $isReached = $adjustedProgress >= $segmentStart;
+                                    $isCurrent = $currentWaypointIndex === $index;
+                                    $progressIntoSegment = $adjustedProgress - $segmentStart;
+                                    $segmentLength = max($segmentEnd - $segmentStart, 1);
+                                    $segmentProgress = max(0, min(($progressIntoSegment / $segmentLength) * 100, 100));
+                                    $isFinalWaypoint = $index === count($journeyWaypoints) - 1;
+                                ?>
+                                <div class="timeline-item <?= $isReached ? 'active' : ''; ?> <?= $isCurrent ? 'current' : ''; ?>">
                                     <div class="timeline-icon"><i class="fas <?= $waypoint['icon']; ?>"></i></div>
-                                    <div>
-                                        <div class="fw-semibold mb-1"><?= $waypoint['label']; ?></div>
-                                        <small class="text-secondary">Checkpoint <?= $index + 1; ?> of <?= count($journeyWaypoints); ?></small>
+                                    <div class="flex-grow-1">
+                                        <div class="fw-semibold mb-1 d-flex justify-content-between align-items-center gap-2 flex-wrap">
+                                            <span><?= $waypoint['label']; ?></span>
+                                            <?php if ($isCurrent): ?>
+                                                <span class="badge bg-warning bg-opacity-25 text-warning border border-warning">Current</span>
+                                            <?php elseif ($isReached): ?>
+                                                <span class="badge bg-success bg-opacity-25 text-success border border-success">Reached</span>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center small text-secondary">
+                                            <span>Checkpoint <?= $index + 1; ?> of <?= count($journeyWaypoints); ?></span>
+                                            <span><?= $isFinalWaypoint ? 'Final destination' : 'Progress to next point'; ?></span>
+                                        </div>
+                                        <div class="progress waypoint-progress mt-2" role="progressbar" aria-valuenow="<?= (int) $segmentProgress; ?>" aria-valuemin="0" aria-valuemax="100">
+                                            <div class="progress-bar <?= $isFinalWaypoint ? 'bg-success' : 'bg-warning'; ?>" style="width: <?= $isFinalWaypoint ? ($isReached ? '100' : (string) $segmentProgress) : (string) $segmentProgress; ?>%;"></div>
+                                        </div>
+                                        <div class="small text-secondary mt-1">
+                                            <?= $isFinalWaypoint ? 'Journey completion status' : 'Progress toward the next waypoint'; ?>
+                                        </div>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
@@ -175,6 +202,20 @@ $waypointCount = max(count($journeyWaypoints) - 1, 1);
         </div> 
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const timelineContainer = document.querySelector('.timeline-scroll');
+        if (!timelineContainer) return;
+
+        const activeWaypoint = timelineContainer.querySelector('.timeline-item.current') || timelineContainer.querySelector('.timeline-item.active:last-child');
+
+        if (activeWaypoint) {
+            const offset = activeWaypoint.offsetTop - (timelineContainer.clientHeight / 2) + (activeWaypoint.clientHeight / 2);
+            timelineContainer.scrollTo({ top: offset, behavior: 'smooth' });
+        }
+    });
+</script>
 
 <style>
 .emberwood-tracker-card {
@@ -447,6 +488,27 @@ $waypointCount = max(count($journeyWaypoints) - 1, 1);
     gap: 1rem;
 }
 
+.timeline-scroll {
+    max-height: 360px;
+    overflow-y: auto;
+    padding-right: 6px;
+    scroll-snap-type: y mandatory;
+}
+
+.timeline-scroll::-webkit-scrollbar {
+    width: 8px;
+}
+
+.timeline-scroll::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(251, 191, 36, 0.7), rgba(59, 130, 246, 0.5));
+    border-radius: 999px;
+}
+
+.timeline-scroll::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 999px;
+}
+
 .timeline-item {
     display: flex;
     align-items: center;
@@ -456,6 +518,8 @@ $waypointCount = max(count($journeyWaypoints) - 1, 1);
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.06);
     transition: border-color 0.2s ease, transform 0.2s ease;
+    min-height: 110px;
+    scroll-snap-align: start;
 }
 
 .timeline-item .fw-semibold {
@@ -468,6 +532,11 @@ $waypointCount = max(count($journeyWaypoints) - 1, 1);
     transform: translateY(-2px);
 }
 
+.timeline-item.current {
+    border-color: #38bdf8;
+    box-shadow: 0 10px 24px rgba(56, 189, 248, 0.2);
+}
+
 .timeline-icon {
     width: 42px;
     height: 42px;
@@ -477,6 +546,17 @@ $waypointCount = max(count($journeyWaypoints) - 1, 1);
     background: rgba(251, 191, 36, 0.14);
     color: #fbbf24;
     font-size: 1.1rem;
+}
+
+.waypoint-progress {
+    height: 8px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.waypoint-progress .progress-bar {
+    background: linear-gradient(90deg, #fbbf24 0%, #f97316 50%, #fbbf24 100%);
 }
 
 .ship-status-text {
