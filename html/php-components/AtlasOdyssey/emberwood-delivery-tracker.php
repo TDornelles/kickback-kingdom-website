@@ -11,6 +11,7 @@ $emberwoodShip = new EmberwoodTradingCargoship(2);
 
 // Journey progress and ATC date
 $progressPercentage = $emberwoodShip->getJourneyPercentage();
+$roundedProgress = round($progressPercentage, 1);
 $timeUntilNextDelivery = $emberwoodShip->getTimeUntilNextDeliveryInATC();
 $currentATCDate = $emberwoodShip->getCurrentATCDateTime();
 
@@ -24,10 +25,8 @@ $imgStarMap = "https://png.pngtree.com/background/20230612/original/pngtree-sola
 $imgShip = "https://i0.wp.com/thelegocarblog.com/wp-content/uploads/2024/09/Screenshot-2024-09-19-at-13.52.59.png";
 
 // Calculate dynamic left positioning with boundaries for 0% and 100% to keep icon within bounds
-$shipWidth = 60; // Ship image width in pixels
-$shipIconPadding = 64; // breathing room to avoid clipping inside the route container
-$adjustedProgress = max(0, min($progressPercentage, 100));
-$leftPosition = "clamp({$shipIconPadding}px, {$adjustedProgress}%, calc(100% - {$shipIconPadding}px))";
+$adjustedProgress = max(0, min($roundedProgress, 100));
+$leftPosition = "{$adjustedProgress}%";
 
 $shipmentManifest = [];
 $itemInfos = [];
@@ -76,7 +75,7 @@ $journeyWaypoints = [
                 <p class="mb-0 text-secondary">Updated ATC <strong><?= $currentATCDate; ?></strong></p>
             </div>
             <div class="text-lg-end">
-                <span class="badge bg-gradient-primary fs-6 px-3 py-2 shadow-sm">Journey <?= number_format($progressPercentage, 1); ?>%</span>
+                <span class="badge bg-gradient-primary fs-6 px-3 py-2 shadow-sm">Journey <?= number_format($roundedProgress, 1); ?>%</span>
                 <div class="mt-2 text-secondary">Tracking #<?= $trackingNumber; ?></div>
             </div>
         </div>
@@ -98,15 +97,17 @@ $journeyWaypoints = [
         </div>
 
         <!-- Star Map and Ship Progress Display -->
-        <div class="emberwood-tracker-progress-route mb-3">
-            <div class="progress bg-dark bg-opacity-50 position-absolute top-50 translate-middle-y rounded-pill shadow-sm emberwood-progress-track">
-                <div class="progress-bar bg-warning" role="progressbar" style="width: <?= $adjustedProgress; ?>%;"></div>
+            <div class="emberwood-tracker-progress-route mb-3">
+                <div class="progress bg-dark bg-opacity-50 position-absolute top-50 translate-middle-y rounded-pill shadow-sm emberwood-progress-track">
+                    <div class="progress-bar bg-warning" role="progressbar" style="width: <?= $adjustedProgress; ?>%;"></div>
+                </div>
+                <div class="emberwood-progress-overlay">
+                    <div class="emberwood-tracker-ship-icon" style="left: <?= $leftPosition; ?>;">
+                        <img src="<?= $imgShip; ?>" alt="Emberwood Ship" class="emberwood-tracker-ship-image">
+                        <span class="ship-progress-label badge bg-dark bg-opacity-75 text-light mt-2"><?= number_format($roundedProgress, 1); ?>% complete</span>
+                    </div>
+                </div>
             </div>
-            <div class="emberwood-tracker-ship-icon" style="left: <?= $leftPosition; ?>;">
-                <img src="<?= $imgShip; ?>" alt="Emberwood Ship" class="emberwood-tracker-ship-image">
-                <span class="ship-progress-label badge bg-dark bg-opacity-75 text-light mt-2"><?= $progressPercentage; ?>% complete</span>
-            </div>
-        </div>
 
         <div class="row g-3 align-items-stretch mb-4">
             <div class="col-12 col-lg-7">
@@ -286,6 +287,14 @@ $journeyWaypoints = [
     height: 16px;
     border: 1px solid rgba(255, 255, 255, 0.12);
     box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+.emberwood-progress-overlay {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 2.5rem;
+    right: 2.5rem;
 }
 
 /* Ship Icon */
