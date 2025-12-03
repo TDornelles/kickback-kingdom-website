@@ -9,6 +9,7 @@ $session = require(\Kickback\SCRIPT_ROOT . "/api/v1/engine/session/verifySession
 require("php-components/base-page-pull-active-account-info.php");
 
 use Kickback\Backend\Controllers\ShipmentController;
+use Kickback\Common\Version;
 use Kickback\Services\Session;
 
 if (!Session::isAdmin()) {
@@ -106,36 +107,16 @@ $itemOptions = $itemOptionsResp->success ? $itemOptionsResp->data : [];
                 <?php endif; ?>
 
                 <div class="card mb-4">
-                    <div class="card-header bg-light">
-                        <strong>Add or Update Item</strong>
-                    </div>
-                    <div class="card-body">
-                        <form method="POST" class="row g-3 align-items-end">
-                            <input type="hidden" name="action" value="save" />
-                            <div class="col-12 col-md-6 col-lg-5">
-                                <label for="item_id" class="form-label">Item</label>
-                                <select class="form-select" id="item_id" name="item_id" required>
-                                    <option value="" disabled selected>Select an item</option>
-                                    <?php foreach ($itemOptions as $option): ?>
-                                        <option value="<?= $option->crand ?>">#<?= $option->crand ?> — <?= htmlspecialchars($option->name) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="col-6 col-md-3 col-lg-2">
-                                <label for="probability" class="form-label">Probability (0-1)</label>
-                                <input type="number" step="0.01" min="0" max="1" class="form-control" id="probability" name="probability" value="0.25" required>
-                            </div>
-                            <div class="col-6 col-md-3 col-lg-2">
-                                <label for="max_count" class="form-label">Max Count</label>
-                                <input type="number" min="1" class="form-control" id="max_count" name="max_count" value="1" required>
-                            </div>
-                            <div class="col-12 col-md-12 col-lg-3 d-grid">
-                                <button type="submit" class="btn bg-ranked-1 text-white">
-                                    <i class="bi bi-plus-lg me-1"></i> Save to Pool
-                                </button>
-                            </div>
-                        </form>
-                        <p class="text-muted small mt-3 mb-0">Existing entries will be updated if the same item is selected.</p>
+                    <div class="card-body d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+                        <div>
+                            <h2 class="h5 mb-1">Add Items to the Pool</h2>
+                            <p class="text-muted mb-0">Use the reusable item picker to search by name or ID, then set the probability and count.</p>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn bg-ranked-1 text-white" data-open-pool-modal>
+                                <i class="bi bi-plus-lg me-1"></i> Add Item to Pool
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -209,11 +190,168 @@ $itemOptions = $itemOptionsResp->success ? $itemOptionsResp->data : [];
 
             <?php require("php-components/base-page-discord.php"); ?>
         </div>
+        
+        <?php
+        $selectorId = 'adminItemSelector';
+        require("php-components/item-selector-modal.php");
+        ?>
+
+        <div class="modal fade" id="poolItemModal" tabindex="-1" aria-labelledby="poolItemModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <form method="POST" class="modal-content" id="poolItemForm">
+                    <input type="hidden" name="action" value="save" />
+                    <input type="hidden" name="item_id" id="pool_item_id" required />
+                    <div class="modal-header">
+                        <div>
+                            <h5 class="modal-title" id="poolItemModalLabel">Add Item to Shipment Pool</h5>
+                            <p class="text-muted small mb-0">Select an item with the search modal, then configure its probability and maximum count.</p>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Item</label>
+                            <div class="d-flex flex-column gap-2">
+                                <div class="border rounded p-3 d-flex align-items-center gap-3" data-selected-item-preview>
+                                    <div class="bg-body-secondary rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                                        <i class="bi bi-box-seam text-muted"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-semibold" data-selected-item-title>No item selected</div>
+                                        <div class="text-muted small" data-selected-item-meta>Select an item to continue.</div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <button type="button" class="btn btn-outline-primary" data-open-item-selector>
+                                        <i class="bi bi-search me-1"></i> Open Item Search
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-12 col-md-6">
+                                <label for="probability" class="form-label">Probability (0-1)</label>
+                                <input type="number" step="0.01" min="0" max="1" class="form-control" id="probability" name="probability" value="0.25" required>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label for="max_count" class="form-label">Max Count</label>
+                                <input type="number" min="1" class="form-control" id="max_count" name="max_count" value="1" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn bg-ranked-1 text-white">
+                            <i class="bi bi-plus-lg me-1"></i> Save to Pool
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
         <?php require("php-components/base-page-footer.php"); ?>
     </main>
 
 
     <?php require("php-components/base-page-javascript.php"); ?>
+    <script src="<?= Version::urlBetaPrefix(); ?>/assets/js/item-selector.js"></script>
+    <script>
+        (function () {
+            const selectorId = 'adminItemSelector';
+            const selectorModal = ItemSelector.init(selectorId);
+            const poolModalEl = document.getElementById('poolItemModal');
+            const poolModal = poolModalEl ? bootstrap.Modal.getOrCreateInstance(poolModalEl) : null;
+            const openPoolButton = document.querySelector('[data-open-pool-modal]');
+            const openSearchButton = document.querySelector('[data-open-item-selector]');
+            const selectedTitle = document.querySelector('[data-selected-item-title]');
+            const selectedMeta = document.querySelector('[data-selected-item-meta]');
+            const selectedPreview = document.querySelector('[data-selected-item-preview]');
+            const itemIdInput = document.getElementById('pool_item_id');
+            const poolForm = document.getElementById('poolItemForm');
+            const probabilityInput = document.getElementById('probability');
+            const maxCountInput = document.getElementById('max_count');
+
+            function updatePreview(item) {
+                if (!selectedPreview || !selectedTitle || !selectedMeta) {
+                    return;
+                }
+
+                selectedPreview.querySelector('img')?.remove();
+                const fallback = selectedPreview.querySelector('.bg-body-secondary');
+                if (fallback) {
+                    fallback.classList.toggle('d-none', !!item?.icon);
+                }
+
+                if (item?.icon) {
+                    const img = document.createElement('img');
+                    img.src = item.icon;
+                    img.alt = item.name || 'Selected item';
+                    img.width = 48;
+                    img.height = 48;
+                    img.className = 'rounded';
+                    selectedPreview.prepend(img);
+                }
+
+                selectedTitle.textContent = item ? `#${item.crand} — ${item.name}` : 'No item selected';
+                selectedMeta.textContent = item ? `Rarity: ${item.rarity || 'Unknown'}` : 'Select an item to continue.';
+                selectedMeta.classList.toggle('text-danger', !item);
+            }
+
+            function resetForm() {
+                if (itemIdInput) {
+                    itemIdInput.value = '';
+                }
+                if (probabilityInput) {
+                    probabilityInput.value = '0.25';
+                }
+                if (maxCountInput) {
+                    maxCountInput.value = '1';
+                }
+                updatePreview(null);
+            }
+
+            if (openPoolButton && poolModal) {
+                openPoolButton.addEventListener('click', () => {
+                    resetForm();
+                    poolModal.show();
+                });
+            }
+
+            if (openSearchButton) {
+                openSearchButton.addEventListener('click', () => {
+                    if (!selectorModal) return;
+                    const modalInstance = bootstrap.Modal.getOrCreateInstance(selectorModal);
+                    modalInstance.show();
+                });
+            }
+
+            document.addEventListener('item-selector:selected', (event) => {
+                if (event.detail.selectorId !== selectorId) {
+                    return;
+                }
+
+                const item = event.detail;
+                if (itemIdInput) {
+                    itemIdInput.value = item.crand;
+                }
+                updatePreview(item);
+            });
+
+            if (poolForm) {
+                poolForm.addEventListener('submit', (event) => {
+                    if (!itemIdInput || itemIdInput.value === '') {
+                        event.preventDefault();
+                        if (selectedMeta) {
+                            selectedMeta.textContent = 'Please select an item before saving to the pool.';
+                            selectedMeta.classList.add('text-danger');
+                        }
+                        if (openSearchButton) {
+                            openSearchButton.focus();
+                        }
+                    }
+                });
+            }
+        })();
+    </script>
 
 </body>
 
