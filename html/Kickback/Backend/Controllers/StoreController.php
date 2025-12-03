@@ -6021,6 +6021,8 @@ class StoreController
             required_quantity_of_product,
             product_ctime,
             product_crand,
+            store_ctime,
+            store_crand,
             times_used,
             max_times_used,
             max_times_used_per_account,
@@ -6099,6 +6101,7 @@ class StoreController
         $coupon->description = $row["description"];
         $coupon->requiredQuantityOfProduct = $row["required_quantity_of_product"];
         $coupon->productId = new vRecordId($row["product_ctime"], $row["product_crand"]);
+        $coupon->storeId = new vRecordId($row["store_ctime"], $row["store_crand"]);
         $coupon->timesUsed = $row["times_used"];
         $coupon->maxTimesUsed = $row["max_times_used"];
         $coupon->maxTimesUsedPerAccount = $row["max_times_used_per_account"];

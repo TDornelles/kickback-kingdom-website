@@ -422,7 +422,7 @@ class StoreService
 
         $cart = $cartResp->data;
 
-        if($cart->account->equals($account));
+        if(!$cart->account->equals($account));
         {
             $resp->message = "Retrieved Cart does not belong to account";
             return 500;
@@ -512,7 +512,7 @@ class StoreService
 
         $cart = $cartResp->data;
 
-        if($cart->account->equals($account))
+        if(!$cart->account->equals($account))
         {
             $resp->message = "Retrieved Cart does not belong to account";
             return 500;
@@ -641,18 +641,6 @@ class StoreService
 
         $body = json_decode($request_contents_json, true);
 
-        if(!key_exists("cart", $body))
-        {
-            $resp->message = "Request body must contain the key : 'cart'";
-            return 400;
-        }
-
-        if(empty($body["cart"]))
-        {
-            $resp->message = "Cart cannot be empty"; 
-            return 400;
-        }
-
         if(!key_exists("couponCode", $body))
         {
             $resp->message = "Request body must contain the key : 'couponCode'";
@@ -665,13 +653,11 @@ class StoreService
             return 400;
         }
 
-
-        $cart = (object)$body["cart"];
-        $coupnCode = $body["couponCode"];
+        $couponCode = $body["couponCode"];
 
         StoreService::initialize();
 
-        $couponResp = StoreController::getCouponByCode($coupnCode);
+        $couponResp = StoreController::getCouponByCode($couponCode);
 
         if(!$couponResp->success)
         {
@@ -679,15 +665,25 @@ class StoreService
             return 400;
         }
 
-        $vCart = static::vCartFromJson($cart);
+        $coupon = $couponResp->data;
 
-        if($cart->account->equals($account))
+        $cartResp = StoreController::getCartForAccount($account, $coupon->storeId);
+
+        if(!$cartResp->success)
         {
-            $resp->message = "Cart does not belong to account";
-            return 403;
+            $resp->message = "Failed to retreive cart";
+            return 500;
         }
 
-        $applyCouponResp = StoreController::tryApplyCouponToCart($vCart, $couponResp->data);
+        $cart = $cartResp->data;
+
+        if(!$cart->account->equals($account))
+        {
+            $resp->message = "Cart does not belong to account";
+            return 500;
+        }
+
+        $applyCouponResp = StoreController::tryApplyCouponToCart($cart, $couponResp->data);
 
         if(!$applyCouponResp->success)
         {
@@ -755,7 +751,7 @@ class StoreService
 
         $vCart = static::vCartFromJson($cart);
 
-        if($vCart->account->equals($account))
+        if(!$vCart->account->equals($account))
         {
             $resp->message = "Cart does not belong to account";
             return 403;
