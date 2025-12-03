@@ -164,6 +164,7 @@ class EmberwoodTradingCargoship
             $selectedStatus['status'],
             $statusIcon,
             $statusColor,
+            $statusType,
         );
     }
 
