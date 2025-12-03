@@ -48,12 +48,8 @@ $isLoggedIn = Session::isLoggedIn();
         <div class="row g-4">
             <div class="col-lg-8">
                 <div class="card shadow-sm mb-3">
-                    <div class="card-header d-flex align-items-center justify-content-between">
-                        <div>
-                            <div class="small text-uppercase text-muted">Store</div>
-                            <h5 class="mb-0" id="store-name">Loading store...</h5>
-                        </div>
-                        <span class="badge text-bg-secondary" id="store-locator-label"></span>
+                    <div class="card-header">
+                        <h5 class="mb-0">Your Items</h5>
                     </div>
                     <div class="card-body">
                         <div id="checkout-status" class="alert alert-info" role="alert">Fetching your cart...</div>
@@ -138,8 +134,6 @@ $isLoggedIn = Session::isLoggedIn();
             const checkoutItems = document.getElementById('checkout-items');
             const checkoutTotals = document.getElementById('checkout-totals');
             const checkoutStatus = document.getElementById('checkout-status');
-            const storeName = document.getElementById('store-name');
-            const storeLocatorLabel = document.getElementById('store-locator-label');
             const couponInput = document.getElementById('coupon-input');
             const applyCouponButton = document.getElementById('apply-coupon');
             const checkoutButton = document.getElementById('checkout-button');
@@ -147,7 +141,6 @@ $isLoggedIn = Session::isLoggedIn();
             const isLoggedIn = <?= json_encode($isLoggedIn); ?>;
 
             let cart = null;
-            let store = null;
 
             function showModal(modalId, message) {
                 const modalBody = document.getElementById(modalId + "Message");
@@ -244,23 +237,6 @@ $isLoggedIn = Session::isLoggedIn();
                 });
             }
 
-            async function loadStore() {
-                if (!storeLocator) {
-                    throw new Error('Missing store locator');
-                }
-
-                const storeResp = await StoreClient.getStoreByLocator(storeLocator);
-                store = storeResp?.data || null;
-
-                if (storeName) {
-                    storeName.textContent = store?.name || 'Unknown Store';
-                }
-
-                if (storeLocatorLabel) {
-                    storeLocatorLabel.textContent = storeLocator;
-                }
-            }
-
             async function loadCart() {
                 if (!isLoggedIn) {
                     checkoutStatus.className = 'alert alert-warning';
@@ -340,7 +316,6 @@ $isLoggedIn = Session::isLoggedIn();
 
             (async function init() {
                 try {
-                    await loadStore();
                     await loadCart();
                 } catch (error) {
                     console.error('Checkout page initialization failed', error);
