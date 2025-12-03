@@ -543,6 +543,27 @@ if (Session::isLoggedIn()) {
   color: #d8f3ff;
 }
 
+.cta-live-dot {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #39ff14;
+  box-shadow: 0 0 8px #39ff14, 0 0 16px #39ff14;
+  animation: livePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+  0%, 100% {
+    transform: scale(0.9);
+    box-shadow: 0 0 8px #39ff14, 0 0 16px #39ff14;
+  }
+  50% {
+    transform: scale(1.15);
+    box-shadow: 0 0 12px #7cff66, 0 0 24px #39ff14;
+  }
+}
+
 
     </style>
 
@@ -737,13 +758,13 @@ if (Session::isLoggedIn()) {
             <div class="cta-card">
               <h3 class="mb-1">Track the convoy</h3>
               <p class="mb-0">Live schedule with drop times and crate manifests.</p>
-              <a class="btn btn-warning mt-3" href="<?= Version::urlBetaPrefix(); ?>/emberwood-delivery.php">
+              <a class="btn bg-ranked-1 mt-3" href="<?= Version::urlBetaPrefix(); ?>/emberwood-delivery.php">
                 <i class="fa-solid fa-route me-1"></i>
                 View schedule
               </a>
               <div class="cta-footer mt-3">
-                <i class="fa-regular fa-clock"></i>
-                Live via Emberwood dispatch
+                <span class="cta-live-dot" aria-hidden="true"></span>
+                <span class="cta-live-text">Live via Emberwood dispatch</span>
               </div>
             </div>
           </div>
