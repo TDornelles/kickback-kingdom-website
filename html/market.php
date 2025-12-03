@@ -403,6 +403,21 @@ if (Session::isLoggedIn()) {
     </div>
   </div>
 
+  <div class="row mt-3">
+    <div class="col-12">
+      <div class="alert alert-info d-flex align-items-center gap-3" role="region" aria-label="Upcoming store deliveries">
+        <div class="d-flex align-items-center justify-content-center rounded-circle bg-primary text-white" style="width: 48px; height: 48px;">
+          <i class="fa-solid fa-truck-fast fa-lg"></i>
+        </div>
+        <div class="flex-grow-1">
+          <div class="fw-bold">Upcoming Deliveries</div>
+          <div class="mb-0">See what shipments are headed to Emberwood Market next.</div>
+        </div>
+        <a class="btn btn-primary" href="<?= Version::urlBetaPrefix(); ?>/emberwood-delivery.php">View Schedule</a>
+      </div>
+    </div>
+  </div>
+
   <div class="row">
     <div class="col-12">
       <section class="emberwood-store theme-default">
