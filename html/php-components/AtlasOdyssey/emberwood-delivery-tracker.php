@@ -15,13 +15,12 @@ extract($trackerData, EXTR_SKIP);
     <div class="card-body p-4">
         <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-4">
             <div>
-                <p class="text-uppercase fw-semibold text-secondary small mb-1">Atlas Odyssey · Emberwood Fleet</p>
+                <p class="text-uppercase fw-semibold text-secondary small mb-1">Emberwood Fleet Tracker</p>
                 <h2 class="fw-bold mb-2">Cargo Delivery Status</h2>
                 <p class="mb-0 text-secondary">Updated ATC <strong><?= $currentATCDate; ?></strong></p>
             </div>
             <div class="text-lg-end">
                 <span class="badge bg-gradient-primary fs-6 px-3 py-2 shadow-sm">Journey <?= number_format($roundedProgress, 1); ?>%</span>
-                <div class="mt-2 text-secondary">Tracking #<?= $trackingNumber; ?></div>
             </div>
         </div>
 
@@ -83,7 +82,6 @@ extract($trackerData, EXTR_SKIP);
                             <span class="badge rounded-pill bg-<?= $shipStatus->bootstrapColorClass; ?> bg-opacity-75 text-dark fw-semibold">
                                 <?= ucfirst($shipStatus->type); ?> mode
                             </span>
-                            <div class="mt-2 small text-secondary">Updated ATC <?= $currentATCDate; ?></div>
                         </div>
                     </div>
                     <div class="response-callout mt-3">
