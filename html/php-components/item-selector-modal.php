@@ -2,9 +2,15 @@
 $selectorId = $selectorId ?? 'itemSelectorModal';
 $itemOptions = $itemOptions ?? [];
 
-$humanizeLabel = static function (string $value): string {
-    $spaced = preg_replace('/(?<!^)([A-Z])/', ' $1', str_replace('_', ' ', $value));
-    return ucwords(strtolower(trim($spaced ?? $value)));
+$humanizeLabel = static function (string $value, bool $preserveAcronyms = false): string {
+    $normalized = str_replace('_', ' ', $value);
+
+    if ($preserveAcronyms && strtoupper($normalized) === $normalized) {
+        return ucwords(strtolower($normalized));
+    }
+
+    $spaced = preg_replace('/(?<!^)([A-Z])/', ' $1', $normalized);
+    return ucwords(strtolower(trim($spaced ?? $normalized)));
 };
 
 $filterTypes = [];
@@ -12,18 +18,18 @@ $filterCategories = [];
 $filterEquipmentSlots = [];
 
 foreach ($itemOptions as $option) {
-    $typeName = $option->type->name ?? '';
+    $typeName = $option->type->name ?? $option->item_type ?? $option->itemType ?? $option->lootContainerItemType ?? $option->loot_container_item_type ?? '';
     if ($typeName !== '') {
         $filterTypes[strtolower($typeName)] = $humanizeLabel($typeName);
     }
 
-    $categoryName = $option->itemCategory?->name ?? '';
+    $categoryName = $option->itemCategory?->name ?? $option->item_category?->name ?? '';
     $categoryKey = $categoryName !== '' ? strtolower($categoryName) : 'uncategorized';
     $filterCategories[$categoryKey] = $categoryName !== '' ? $humanizeLabel($categoryName) : 'Uncategorized';
 
-    $equipmentName = $option->equipmentSlot?->name ?? '';
+    $equipmentName = $option->equipmentSlot?->name ?? $option->equipment_slot?->name ?? '';
     $equipmentKey = $equipmentName !== '' ? strtolower($equipmentName) : 'none';
-    $filterEquipmentSlots[$equipmentKey] = $equipmentName !== '' ? $humanizeLabel($equipmentName) : 'None';
+    $filterEquipmentSlots[$equipmentKey] = $equipmentName !== '' ? $humanizeLabel($equipmentName, true) : 'None';
 }
 
 ksort($filterTypes);
@@ -44,44 +50,54 @@ ksort($filterEquipmentSlots);
             <div class="modal-body">
                 <div class="row g-3 align-items-end mb-3">
                     <div class="col-12 col-lg-4">
-                        <label for="<?= htmlspecialchars($selectorId) ?>Search" class="form-label">Search</label>
-                        <input type="search" class="form-control" id="<?= htmlspecialchars($selectorId) ?>Search" placeholder="Search by name or #ID" data-item-selector-search>
-                        <div class="form-text">Results update as you type.</div>
+                        <div class="d-flex flex-column h-100 gap-1">
+                            <label for="<?= htmlspecialchars($selectorId) ?>Search" class="form-label">Search</label>
+                            <input type="search" class="form-control" id="<?= htmlspecialchars($selectorId) ?>Search" placeholder="Search by name or #ID" data-item-selector-search>
+                            <div class="form-text mb-0">Results update as you type.</div>
+                        </div>
                     </div>
                     <div class="col-6 col-lg-2">
-                        <label for="<?= htmlspecialchars($selectorId) ?>Type" class="form-label">Item Type</label>
-                        <select class="form-select" id="<?= htmlspecialchars($selectorId) ?>Type" data-item-selector-filter="type">
-                            <option value="">All</option>
-                            <?php foreach ($filterTypes as $key => $label): ?>
-                                <option value="<?= htmlspecialchars($key) ?>"><?= htmlspecialchars($label) ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                        <div class="d-flex flex-column h-100 gap-1">
+                            <label for="<?= htmlspecialchars($selectorId) ?>Type" class="form-label">Item Type</label>
+                            <select class="form-select" id="<?= htmlspecialchars($selectorId) ?>Type" data-item-selector-filter="type">
+                                <option value="">All</option>
+                                <?php foreach ($filterTypes as $key => $label): ?>
+                                    <option value="<?= htmlspecialchars($key) ?>"><?= htmlspecialchars($label) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
                     </div>
                     <div class="col-6 col-lg-2">
-                        <label for="<?= htmlspecialchars($selectorId) ?>Category" class="form-label">Item Category</label>
-                        <select class="form-select" id="<?= htmlspecialchars($selectorId) ?>Category" data-item-selector-filter="category">
-                            <option value="">All</option>
-                            <?php foreach ($filterCategories as $key => $label): ?>
-                                <option value="<?= htmlspecialchars($key) ?>"><?= htmlspecialchars($label) ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                        <div class="d-flex flex-column h-100 gap-1">
+                            <label for="<?= htmlspecialchars($selectorId) ?>Category" class="form-label">Item Category</label>
+                            <select class="form-select" id="<?= htmlspecialchars($selectorId) ?>Category" data-item-selector-filter="category">
+                                <option value="">All</option>
+                                <?php foreach ($filterCategories as $key => $label): ?>
+                                    <option value="<?= htmlspecialchars($key) ?>"><?= htmlspecialchars($label) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
                     </div>
                     <div class="col-6 col-lg-2">
-                        <label for="<?= htmlspecialchars($selectorId) ?>Equipment" class="form-label">Equipment Slot</label>
-                        <select class="form-select" id="<?= htmlspecialchars($selectorId) ?>Equipment" data-item-selector-filter="equipment">
-                            <option value="">All</option>
-                            <?php foreach ($filterEquipmentSlots as $key => $label): ?>
-                                <option value="<?= htmlspecialchars($key) ?>"><?= htmlspecialchars($label) ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                        <div class="d-flex flex-column h-100 gap-1">
+                            <label for="<?= htmlspecialchars($selectorId) ?>Equipment" class="form-label">Equipment Slot</label>
+                            <select class="form-select" id="<?= htmlspecialchars($selectorId) ?>Equipment" data-item-selector-filter="equipment">
+                                <option value="">All</option>
+                                <?php foreach ($filterEquipmentSlots as $key => $label): ?>
+                                    <option value="<?= htmlspecialchars($key) ?>"><?= htmlspecialchars($label) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
                     </div>
                     <div class="col-6 col-lg-2">
-                        <label for="<?= htmlspecialchars($selectorId) ?>PageSize" class="form-label">Results per page</label>
-                        <select class="form-select" id="<?= htmlspecialchars($selectorId) ?>PageSize" data-item-selector-page-size>
-                            <option value="6">6</option>
-                            <option value="12" selected>12</option>
-                            <option value="24">24</option>
-                        </select>
+                        <div class="d-flex flex-column h-100 gap-1">
+                            <label for="<?= htmlspecialchars($selectorId) ?>PageSize" class="form-label">Results per page</label>
+                            <select class="form-select" id="<?= htmlspecialchars($selectorId) ?>PageSize" data-item-selector-page-size>
+                                <option value="6">6</option>
+                                <option value="12" selected>12</option>
+                                <option value="24">24</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
                 <div class="row g-3" data-item-selector-list>
@@ -89,15 +105,15 @@ ksort($filterEquipmentSlots);
                         <?php
                             $iconUrl = ($option->iconSmall && $option->iconSmall->isValid()) ? $option->iconSmall->getFullPath() : '';
                             $rarityName = $option->rarity->name ?? 'Unknown';
-                            $typeName = $option->type->name ?? '';
-                            $categoryName = $option->itemCategory?->name ?? '';
-                            $equipmentName = $option->equipmentSlot?->name ?? '';
+                            $typeName = $option->type->name ?? $option->item_type ?? $option->itemType ?? $option->lootContainerItemType ?? $option->loot_container_item_type ?? '';
+                            $categoryName = $option->itemCategory?->name ?? $option->item_category?->name ?? '';
+                            $equipmentName = $option->equipmentSlot?->name ?? $option->equipment_slot?->name ?? '';
                             $typeKey = $typeName !== '' ? strtolower($typeName) : '';
                             $categoryKey = $categoryName !== '' ? strtolower($categoryName) : 'uncategorized';
                             $equipmentKey = $equipmentName !== '' ? strtolower($equipmentName) : 'none';
                             $typeLabel = $typeName !== '' ? $humanizeLabel($typeName) : 'Unknown';
                             $categoryLabel = $categoryName !== '' ? $humanizeLabel($categoryName) : 'Uncategorized';
-                            $equipmentLabel = $equipmentName !== '' ? $humanizeLabel($equipmentName) : 'None';
+                            $equipmentLabel = $equipmentName !== '' ? $humanizeLabel($equipmentName, true) : 'None';
                         ?>
                         <div class="col-12 col-md-6 col-lg-4" data-item-selector-item data-item-id="<?= $option->crand ?>" data-item-name="<?= htmlspecialchars($option->name) ?>" data-item-rarity="<?= htmlspecialchars($rarityName) ?>" data-item-icon="<?= htmlspecialchars($iconUrl) ?>" data-item-type="<?= htmlspecialchars($typeKey) ?>" data-item-type-label="<?= htmlspecialchars($typeLabel) ?>" data-item-category="<?= htmlspecialchars($categoryKey) ?>" data-item-category-label="<?= htmlspecialchars($categoryLabel) ?>" data-item-equipment="<?= htmlspecialchars($equipmentKey) ?>" data-item-equipment-label="<?= htmlspecialchars($equipmentLabel) ?>">
                             <div class="card h-100 shadow-sm">
@@ -133,18 +149,20 @@ ksort($filterEquipmentSlots);
                 </div>
             </div>
             <div class="modal-footer">
-                <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between w-100 gap-3">
-                    <div class="text-muted small" data-item-selector-pagination-summary>Showing 0-0 of 0 items</div>
-                    <div class="d-flex align-items-center gap-2">
-                        <button type="button" class="btn btn-outline-secondary btn-sm" data-item-selector-prev>
-                            <i class="bi bi-chevron-left"></i>
-                        </button>
-                        <div class="small" data-item-selector-pagination-label>Page 1</div>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" data-item-selector-next>
-                            <i class="bi bi-chevron-right"></i>
-                        </button>
+                    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between w-100 gap-3">
+                        <div class="text-muted small" data-item-selector-pagination-summary>Showing 0-0 of 0 items</div>
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1" data-item-selector-prev>
+                                <i class="bi bi-chevron-left"></i>
+                                <span>Previous</span>
+                            </button>
+                            <div class="small" data-item-selector-pagination-label>Page 1</div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1" data-item-selector-next>
+                                <span>Next</span>
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                        </div>
                     </div>
-                </div>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
