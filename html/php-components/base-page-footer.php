@@ -8,7 +8,7 @@ use \Kickback\Common\Version;
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header text-bg-danger">
-        <h1 class="modal-title fs-5" id="errorModalLabel">Modal title</h1>
+        <h1 class="modal-title fs-5" id="errorModalLabel">Error</h1>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
@@ -26,7 +26,7 @@ use \Kickback\Common\Version;
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h1 class="modal-title fs-5" id="successModalLabel">Modal title</h1>
+        <h1 class="modal-title fs-5" id="successModalLabel">Success</h1>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
