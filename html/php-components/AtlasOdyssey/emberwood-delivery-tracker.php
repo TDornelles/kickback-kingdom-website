@@ -25,7 +25,7 @@ $imgShip = "https://i0.wp.com/thelegocarblog.com/wp-content/uploads/2024/09/Scre
 
 // Calculate dynamic left positioning with boundaries for 0% and 100% to keep icon within bounds
 $shipWidth = 60; // Ship image width in pixels
-$shipIconPadding = 32; // breathing room to avoid clipping inside the route container
+$shipIconPadding = 48; // breathing room to avoid clipping inside the route container
 $adjustedProgress = max(0, min($progressPercentage, 100));
 $leftPosition = "clamp({$shipIconPadding}px, {$adjustedProgress}%, calc(100% - {$shipIconPadding}px))";
 
@@ -84,15 +84,15 @@ $journeyWaypoints = [
         <!-- Information Display with Ship Location, Shipment Number, and ETA -->
         <div class="emberwood-tracker-info-container mb-4">
             <div class="emberwood-tracker-info-box">
-                <h5 class="text-muted"><i class="fas fa-map-marker-alt"></i> Ship Location</h5>
+                <h5 class="emberwood-tracker-label"><i class="fas fa-map-marker-alt"></i> Ship Location</h5>
                 <p class="text-primary emberwood-tracker-info-text"><?= $shipLocation; ?></p>
             </div>
             <div class="emberwood-tracker-info-box">
-                <h5 class="text-muted"><i class="fas fa-box"></i> Tracking #</h5>
+                <h5 class="emberwood-tracker-label"><i class="fas fa-box"></i> Tracking #</h5>
                 <p class="emberwood-tracker-info-text"><?= $trackingNumber; ?></p>
             </div>
             <div class="emberwood-tracker-info-box">
-                <h5 class="text-muted"><i class="far fa-clock"></i> Estimated Arrival</h5>
+                <h5 class="emberwood-tracker-label"><i class="far fa-clock"></i> Estimated Arrival</h5>
                 <p class="text-danger emberwood-tracker-info-text"><?= $timeUntilNextDelivery; ?></p>
             </div>
         </div>
@@ -112,7 +112,7 @@ $journeyWaypoints = [
             <div class="col-12 col-lg-7">
                 <div class="card h-100 border-0 glassy-panel">
                     <div class="card-body">
-                        <h5 class="fw-bold mb-3"><i class="fas fa-route me-2 text-warning"></i>Journey Waypoints</h5>
+                        <h5 class="fw-bold mb-3 emberwood-tracker-label"><i class="fas fa-route me-2 text-warning"></i>Journey Waypoints</h5>
                         <div class="timeline">
                             <?php foreach ($journeyWaypoints as $index => $waypoint): ?>
                                 <?php $isReached = $adjustedProgress >= (($index) * (100 / (count($journeyWaypoints) - 1))); ?>
@@ -190,6 +190,11 @@ $journeyWaypoints = [
     color: #f8fafc;
 }
 
+.emberwood-tracker-label {
+    color: #e2e8f0;
+    letter-spacing: 0.02em;
+}
+
 .emberwood-tracker-card .text-secondary {
     color: #cbd5e1 !important;
 }
@@ -245,7 +250,7 @@ $journeyWaypoints = [
 }
 
 .emberwood-tracker-info-box h5 {
-    color: #d6e0f0;
+    color: #e7edf7;
 }
 
 /* Ensure responsiveness: Stack boxes on small screens like phones */
@@ -267,7 +272,7 @@ $journeyWaypoints = [
     border-radius: 14px;
     margin-bottom: 1rem;
     overflow: visible;
-    padding: 0 1.5rem;
+    padding: 1.25rem 3rem;
     background: linear-gradient(135deg, rgba(17, 24, 39, 0.95), rgba(15, 23, 42, 0.9)),
         url("<?= $imgStarMap; ?>") no-repeat center center;
     background-size: cover;
@@ -275,8 +280,8 @@ $journeyWaypoints = [
 }
 
 .emberwood-tracker-progress-route .progress {
-    left: 24px;
-    right: 24px;
+    left: 2.75rem;
+    right: 2.75rem;
     width: auto;
     height: 14px;
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -289,7 +294,7 @@ $journeyWaypoints = [
     transform: translate(-50%, -50%);
     transition: left 1s ease-in-out;
     text-align: center;
-    max-width: 160px;
+    max-width: 180px;
 }
 
 .ship-progress-label {
@@ -353,6 +358,11 @@ $journeyWaypoints = [
 
 .fleet-status-body {
     color: #e2e8f0;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+    overflow: hidden;
+    word-break: break-word;
 }
 
 .fleet-status-body h4 {
@@ -362,5 +372,9 @@ $journeyWaypoints = [
 .fleet-status-body .badge {
     white-space: normal;
     line-height: 1.4;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    max-width: 100%;
 }
 </style>
