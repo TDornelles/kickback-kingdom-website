@@ -383,21 +383,10 @@ class StoreService
 
         $body = json_decode($request_contents_json, true);
 
-        if(!key_exists("cart", $body))
-        {
-            $resp->message = "Request body must contain the key : 'cart'";
-            return 400;
-        }
 
         if(!key_exists("productLocator", $body))
         {
-            $resp->message = "Request body must contain the key : 'productId'";
-            return 400;
-        }
-
-        if(empty($body["cart"]))
-        {
-            $resp->message = "Cart cannot be empty"; 
+            $resp->message = "Request body must contain the key : 'productLocator'";
             return 400;
         }
 
@@ -406,28 +395,37 @@ class StoreService
             $resp->message = "ProductLocator cannot be empty"; 
             return 400;
         }
-
-        $cart = (object)$body["cart"];
         $productLocator = $body["productLocator"];
 
 
         StoreService::initialize();
 
-        $cart = static::vCartFromJson($cart);
-
-        if($cart->account->equals($account));
-        {
-            $resp->message = "Cart does not belong to account";
-            return 403;
-        }
-
         $productResp = StoreController::getProductByLocator($productLocator);
+        
 
         if(!$productResp->success)
         {
             $resp->message = "Product not found";
             return 400;
         }
+
+        $product = $productResp->data;
+
+        $cartResp = StoreController::getCartForAccount($account, $product->store);
+
+        if(!$cartResp->success)
+        {
+            $resp->message = "Failed to retrieve cart for account for product's store";
+            return 500;
+        }
+
+        if($cart->account->equals($account));
+        {
+            $resp->message = "Retrieved Cart does not belong to account";
+            return 500;
+        }
+
+        $cart = $cartResp->data;
 
         $addProductToCartResp = StoreController::addProductToCart($productResp->data, $cart);
 
@@ -474,21 +472,9 @@ class StoreService
 
         $body = json_decode($request_contents_json, true);
 
-        if(!key_exists("cart", $body))
-        {
-            $resp->message = "Request body must contain the key : 'cart'";
-            return 400;
-        }
-
         if(!key_exists("productId", $body))
         {
             $resp->message = "Request body must contain the key : 'productId'";
-            return 400;
-        }
-
-        if(empty($body["cart"]))
-        {
-            $resp->message = "Cart cannot be empty"; 
             return 400;
         }
 
@@ -498,20 +484,36 @@ class StoreService
             return 400;
         }
 
-        $cart = (object)$body["cart"];
         $productId = (object)$body["productId"];
 
 
         StoreService::initialize();
 
-        $product = new vRecordId($productId->ctime, $productId->crand);
+        $productId = new vRecordId($productId->ctime, $productId->crand);
+        $productResp = StoreController::getProductById($productId);
 
-        $cart = static::vCartFromJson($cart);
+        if(!$productResp->success)
+        {
+            $resp->message = "Failed to get product by id to add it to cart";
+            return 500;
+        }
+
+        $product = $productResp->data;
+
+        $cartResp = StoreController::getCartForAccount($account, $product->store);
+
+        if(!$cartResp->success)
+        {
+            $resp->message = "Failed to retreive cart for account for product's store";
+            return 500;
+        }
+
+        $cart = $cartResp->data;
 
         if($cart->account->equals($account))
         {
-            $resp->message = "Cart does not belong to account";
-            return 403;
+            $resp->message = "Retrieved Cart does not belong to account";
+            return 500;
         }
 
         $addProductToCartResp = StoreController::addProductToCart($product, $cart);
