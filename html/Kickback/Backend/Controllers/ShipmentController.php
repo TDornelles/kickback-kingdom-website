@@ -10,13 +10,14 @@ use Kickback\AtlasOdyssey\Emberwood\EmberwoodTradingCargoship;
 use Kickback\AtlasOdyssey\Emberwood\ShipStatus;
 use Kickback\Backend\Models\Response;
 use Kickback\Backend\Models\ShipmentManifestItem;
+use Kickback\Backend\Views\vRecordId;
 use Kickback\Services\Database;
 use Exception;
 
 class ShipmentController
 {
     public static function getShipmentItemPoolOptions() : Response {
-        
+
         $conn = Database::getConnection();
         
         $sql = "SELECT i.* FROM kickbackdb.v_item_info i 
@@ -30,12 +31,105 @@ class ShipmentController
 
         $items = [];
         while ($row = $result->fetch_assoc()) {
-            $items[] = ItemController::row_to_vItem($row);
+            $itemId = new vRecordId('', (int) $row['Id']);
+            $items[] = ItemController::row_to_vItem($row, $itemId);
         }
 
         $stmt->close();
 
         return new Response(true, "Shipment manifest retrieved successfully", $items);
+    }
+
+    public static function getShipmentPool(): Response
+    {
+        $conn = Database::getConnection();
+
+        $sql = "SELECT sop.item_id, sop.probability, sop.max_count, i.* FROM shipment_order_pool sop JOIN kickbackdb.v_item_info i ON sop.item_id = i.Id ORDER BY i.name";
+        $stmt = $conn->prepare($sql);
+
+        if (!$stmt) {
+            return new Response(false, "Failed to load shipment pool: " . $conn->error);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $items = [];
+        while ($row = $result->fetch_assoc()) {
+            $itemId = new vRecordId('', (int) $row['item_id']);
+            $items[] = [
+                'item' => ItemController::row_to_vItem($row, $itemId),
+                'probability' => (float) $row['probability'],
+                'max_count' => (int) $row['max_count'],
+            ];
+        }
+
+        $stmt->close();
+
+        return new Response(true, "Shipment pool retrieved successfully", $items);
+    }
+
+    public static function upsertShipmentPoolItem(int $itemId, float $probability, int $maxCount): Response
+    {
+        if ($itemId <= 0) {
+            return new Response(false, "Item id must be greater than zero.");
+        }
+
+        if ($probability < 0 || $probability > 1) {
+            return new Response(false, "Probability must be between 0 and 1.");
+        }
+
+        if ($maxCount < 1) {
+            return new Response(false, "Max count must be at least 1.");
+        }
+
+        $conn = Database::getConnection();
+
+        $stmt = $conn->prepare("INSERT INTO shipment_order_pool (item_id, probability, max_count) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE probability = VALUES(probability), max_count = VALUES(max_count)");
+
+        if (!$stmt) {
+            return new Response(false, "Failed to save shipment pool item: " . $conn->error);
+        }
+
+        $stmt->bind_param('idi', $itemId, $probability, $maxCount);
+
+        if (!$stmt->execute()) {
+            $error = $stmt->error;
+            $stmt->close();
+            return new Response(false, "Failed to save shipment pool item: " . $error);
+        }
+
+        $affectedRows = $stmt->affected_rows;
+        $stmt->close();
+
+        return new Response(true, "Shipment pool item saved.", ['affectedRows' => $affectedRows]);
+    }
+
+    public static function deleteShipmentPoolItem(int $itemId): Response
+    {
+        if ($itemId <= 0) {
+            return new Response(false, "Item id must be greater than zero.");
+        }
+
+        $conn = Database::getConnection();
+        $stmt = $conn->prepare("DELETE FROM shipment_order_pool WHERE item_id = ?");
+
+        if (!$stmt) {
+            return new Response(false, "Failed to delete shipment pool item: " . $conn->error);
+        }
+
+        $stmt->bind_param('i', $itemId);
+
+        if (!$stmt->execute()) {
+            $error = $stmt->error;
+            $stmt->close();
+            return new Response(false, "Failed to delete shipment pool item: " . $error);
+        }
+
+        $affectedRows = $stmt->affected_rows;
+        $stmt->close();
+
+        return new Response(true, "Shipment pool item removed.", ['affectedRows' => $affectedRows]);
     }
     
     public static function createShipmentManifest(string $trackingNumber): Response
