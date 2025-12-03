@@ -142,13 +142,9 @@ $currentWaypointIndex = min((int) floor($adjustedProgress / $segmentPercentage),
                                         </div>
                                         <div class="d-flex justify-content-between align-items-center small text-secondary">
                                             <span>Checkpoint <?= $index + 1; ?> of <?= count($journeyWaypoints); ?></span>
-                                            <span><?= $isFinalWaypoint ? 'Final destination' : 'Progress to next point'; ?></span>
                                         </div>
                                         <div class="progress waypoint-progress mt-2" role="progressbar" aria-valuenow="<?= (int) $segmentProgress; ?>" aria-valuemin="0" aria-valuemax="100">
                                             <div class="progress-bar bg-ranked-1" style="width: <?= $isFinalWaypoint ? ($isReached ? '100' : (string) $segmentProgress) : (string) $segmentProgress; ?>%;"></div>
-                                        </div>
-                                        <div class="small text-secondary mt-1">
-                                            <?= $isFinalWaypoint ? 'Journey completion status' : 'Progress toward the next waypoint'; ?>
                                         </div>
                                     </div>
                                 </div>
