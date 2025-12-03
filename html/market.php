@@ -378,6 +378,173 @@ if (Session::isLoggedIn()) {
   color: #000;
 }
 
+/* --- UPCOMING DELIVERIES --- */
+.deliveries-panel {
+  position: relative;
+  margin-top: 0.5rem;
+  padding: 1.75rem 1.5rem;
+  border-radius: 18px;
+  background: radial-gradient(circle at 20% 20%, rgba(51, 255, 238, 0.08), transparent 30%),
+              radial-gradient(circle at 80% 0%, rgba(255, 215, 0, 0.08), transparent 25%),
+              linear-gradient(135deg, #0a1a26 0%, #0d2533 50%, #0b1d29 100%);
+  border: 1px solid #33ffee55;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45), 0 0 25px rgba(51, 255, 238, 0.25);
+  overflow: hidden;
+}
+
+.deliveries-panel::before,
+.deliveries-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.deliveries-panel::before {
+  background: linear-gradient(120deg, transparent 0%, rgba(51, 255, 238, 0.15) 40%, transparent 70%);
+  filter: blur(10px);
+  opacity: 0.6;
+}
+
+.deliveries-panel::after {
+  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.03) 0 2px, transparent 2px 6px);
+  mix-blend-mode: soft-light;
+  opacity: 0.6;
+}
+
+.deliveries-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 2.2fr 1fr;
+  gap: 1.25rem;
+  align-items: center;
+}
+
+@media (max-width: 992px) {
+  .deliveries-grid { grid-template-columns: 1fr; }
+}
+
+.deliveries-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(51, 255, 238, 0.12);
+  color: #86f7ff;
+  border: 1px solid #33ffee55;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.deliveries-title {
+  margin: 0.35rem 0 0.4rem;
+  font-size: 1.6rem;
+  color: #e6fbff;
+  text-shadow: 0 0 12px rgba(51, 255, 238, 0.3);
+}
+
+.deliveries-subtext {
+  color: #b7d8e6;
+  margin-bottom: 1rem;
+}
+
+.delivery-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.delivery-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid #33ffee44;
+  background: rgba(12, 32, 44, 0.75);
+  color: #c7eafd;
+  font-size: 0.9rem;
+  box-shadow: 0 0 12px rgba(51, 255, 238, 0.25) inset;
+}
+
+.delivery-timeline {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.timeline-card {
+  padding: 0.85rem 0.9rem;
+  border-radius: 12px;
+  background: rgba(9, 23, 34, 0.85);
+  border: 1px solid #33ffee33;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+}
+
+.timeline-card h4 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+  color: #e6fbff;
+}
+
+.timeline-card p {
+  margin: 0;
+  color: #9fcedd;
+  font-size: 0.95rem;
+}
+
+.timeline-icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(51, 255, 238, 0.18), rgba(255, 215, 0, 0.14));
+  color: #fff0c2;
+  margin-bottom: 0.45rem;
+  box-shadow: 0 0 12px rgba(51, 255, 238, 0.35);
+}
+
+.deliveries-cta {
+  justify-self: end;
+}
+
+.cta-card {
+  padding: 1.1rem;
+  border-radius: 14px;
+  border: 1px solid #ffd70066;
+  background: linear-gradient(145deg, #17293a 0%, #213b4d 100%);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  color: #ffeec6;
+  text-align: center;
+}
+
+.cta-card h3 {
+  margin-top: 0;
+  margin-bottom: 0.35rem;
+  font-size: 1.2rem;
+}
+
+.cta-card p { margin-bottom: 0.75rem; color: #f5dfa5; }
+
+.cta-card .btn {
+  border-radius: 999px;
+  padding: 0.55rem 1.25rem;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+}
+
+.cta-footer {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  color: #d8f3ff;
+}
+
 
     </style>
 
@@ -405,16 +572,57 @@ if (Session::isLoggedIn()) {
 
   <div class="row mt-3">
     <div class="col-12">
-      <div class="alert alert-info d-flex align-items-center gap-3" role="region" aria-label="Upcoming store deliveries">
-        <div class="d-flex align-items-center justify-content-center rounded-circle bg-primary text-white" style="width: 48px; height: 48px;">
-          <i class="fa-solid fa-truck-fast fa-lg"></i>
+      <section class="deliveries-panel" role="region" aria-label="Upcoming store deliveries">
+        <div class="deliveries-grid">
+          <div>
+            <div class="deliveries-chip">
+              <i class="fa-solid fa-satellite-dish"></i>
+              Logistics feed
+            </div>
+            <h2 class="deliveries-title">Upcoming Deliveries</h2>
+            <p class="deliveries-subtext mb-0">See what shipments are headed to Emberwood Market next and plan your haul.</p>
+
+            <div class="delivery-meta">
+              <span class="delivery-pill"><i class="fa-solid fa-sparkles"></i> Featured crates</span>
+              <span class="delivery-pill"><i class="fa-solid fa-fire"></i> Hot drop ETA</span>
+              <span class="delivery-pill"><i class="fa-solid fa-shield-heart"></i> Guild dispatch</span>
+            </div>
+
+            <div class="delivery-timeline">
+              <div class="timeline-card">
+                <div class="timeline-icon"><i class="fa-solid fa-truck-fast"></i></div>
+                <h4>Supply Run</h4>
+                <p class="mb-0">Priority delivery from Emberwood docks with fresh stock rotations.</p>
+              </div>
+              <div class="timeline-card">
+                <div class="timeline-icon"><i class="fa-solid fa-box-open"></i></div>
+                <h4>Premium Crates</h4>
+                <p class="mb-0">Limited bundles and rare artifacts getting queued for the next sale window.</p>
+              </div>
+              <div class="timeline-card">
+                <div class="timeline-icon"><i class="fa-solid fa-people-carry-box"></i></div>
+                <h4>Community Picks</h4>
+                <p class="mb-0">Top-voted items from guild requests will ship with this convoy.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="deliveries-cta">
+            <div class="cta-card">
+              <h3 class="mb-1">Track the convoy</h3>
+              <p class="mb-0">Live schedule with drop times and crate manifests.</p>
+              <a class="btn btn-warning mt-3" href="<?= Version::urlBetaPrefix(); ?>/emberwood-delivery.php">
+                <i class="fa-solid fa-route me-1"></i>
+                View schedule
+              </a>
+              <div class="cta-footer mt-3">
+                <i class="fa-regular fa-clock"></i>
+                Updated hourly via Emberwood dispatch
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="flex-grow-1">
-          <div class="fw-bold">Upcoming Deliveries</div>
-          <div class="mb-0">See what shipments are headed to Emberwood Market next.</div>
-        </div>
-        <a class="btn btn-primary" href="<?= Version::urlBetaPrefix(); ?>/emberwood-delivery.php">View Schedule</a>
-      </div>
+      </section>
     </div>
   </div>
 
