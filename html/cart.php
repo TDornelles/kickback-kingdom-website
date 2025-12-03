@@ -25,6 +25,14 @@ $isLoggedIn = Session::isLoggedIn();
 
     <main class="container pt-3 bg-body" style="margin-bottom: 56px;" id="cart-root" data-store-locator="<?= htmlspecialchars($locator) ?>">
         <div class="row mb-3">
+            <div class="col-12">
+                <?php
+                $activePageName = "Cart";
+                require("php-components/base-page-breadcrumbs.php");
+                ?>
+            </div>
+        </div>
+        <div class="row mb-3">
             <div class="col-12 d-flex align-items-center justify-content-between">
                 <div>
                     <h1 class="mb-1">Your Cart</h1>
