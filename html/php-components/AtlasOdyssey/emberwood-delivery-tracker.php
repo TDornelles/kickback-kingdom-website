@@ -59,13 +59,34 @@ extract($trackerData, EXTR_SKIP);
                 </div>
             </div>
 
-        <div class="alert alert-<?= $shipStatus->bootstrapColorClass; ?> bg-<?= $shipStatus->bootstrapColorClass; ?> bg-opacity-10 border-0 text-light d-flex align-items-center gap-3 mb-4">
-            <div class="display-6 mb-0 text-warning"><i class="<?= $shipStatus->icon; ?>"></i></div>
-            <div class="flex-grow-1">
-                <p class="text-uppercase text-secondary small mb-1">Fleet Status</p>
-                <h4 class="mb-0"><?= $fleetStatusHeadline; ?></h4>
+        <div class="card border-0 glassy-panel mb-4 fleet-status-simple">
+            <div class="card-body d-flex flex-column flex-lg-row align-items-start gap-3">
+                <div class="fleet-status-icon shadow-sm bg-<?= $shipStatus->bootstrapColorClass; ?> bg-opacity-25">
+                    <i class="<?= $shipStatus->icon; ?>"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
+                        <div>
+                            <p class="text-uppercase text-secondary small mb-1">Fleet Status</p>
+                            <h4 class="mb-2"><?= $fleetStatusHeadline; ?></h4>
+                            <div class="text-secondary">Current condition: <span class="text-light fw-semibold"><?= $shipStatus->text; ?></span></div>
+                            <div class="text-secondary">Location: <span class="text-light fw-semibold"><?= $shipLocation; ?></span></div>
+                        </div>
+                        <div class="text-lg-end">
+                            <span class="badge rounded-pill bg-<?= $shipStatus->bootstrapColorClass; ?> bg-opacity-75 text-dark fw-semibold">
+                                <?= ucfirst($shipStatus->type); ?> mode
+                            </span>
+                            <div class="mt-2 small text-secondary">Updated ATC <?= $currentATCDate; ?></div>
+                            <div class="small text-secondary">Next delivery ETA: <?= $timeUntilNextDelivery; ?></div>
+                            <div class="small text-secondary">Tracking #<?= $trackingNumber; ?></div>
+                        </div>
+                    </div>
+                    <div class="response-callout mt-3">
+                        <div class="text-uppercase small text-secondary mb-1">Onboard response</div>
+                        <div class="fw-semibold text-light"><?= $fleetStatusBadge; ?></div>
+                    </div>
+                </div>
             </div>
-            <span class="badge bg-<?= $shipStatus->bootstrapColorClass; ?> text-bg-<?= $shipStatus->bootstrapColorClass; ?> px-3 py-2 shadow-sm text-wrap"><?= $fleetStatusBadge; ?></span>
         </div>
 
         <div class="row g-3 align-items-stretch mb-4">
@@ -122,24 +143,21 @@ extract($trackerData, EXTR_SKIP);
             <div class="col-12">
                 <!-- side-bar colleps block stat-->
                 <div class="inventory-grid">
-                    <?php
-                    
-                    // Show category title
-
-                    foreach ($shipmentManifest as $shipmentCargoItemStack) {
-                        ?>
-                        <div class="inventory-item" onclick="ShowInventoryItemModal(<?= $shipmentCargoItemStack->item->crand; ?>);"  data-bs-toggle="tooltip" data-bs-dismiss="modal" data-bs-placement="bottom" data-bs-title="<?= htmlspecialchars($shipmentCargoItemStack->item->name)?>">
-                            <img src="<?= $shipmentCargoItemStack->item->iconSmall->getFullPath(); ?>" alt="Item <?= $shipmentCargoItemStack->item->name; ?>">
-                            <div class="item-count">x<?= $shipmentCargoItemStack->amount; ?></div>
+                    <?php if (!empty($shipmentManifest)): ?>
+                        <?php foreach ($shipmentManifest as $shipmentCargoItemStack): ?>
+                            <div class="inventory-item" onclick="ShowInventoryItemModal(<?= $shipmentCargoItemStack->item->crand; ?>);"  data-bs-toggle="tooltip" data-bs-dismiss="modal" data-bs-placement="bottom" data-bs-title="<?= htmlspecialchars($shipmentCargoItemStack->item->name)?>">
+                                <img src="<?= $shipmentCargoItemStack->item->iconSmall->getFullPath(); ?>" alt="Item <?= $shipmentCargoItemStack->item->name; ?>">
+                                <div class="item-count">x<?= $shipmentCargoItemStack->amount; ?></div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <div class="inventory-empty text-secondary">
+                            <i class="fas fa-box-open me-2"></i>No cargo in the bay right now — manifest will update once a load is staged.
                         </div>
-                    
-                    <?php
-                    }
-
-                    ?>
+                    <?php endif; ?>
                 </div>
             </div>
-        </div> 
+        </div>
     </div>
 </div>
 
@@ -195,6 +213,46 @@ extract($trackerData, EXTR_SKIP);
 
 .glassy-panel h5 {
     color: #fcd34d;
+}
+
+.fleet-status-simple {
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.85));
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+.fleet-status-icon {
+    width: 64px;
+    height: 64px;
+    display: grid;
+    place-items: center;
+    border-radius: 18px;
+    font-size: 1.6rem;
+    color: #fcd34d;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.fleet-status-chip {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 0.9rem 1rem;
+    min-height: 86px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.fleet-status-meta {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 0.65rem 0.85rem;
+}
+
+.response-callout {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 0.9rem 1rem;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 /* Info Box Container */
@@ -473,6 +531,14 @@ extract($trackerData, EXTR_SKIP);
 .timeline-item.current {
     border-color: #38bdf8;
     box-shadow: 0 10px 24px rgba(56, 189, 248, 0.2);
+}
+
+.inventory-empty {
+    grid-column: 1 / -1;
+    padding: 1.25rem;
+    border: 1px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.03);
 }
 
 .timeline-icon {
