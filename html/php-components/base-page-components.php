@@ -1604,12 +1604,25 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
                         </button>
                     </li>
                     <li class="nav-item">
-                        <button class="btn btn-primary position-relative" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasMenuRightShoppingCart" aria-controls="offcanvasMenuRightShoppingCart" aria-label="Toggle navigation" style="background-color: transparent !important; border-color: transparent;">
-                            
+                        <button
+                            class="btn btn-primary position-relative"
+                            type="button"
+                            data-bs-toggle="offcanvas"
+                            data-bs-target="#offcanvasMenuRightShoppingCart"
+                            aria-controls="offcanvasMenuRightShoppingCart"
+                            aria-label="Toggle navigation"
+                            style="background-color: transparent !important; border-color: transparent;"
+                            id="navbarCartButton"
+                            data-store-locator="kickback-market"
+                        >
                             <i class="fa-solid fa-cart-shopping"></i>
-                            <span class="badge bg-secondary position-absolute top-0 start-100 translate-middle rounded-pill">
-                                99
-                                <span class="visually-hidden">unread messages</span>
+                            <span
+                                class="badge bg-secondary position-absolute top-0 start-100 translate-middle rounded-pill d-none"
+                                id="navbarCartBadge"
+                                aria-live="polite"
+                            >
+                                <i class="fa-solid fa-spinner fa-spin"></i>
+                                <span class="visually-hidden">Loading cart</span>
                             </span>
                         </button>
                     </li>
@@ -1749,4 +1762,66 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
         </div>
     </div>
 </nav>
+<script>
+    (() => {
+        const navbarCartBadgeElement = document.getElementById('navbarCartBadge');
+        const navbarCartButtonElement = document.getElementById('navbarCartButton');
+        const userIsLoggedIn = <?php echo json_encode(Session::isLoggedIn()); ?>;
+
+        if (!navbarCartBadgeElement || !navbarCartButtonElement) {
+            return;
+        }
+
+        if (!userIsLoggedIn) {
+            navbarCartBadgeElement.classList.add('d-none');
+            return;
+        }
+
+        const queryParams = new URLSearchParams(window.location.search);
+        const storeLocatorQueryParam = queryParams.get('store-locator');
+        const navbarStoreLocator = storeLocatorQueryParam || navbarCartButtonElement.dataset.storeLocator || 'kickback-market';
+
+        const showNavbarCartBadge = (htmlContent, title) => {
+            navbarCartBadgeElement.innerHTML = htmlContent;
+            navbarCartBadgeElement.title = title;
+            navbarCartBadgeElement.classList.remove('d-none');
+        };
+
+        const showNavbarCartLoading = () => {
+            showNavbarCartBadge('<i class="fa-solid fa-spinner fa-spin"></i><span class="visually-hidden">Loading cart</span>', 'Loading cart');
+        };
+
+        const showNavbarCartError = (errorMessage) => {
+            const errorText = errorMessage || 'Unable to load cart';
+            showNavbarCartBadge('<i class="fa-solid fa-triangle-exclamation"></i><span class="visually-hidden">' + errorText + '</span>', errorText);
+        };
+
+        const showNavbarCartCount = (count) => {
+            const accessibleText = `Cart has ${count} item${count === 1 ? '' : 's'}`;
+            navbarCartBadgeElement.innerHTML = '';
+            navbarCartBadgeElement.textContent = `${count}`;
+            const screenReaderText = document.createElement('span');
+            screenReaderText.className = 'visually-hidden';
+            screenReaderText.textContent = accessibleText;
+            navbarCartBadgeElement.appendChild(screenReaderText);
+            navbarCartBadgeElement.title = accessibleText;
+            navbarCartBadgeElement.classList.remove('d-none');
+        };
+
+        const fetchNavbarCartCount = async () => {
+            showNavbarCartLoading();
+
+            try {
+                const cartResponse = await StoreClient.getCart(navbarStoreLocator);
+                const cartProductsList = Array.isArray(cartResponse?.data?.cartProducts) ? cartResponse.data.cartProducts : [];
+                showNavbarCartCount(cartProductsList.length);
+            } catch (cartLoadError) {
+                console.error('Failed to load navbar cart count', cartLoadError);
+                showNavbarCartError(cartLoadError?.message);
+            }
+        };
+
+        fetchNavbarCartCount();
+    })();
+</script>
 <?php } ?>
