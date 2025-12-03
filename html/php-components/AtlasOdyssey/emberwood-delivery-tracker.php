@@ -129,7 +129,7 @@ $currentWaypointIndex = min((int) floor($adjustedProgress / $segmentPercentage),
                                     $segmentProgress = max(0, min(($progressIntoSegment / $segmentLength) * 100, 100));
                                     $isFinalWaypoint = $index === count($journeyWaypoints) - 1;
                                 ?>
-                                <div class="timeline-item <?= $isReached ? 'active' : ''; ?> <?= $isCurrent ? 'current' : ''; ?>">
+                                <div class="timeline-item mt-1 <?= $isReached ? 'active' : ''; ?> <?= $isCurrent ? 'current' : ''; ?>">
                                     <div class="timeline-icon"><i class="fas <?= $waypoint['icon']; ?>"></i></div>
                                     <div class="flex-grow-1">
                                         <div class="fw-semibold mb-1 d-flex justify-content-between align-items-center gap-2 flex-wrap">
@@ -145,7 +145,7 @@ $currentWaypointIndex = min((int) floor($adjustedProgress / $segmentPercentage),
                                             <span><?= $isFinalWaypoint ? 'Final destination' : 'Progress to next point'; ?></span>
                                         </div>
                                         <div class="progress waypoint-progress mt-2" role="progressbar" aria-valuenow="<?= (int) $segmentProgress; ?>" aria-valuemin="0" aria-valuemax="100">
-                                            <div class="progress-bar <?= $isFinalWaypoint ? 'bg-success' : 'bg-warning'; ?>" style="width: <?= $isFinalWaypoint ? ($isReached ? '100' : (string) $segmentProgress) : (string) $segmentProgress; ?>%;"></div>
+                                            <div class="progress-bar bg-ranked-1" style="width: <?= $isFinalWaypoint ? ($isReached ? '100' : (string) $segmentProgress) : (string) $segmentProgress; ?>%;"></div>
                                         </div>
                                         <div class="small text-secondary mt-1">
                                             <?= $isFinalWaypoint ? 'Journey completion status' : 'Progress toward the next waypoint'; ?>
