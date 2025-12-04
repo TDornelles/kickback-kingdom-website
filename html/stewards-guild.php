@@ -25,8 +25,8 @@ if (isset($thisMonthsAnalytics["total_accounts"])) {
 }
 
 $growthProgress = min($thisMonthsGrowthPercentage / 5 * 100, 100);
-$retentionProgress = min($thisMonthsRetentionRate / 20 * 100, 100);
-
+$retentionProgress = min($thisMonthsRetentionRate / 60 * 100, 100);
+$growGoal = 500;
 $divisionData = [
     [
         'name' => 'Horsemen',
@@ -46,42 +46,18 @@ $divisionData = [
         'name' => 'Expansion Division',
         'icon' => 'fa-seedling',
         'desc' => 'Growth and partnerships.',
-        'goal' => 'Grow to 200 Guildsmen',
-        'progress' => $thisMonthsTotalAccounts / 200 * 100
+        'goal' => "Grow to $growGoal Guildsmen",
+        'progress' => $thisMonthsTotalAccounts / $growGoal * 100
     ]
 ];
 
 $newsItems = [];
 
-$item1 = new stdClass();
+/*$item1 = new stdClass();
 $item1->title = "Kickback is legal in Florida";
 $item1->date = "April 16, 2025";
 $item1->summary = "Our USA company is now filed and registered in the state of Florida.";
-$newsItems[] = $item1;
-
-$item1 = new stdClass();
-$item1->title = "BRA company is legal";
-$item1->date = "April 7, 2025";
-$item1->summary = "Our Brazilian company has been processed and we have recieved our CNPJ.";
-$newsItems[] = $item1;
-
-$item1 = new stdClass();
-$item1->title = "USA and BRA companies have been filed";
-$item1->date = "April 1, 2025";
-$item1->summary = "Legal companies in both Brazil and the United States have been filed and are being processed. It should be ready to conduct business in ~1 month.";
-$newsItems[] = $item1;
-
-$item1 = new stdClass();
-$item1->title = "New Deal!";
-$item1->date = "March 26, 2025";
-$item1->summary = "We have secured a deal with Rudirock Inc to offer Craftsmen Guild services with a 1k USD a month service charge per guildmember used.";
-$newsItems[] = $item1;
-
-$item2 = new stdClass();
-$item2->title = "L.I.C.H. Deck Editor!";
-$item2->date = "March 30, 2025";
-$item2->summary = "The deck editor has been finished and is ready to use to build the precon decks for the starter packs";
-$newsItems[] = $item2;
+$newsItems[] = $item1;*/
 
 
 
@@ -89,32 +65,31 @@ $stewardsByDivision = [
     'Horsemen' => [
         ['name' => 'Alexander', 'role' => 'Horseman', 'image' => '/assets/media/logo.png', 'goals' => [
             ['name' => 'Self Score Reporting', 'progress' => 80],
-            ['name' => 'Emberwood Deliveries for Store Page', 'progress' => 40],
+            ['name' => 'Emberwood Deliveries for Store Page', 'progress' => 95],
             ['name' => 'Twilight Racer Full Game Loop', 'progress' => 30],
             ['name' => 'Treasure Hunter Full Game Loop', 'progress' => 80],
-            ['name' => 'Legalize Kickback in USA and BRL', 'progress' => 100],
             ['name' => 'Setup Kickback Steam Account', 'progress' => 30],
-            ['name' => 'Build Game Server Page', 'progress' => 0],
             ['name' => 'Build Invasion Events', 'progress' => 0],
             ['name' => 'Fix Merchants\' Guild page', 'progress' => 90],
-            ['name' => 'Fix Admin page', 'progress' => 0],
+            ['name' => 'Fix Admin page', 'progress' => 50],
             ['name' => 'Fix Apprentices\' Guild page', 'progress' => 0],
             ['name' => 'Build Craftsmens\' Guild page', 'progress' => 0],
-            ['name' => 'Build Craftsmens\' Guild Website', 'progress' => 100],
-            ['name' => 'Refactor ELO Logic', 'progress' => 0],
             ['name' => 'Refactor Merchants Logic', 'progress' => 95]
         ]],
         ['name' => 'Eric', 'role' => 'Horseman', 'image' => '/assets/media/logo.png', 'goals' => [
         ]],
     ],
     'Technology Division' => [
-        ['name' => 'Lily', 'role' => 'Chancellor', 'image' => '/assets/media/logo.png', 'goals' => [
+        ['name' => 'Hans', 'role' => 'Chancellor', 'image' => '/assets/media/logo.png', 'goals' => [
+            ['name' => 'Kickback Store Page', 'progress' => 97],
+            ['name' => 'Refactor ELO Logic', 'progress' => 0],
+        ]],
+        ['name' => 'Lily', 'role' => 'Steward', 'image' => '/assets/media/logo.png', 'goals' => [
             ['name' => 'Website Load Time Optimizations', 'progress' => 15],
             ['name' => 'Database optimizations', 'progress' => 0]
         ]],
-        ['name' => 'Hans', 'role' => 'Steward', 'image' => '/assets/media/logo.png', 'goals' => [
-            ['name' => 'Kickback Store Page', 'progress' => 97],
-            ['name' => 'Write out 30 canon Heroes for L.I.C.H.', 'progress' => 0]
+        ['name' => 'Jacob', 'role' => 'Steward', 'image' => '/assets/media/logo.png', 'goals' => [
+            ['name' => 'Email verification', 'progress' => 15],
         ]],
     ],
     'Expansion Division' => [
