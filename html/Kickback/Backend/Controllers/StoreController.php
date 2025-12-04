@@ -3395,7 +3395,7 @@ class StoreController
         $cart->checkedOut = boolval($row["checked_out"]);
         $cart->void = boolval($row["void"]);
 
-        $cart->ctime = $row["ctime"];
+        $cart->ctime = "";
         $cart->crand = $row["crand"];
 
         return $cart;
