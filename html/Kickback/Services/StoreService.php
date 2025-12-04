@@ -894,7 +894,7 @@ class StoreService
 
         foreach($price as $priceComponent)
         {
-            array_push($vPrice, static::vPriceFromJson($priceComponent));
+            array_push($vPrice, static::vPriceFromJson((object)$priceComponent));
         }
 
         return $vPrice;
