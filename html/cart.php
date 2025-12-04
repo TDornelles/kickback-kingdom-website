@@ -128,6 +128,25 @@ $isLoggedIn = Session::isLoggedIn();
 
             let cart = null;
 
+            const getMediaPath = (media) => media?.fullPath || media?.url || media?.path || '';
+
+            const getProductMediaPath = (product) =>
+                getMediaPath(product?.mediaSmall)
+                || getMediaPath(product?.mediaLarge)
+                || '/assets/media/default.png';
+
+            const normalizePriceComponents = (priceComponents) => {
+                if (Array.isArray(priceComponents)) {
+                    return priceComponents;
+                }
+
+                if (priceComponents && typeof priceComponents === 'object') {
+                    return Object.values(priceComponents);
+                }
+
+                return [];
+            };
+
             function showModal(modalId, message) {
                 const modalBody = document.getElementById(modalId + "Message");
                 if (modalBody) {
@@ -142,11 +161,13 @@ $isLoggedIn = Session::isLoggedIn();
             }
 
             function formatPriceComponents(priceComponents) {
-                if (!Array.isArray(priceComponents) || priceComponents.length === 0) {
+                const components = normalizePriceComponents(priceComponents);
+
+                if (components.length === 0) {
                     return '<span class="text-muted">Free</span>';
                 }
 
-                return priceComponents.map((component) => {
+                return components.map((component) => {
                     const amount = Number(component?.amount ?? 0);
                     if (component?.currencyCode) {
                         const symbol = component.currencyCode === 'ADA' ? '₳' : component.currencyCode === 'USD' ? '$' : component.currencyCode;
@@ -156,7 +177,7 @@ $isLoggedIn = Session::isLoggedIn();
 
                     if (component?.item) {
                         const quantity = Math.max(1, Math.floor(amount));
-                        const icon = component.item?.iconSmall?.fullPath || component.item?.iconSmall?.path || '';
+                        const icon = component.item?.iconSmall?.fullPath || component.item?.iconSmall?.path || component.item?.iconSmall?.url || '';
                         const name = component.item?.name || 'Item';
                         const iconHtml = icon ? `<img src="${icon}" alt="${name}" style="height:16px; width:16px; object-fit:contain;" class="me-1">` : '';
                         return `<span>${quantity}x ${iconHtml}${name}</span>`;
@@ -166,19 +187,83 @@ $isLoggedIn = Session::isLoggedIn();
                 }).join('<span class="text-muted mx-1">+</span>');
             }
 
+            const aggregateTotals = (priceComponents) => {
+                const totals = {
+                    items: [],
+                    ada: 0,
+                    usd: 0,
+                    otherCurrencies: {},
+                };
+
+                normalizePriceComponents(priceComponents).forEach((component) => {
+                    const amount = Number(component?.amount ?? 0);
+
+                    if (component?.item) {
+                        totals.items.push({
+                            quantity: Math.max(1, Math.floor(amount)),
+                            name: component.item?.name || 'Item',
+                            icon: component.item?.iconSmall?.fullPath || component.item?.iconSmall?.path || component.item?.iconSmall?.url || '',
+                        });
+                        return;
+                    }
+
+                    if (component?.currencyCode === 'ADA') {
+                        totals.ada += amount;
+                        return;
+                    }
+
+                    if (component?.currencyCode === 'USD') {
+                        totals.usd += amount;
+                        return;
+                    }
+
+                    if (component?.currencyCode) {
+                        totals.otherCurrencies[component.currencyCode] = (totals.otherCurrencies[component.currencyCode] || 0) + amount;
+                    }
+                });
+
+                return totals;
+            };
+
             function renderTotals() {
                 cartTotals.innerHTML = '';
-                if (!cart || !cart.totals || Object.keys(cart.totals).length === 0) {
-                    cartTotals.innerHTML = '<li class="list-group-item d-flex justify-content-between"><span>Total</span><span class="fw-bold">—</span></li>';
+
+                const totals = aggregateTotals(cart?.totals);
+
+                const addLine = (label, value, isBold = false) => {
+                    const item = document.createElement('li');
+                    item.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    item.innerHTML = `<span>${label}</span><span class="${isBold ? 'fw-bold' : ''}">${value}</span>`;
+                    cartTotals.appendChild(item);
+                };
+
+                const hasTotals = totals.items.length || totals.ada || totals.usd || Object.keys(totals.otherCurrencies).length;
+
+                const formatNumber = (value, symbol) => {
+                    const precision = Math.floor(value) === value ? 0 : 2;
+                    return `${symbol}${value.toFixed(precision)}`;
+                };
+
+                const itemsValue = totals.items.length
+                    ? totals.items.map((item) => {
+                        const iconHtml = item.icon ? `<img src="${item.icon}" alt="${item.name}" style="height:16px; width:16px; object-fit:contain;" class="me-1">` : '';
+                        return `${item.quantity}x ${iconHtml}${item.name}`;
+                    }).join(', ')
+                    : '0 items';
+
+                if (!hasTotals) {
+                    addLine('Items', itemsValue);
+                    addLine('ADA', formatNumber(0, '₳'));
+                    addLine('USD', formatNumber(0, '$'), true);
                     return;
                 }
 
-                Object.entries(cart.totals).forEach(([label, value]) => {
-                    const display = Array.isArray(value) ? formatPriceComponents(value) : value;
-                    const item = document.createElement('li');
-                    item.className = 'list-group-item d-flex justify-content-between align-items-center';
-                    item.innerHTML = `<span class="text-capitalize">${label}</span><span>${display}</span>`;
-                    cartTotals.appendChild(item);
+                addLine('Items', itemsValue);
+                addLine('ADA', formatNumber(totals.ada, '₳'));
+                addLine('USD', formatNumber(totals.usd, '$'), true);
+
+                Object.entries(totals.otherCurrencies).forEach(([code, amount]) => {
+                    addLine(code, formatNumber(amount, ''));
                 });
             }
 
@@ -196,10 +281,11 @@ $isLoggedIn = Session::isLoggedIn();
 
                 cart.cartProducts.forEach((cartProduct, index) => {
                     const product = cartProduct?.product;
+                    const quantity = Math.max(1, Number(cartProduct?.quantity) || 1);
                     const item = document.createElement('div');
                     item.className = 'list-group-item list-group-item-action d-flex gap-3 align-items-start';
 
-                    const media = product?.mediaSmall?.fullPath || product?.mediaLarge?.fullPath || '/assets/media/default.png';
+                    const media = getProductMediaPath(product);
                     const priceDisplay = formatPriceComponents(product?.price || []);
                     const couponText = cartProduct?.coupon ? `<div class="text-success small">Coupon: ${cartProduct.coupon?.name || cartProduct.coupon?.code || 'Applied'}</div>` : '';
 
@@ -208,7 +294,7 @@ $isLoggedIn = Session::isLoggedIn();
                         <div class="flex-grow-1">
                             <div class="d-flex justify-content-between align-items-start">
                                 <div>
-                                    <h6 class="mb-1">${product?.name || 'Product'}</h6>
+                                    <h6 class="mb-1">${product?.name || 'Product'} <span class="badge text-bg-secondary">x${quantity}</span></h6>
                                     <div class="text-muted small mb-1">${product?.description || ''}</div>
                                     ${couponText}
                                 </div>
