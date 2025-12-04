@@ -6233,7 +6233,7 @@ class StoreController
         $sql = "SELECT 1 FROM cart c 
         JOIN v_cart_item vci ON c.ctime = vci.cart_ctime AND c.crand = vci.cart_crand
         JOIN account a ON a.id = c.ref_account_crand
-        WHERE c.checked_out = 0 AND c.removed = 0 AND
+        WHERE c.checked_out = 0 AND c.void = 0 AND
         c.ref_account_crand = ? AND vci.cart_product_link_ctime = ? AND vci.cart_product_link_crand = ?;";
         $params = [$account->crand, $cartProduct->ctime, $cartProduct->crand];
 
