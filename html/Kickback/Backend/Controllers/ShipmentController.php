@@ -160,7 +160,9 @@ class ShipmentController
             $manifestItems = [];
             while ($row = $result->fetch_assoc()) {
                 // Determine the number of each item to add to the manifest
-                $count = self::calculateItemCount($row['probability'], $row['max_count']);
+                $probability = (float) $row['probability'];
+                $maxCount = (int) $row['max_count'];
+                $count = self::calculateItemCount($probability, $maxCount);
                 if ($count > 0) {
                     $manifestItems[] = ['item_id' => $row['item_id'], 'count' => $count];
                 }
