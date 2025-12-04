@@ -142,6 +142,9 @@ $poolItems = $poolResp->success ? $poolResp->data : [];
 $productOptionsResp = ShipmentController::getShipmentProductPoolOptions();
 $productOptions = $productOptionsResp->success ? $productOptionsResp->data : [];
 
+$itemOptionsResp = ItemController::getAllItems(true);
+$itemOptions = $itemOptionsResp->success ? $itemOptionsResp->data : [];
+
 $storeOptionsResp = StoreController::getAllStores();
 $storeOptions = $storeOptionsResp->success ? $storeOptionsResp->data : [];
 
@@ -207,6 +210,12 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
                 <?php if (!$productOptionsResp->success): ?>
                     <div class="alert alert-danger" role="alert">
                         <?= htmlspecialchars($productOptionsResp->message) ?>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (!$itemOptionsResp->success): ?>
+                    <div class="alert alert-danger" role="alert">
+                        <?= htmlspecialchars($itemOptionsResp->message) ?>
                     </div>
                 <?php endif; ?>
 
