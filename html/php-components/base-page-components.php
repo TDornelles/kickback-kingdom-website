@@ -976,52 +976,7 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
 
         <!-- Shopping Cart Items -->
         <div class="shopping-cart-items" id="shoppingCartItems">
-
-            <?php
-            // Placeholder for your cart items array
-            if (Kickback\Services\Session::isAdmin())
-            {
-                $cart_items = [
-                    ['id' => 1, 'name' => 'Epic Sword', 'quantity' => 1, 'price' => '120 Coins', 'icon_url' => '/assets/media/items/21.png'],
-                    ['id' => 2, 'name' => 'Mystic Potion', 'quantity' => 2, 'price' => '60 Coins', 'icon_url' => '/assets/media/items/21.png']
-                    // ... more items ...
-                ];
-                $cart_items = [];
-            }
-            else 
-            {
-                $cart_items = [];
-            }
-            if(empty($cart_items)) {
-                echo "<p class='text-muted'>Your cart is empty.</p>";
-            } else {
-                foreach($cart_items as $item) {
-                    echo "
-            <div class='cart-item d-flex justify-content-between align-items-center mb-3'>
-                <div class='item-icon me-2'>
-                    <img class='img img-thumbnail' src='{$item['icon_url']}' alt='{$item['name']}'>
-                </div>
-        
-                <div class='item-details d-flex align-items-center flex-grow-1'>
-                    <div class='me-3'>
-                        <div class='item-title fw-bold fs-5'>{$item['name']}</div>
-                        <div class='item-quantity d-flex align-items-center'>
-                            <button class='quantity-decrease btn btn-outline-secondary btn-sm'>-</button>
-                            <input type='number' value='{$item['quantity']}' class='form-control quantity-input mx-2 form-control-sm' min='1'>
-                            <button class='quantity-increase btn btn-outline-secondary btn-sm'>+</button>
-                        </div>
-                    </div>
-                    <div class='item-price ms-auto me-3'>
-                        <span>{$item['price']}</span>
-                    </div>
-                </div>
-                <div class='item-actions'>
-                    <button class='btn btn-danger btn-sm'><i class='fa-regular fa-trash-can'></i></button>
-                </div>
-            </div>";
-                }
-            }
-        ?>
+            <p class="text-muted mb-0">Loading your cart...</p>
         </div>
 
         <!-- Shopping Cart Total -->
@@ -1029,9 +984,9 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
     <div class="offcanvas-footer p-3 border-top">
         <!-- Shopping Cart Totals Summary -->
         <div class="shopping-cart-summary mb-3 p-2 border-bottom">
-            <p class="summary-line">Subtotal: <span class="subtotal-amount">0 </span></p>
-            <p class="summary-line">Discount Applied: <span class="discount-amount">0 </span></p>
-            <p class="summary-line fw-bold total-line">Total: <span class="final-total-amount">0 </span></p>
+            <ul class="list-group list-group-flush" id="offcanvasCartTotals">
+                <li class="list-group-item d-flex justify-content-between"><span>Total</span><span class="fw-bold">—</span></li>
+            </ul>
         </div>
         <!-- Proceed to Checkout Button -->
         <a class="btn btn-primary w-100" id="offcanvasCheckoutButton" href="<?php echo Version::urlBetaPrefix(); ?>/checkout.php?store-locator=kickback-market">Proceed to Checkout</a>
@@ -1774,6 +1729,8 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
         const offcanvasCartStatus = document.getElementById('offcanvasCartStatus');
         const cartOffcanvas = document.getElementById('offcanvasMenuRightShoppingCart');
         const offcanvasCheckoutButton = document.getElementById('offcanvasCheckoutButton');
+        const offcanvasCartItemsContainer = document.getElementById('shoppingCartItems');
+        const offcanvasCartTotalsContainer = document.getElementById('offcanvasCartTotals');
         const userIsLoggedIn = <?php echo json_encode(Session::isLoggedIn()); ?>;
 
         const queryParams = new URLSearchParams(window.location.search);
@@ -1784,6 +1741,156 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
             const checkoutBaseUrl = `<?= Version::urlBetaPrefix(); ?>/checkout.php`;
             offcanvasCheckoutButton.href = `${checkoutBaseUrl}?store-locator=${encodeURIComponent(navbarStoreLocator)}`;
         }
+
+        const getMediaPath = (media) => media?.fullPath || media?.url || media?.path || '';
+
+        const getProductMediaPath = (product) =>
+            getMediaPath(product?.mediaSmall)
+            || getMediaPath(product?.mediaLarge)
+            || '/assets/media/default.png';
+
+        const normalizePriceComponents = (priceComponents) => {
+            if (Array.isArray(priceComponents)) {
+                return priceComponents;
+            }
+
+            if (priceComponents && typeof priceComponents === 'object') {
+                return Object.values(priceComponents);
+            }
+
+            return [];
+        };
+
+        const formatPriceComponents = (priceComponents) => {
+            const components = normalizePriceComponents(priceComponents);
+
+            if (components.length === 0) {
+                return '<span class="text-muted">Free</span>';
+            }
+
+            return components.map((component) => {
+                const amount = Number(component?.amount ?? 0);
+
+                if (component?.currencyCode) {
+                    const symbol = component.currencyCode === 'ADA'
+                        ? '₳'
+                        : component.currencyCode === 'USD'
+                            ? '$'
+                            : component.currencyCode;
+                    const precision = Math.floor(amount) === amount ? 0 : 2;
+                    return `<span class="fw-semibold">${amount.toFixed(precision)} ${symbol}</span>`;
+                }
+
+                if (component?.item) {
+                    const quantity = Math.max(1, Math.floor(amount));
+                    const icon = component.item?.iconSmall?.fullPath
+                        || component.item?.iconSmall?.path
+                        || component.item?.iconSmall?.url
+                        || '';
+                    const name = component.item?.name || 'Item';
+                    const iconHtml = icon
+                        ? `<img src="${icon}" alt="${name}" style="height:16px; width:16px; object-fit:contain;" class="me-1">`
+                        : '';
+                    return `<span>${quantity}x ${iconHtml}${name}</span>`;
+                }
+
+                return `<span class="text-muted">${amount}</span>`;
+            }).join('<span class="text-muted mx-1">+</span>');
+        };
+
+        const aggregateTotals = (priceComponents) => {
+            const totals = {
+                items: [],
+                ada: 0,
+                usd: 0,
+                otherCurrencies: {},
+            };
+
+            normalizePriceComponents(priceComponents).forEach((component) => {
+                const amount = Number(component?.amount ?? 0);
+
+                if (component?.item) {
+                    totals.items.push({
+                        quantity: Math.max(1, Math.floor(amount)),
+                        name: component.item?.name || 'Item',
+                        icon: component.item?.iconSmall?.fullPath
+                            || component.item?.iconSmall?.path
+                            || component.item?.iconSmall?.url
+                            || '',
+                    });
+                    return;
+                }
+
+                if (component?.currencyCode === 'ADA') {
+                    totals.ada += amount;
+                    return;
+                }
+
+                if (component?.currencyCode === 'USD') {
+                    totals.usd += amount;
+                    return;
+                }
+
+                if (component?.currencyCode) {
+                    const code = component.currencyCode;
+                    totals.otherCurrencies[code] = (totals.otherCurrencies[code] || 0) + amount;
+                }
+            });
+
+            return totals;
+        };
+
+        const renderTotalsList = (targetElement, priceComponents) => {
+            if (!targetElement) {
+                return;
+            }
+
+            const totals = aggregateTotals(priceComponents);
+            targetElement.innerHTML = '';
+
+            const addLine = (label, value, isBold = false) => {
+                const item = document.createElement('li');
+                item.className = 'list-group-item d-flex justify-content-between align-items-center';
+                item.innerHTML = `<span>${label}</span><span class="${isBold ? 'fw-bold' : ''}">${value}</span>`;
+                targetElement.appendChild(item);
+            };
+
+            const hasTotals = totals.items.length > 0
+                || totals.ada !== 0
+                || totals.usd !== 0
+                || Object.keys(totals.otherCurrencies).length > 0;
+
+            const formatNumber = (value, symbol) => {
+                const precision = Math.floor(value) === value ? 0 : 2;
+                return `${symbol}${value.toFixed(precision)}`;
+            };
+
+            const itemsValue = totals.items.length
+                ? totals.items.map((item) => {
+                    const iconHtml = item.icon
+                        ? `<img src="${item.icon}" alt="${item.name}" style="height:16px; width:16px; object-fit:contain;" class="me-1">`
+                        : '';
+                    return `${item.quantity}x ${iconHtml}${item.name}`;
+                }).join(', ')
+                : '0 items';
+
+            if (!hasTotals) {
+                addLine('Items', itemsValue);
+                addLine('ADA', formatNumber(0, '₳'));
+                addLine('USD', formatNumber(0, '$'), true);
+                return;
+            }
+
+            addLine('Items', itemsValue);
+            addLine('ADA', formatNumber(totals.ada, '₳'));
+            addLine('USD', formatNumber(totals.usd, '$'), true);
+
+            Object.entries(totals.otherCurrencies).forEach(([code, amount]) => {
+                addLine(code, formatNumber(amount, ''));
+            });
+        };
+
+        let offcanvasCartData = null;
 
         const setOffcanvasStatus = (message, state = 'info') => {
             if (!offcanvasCartStatus) {
@@ -1802,6 +1909,89 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
 
             offcanvasCartStatus.className = 'alert alert-info d-none';
             offcanvasCartStatus.textContent = '';
+        };
+
+        const renderOffcanvasCart = (cartData) => {
+            offcanvasCartData = cartData;
+
+            if (!offcanvasCartItemsContainer) {
+                return;
+            }
+
+            offcanvasCartItemsContainer.innerHTML = '';
+
+            if (!userIsLoggedIn) {
+                offcanvasCartItemsContainer.innerHTML = '<p class="text-muted mb-0">Log in to view your cart.</p>';
+                renderTotalsList(offcanvasCartTotalsContainer, []);
+                return;
+            }
+
+            const cartProducts = Array.isArray(cartData?.cartProducts) ? cartData.cartProducts : [];
+
+            if (!cartProducts.length) {
+                offcanvasCartItemsContainer.innerHTML = '<p class="text-muted mb-0">Your cart is empty.</p>';
+                renderTotalsList(offcanvasCartTotalsContainer, cartData?.totals || []);
+                return;
+            }
+
+            cartProducts.forEach((cartProduct, index) => {
+                const product = cartProduct?.product || {};
+                const quantity = Math.max(1, Number(cartProduct?.quantity) || 1);
+                const media = getProductMediaPath(product);
+                const priceDisplay = formatPriceComponents(product?.price || []);
+                const couponText = cartProduct?.coupon
+                    ? `<div class="text-success small">Coupon: ${cartProduct.coupon?.name || cartProduct.coupon?.code || 'Applied'}</div>`
+                    : '';
+
+                const item = document.createElement('div');
+                item.className = 'cart-item d-flex justify-content-between align-items-center mb-3';
+                item.innerHTML = `
+                    <div class="item-icon me-2">
+                        <img class="img img-thumbnail" src="${media}" alt="${product?.name || 'Product'}" style="height:64px; width:64px; object-fit:cover;">
+                    </div>
+                    <div class="item-details d-flex align-items-center flex-grow-1">
+                        <div class="me-3">
+                            <div class="item-title fw-bold fs-6 mb-1">${product?.name || 'Product'} <span class="badge text-bg-secondary">x${quantity}</span></div>
+                            <div class="item-price text-nowrap">${priceDisplay}</div>
+                            ${couponText}
+                        </div>
+                    </div>
+                    <div class="item-actions">
+                        <button class="btn btn-danger btn-sm" data-index="${index}"><i class="fa-regular fa-trash-can"></i></button>
+                    </div>
+                `;
+
+                const removeButton = item.querySelector('button[data-index]');
+                removeButton?.addEventListener('click', async () => {
+                    await removeOffcanvasCartProduct(index);
+                });
+
+                offcanvasCartItemsContainer.appendChild(item);
+            });
+
+            renderTotalsList(offcanvasCartTotalsContainer, cartData?.totals || []);
+        };
+
+        const removeOffcanvasCartProduct = async (index) => {
+            if (!offcanvasCartData || !Array.isArray(offcanvasCartData.cartProducts)) {
+                return;
+            }
+
+            const cartProduct = offcanvasCartData.cartProducts[index];
+
+            if (!cartProduct) {
+                return;
+            }
+
+            try {
+                setOffcanvasStatus('Removing item...', 'info');
+                await StoreClient.removeProductFromCart(cartProduct);
+                clearOffcanvasStatus();
+                await fetchCart({ showLoading: false });
+            } catch (error) {
+                console.error('Failed to remove product from cart', error);
+                setOffcanvasStatus(error?.message || 'Unable to remove this item right now.', 'danger');
+            }
         };
 
         let showNavbarCartLoading = null;
@@ -1848,11 +2038,13 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
 
             if (!locatorToUse) {
                 setOffcanvasStatus('Missing store information for this cart.', 'danger');
+                renderOffcanvasCart(null);
                 return null;
             }
 
             if (!userIsLoggedIn) {
                 setOffcanvasStatus('Log in to view your cart.', 'info');
+                renderOffcanvasCart(null);
                 return null;
             }
 
@@ -1870,6 +2062,8 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
 
                 const cartData = cartResponse?.data ?? null;
 
+                renderOffcanvasCart(cartData);
+
                 if (cartData) {
                     const cartProducts = Array.isArray(cartData?.cartProducts)
                         ? cartData.cartProducts
@@ -1884,6 +2078,7 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
             } catch (cartLoadError) {
                 console.error('Failed to fetch cart', cartLoadError);
                 setOffcanvasStatus(cartLoadError?.message || 'Unable to load cart right now.', 'danger');
+                renderOffcanvasCart(null);
 
                 if (typeof showNavbarCartError === 'function') {
                     showNavbarCartError(cartLoadError?.message);
