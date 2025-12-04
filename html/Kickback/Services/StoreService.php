@@ -809,13 +809,12 @@ class StoreService
         $vCart->ctime = $cart->ctime;
         $vCart->crand = $cart->crand;
 
-        $transaction = (object)$cart->transaction;
+        /*$transaction = (object)$cart->transaction;
         $vTransaction = new vTransaction();
             $vTransaction->description = $transaction->description;
             $vTransaction->complete = $transaction->complete;
             $vTransaction->void = $transaction->void;
-            $vTransaction->price = $transaction->price;
-        $vCart->transaction = $vTransaction;
+        $vCart->transaction = $vTransaction;*/
 
         $vCart->cartProducts = [];
 

@@ -6250,7 +6250,7 @@ class StoreController
         $transaction = new Transaction();
         $transaction->complete = false;
         $transaction->void = false;
-        $transaction->description = "Cart Checkout Transaction For ".$cart->account->username."'s Cart. Cart Id : ($cart->ctime, $cart->crand). Transaction ".($i+1)."/".count($products);
+        $transaction->description = "Cart Checkout Transaction For ".$cart->account->username."'s Cart. Cart Id : ($cart->ctime, $cart->crand)";
         $transaction->type = "CART";
         $transaction->firstAccount = $cart->account;
         $transaction->secondAccount = $cart->store->owner;
