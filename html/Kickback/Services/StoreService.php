@@ -831,7 +831,32 @@ class StoreService
             array_push($vCart->cartProducts, static::vCartItemFromJson((object)$product));
         }
 
+        $vCart->totals = static::vCartToTotatlsFromJson($cart);
+
         return $vCart;
+    }
+
+    private static function vCartToTotatlsFromJson(object $cart) : array
+    {
+        $totals = $cart->totals;
+
+        $objTotals = [];
+
+        foreach($totals as $total)
+        {
+            $item = static::vItemFromJson((object)$total["item"]);
+            $currencyCode = is_null($total["currencyCode"]) ? null : CurrencyCode::from($total["currencyCode"]);
+
+            $objTotal = new vPriceComponent();
+
+            $objTotal->amount = $total["amount"];
+            $objTotal->currencyCode = $currencyCode;
+            $objTotal->item = $item;
+
+            array_push($objTotals, $objTotal);
+        }
+
+        return $objTotals;
     }
 
     private static function vCartItemFromJson(object $cartItem) : vCartItem
