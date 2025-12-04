@@ -483,7 +483,7 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
                             </table>
                         </div>
                         <div class="alert alert-info small" role="alert">
-                            Each price component can be currency-based (ADA/USD) with an optional item id for barter pricing.
+                            Each price component can be ADA/USD or item-based, and you can use the selector to pick the item instead of entering an ID.
                         </div>
 
                         <hr>
@@ -545,6 +545,44 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
             const baseItemTitle = document.querySelector('[data-selected-base-item-title]');
             const baseItemMeta = document.querySelector('[data-selected-base-item-meta]');
             const priceRows = document.querySelector('[data-price-rows]');
+            let activePriceRowItem = null;
+
+            if (itemSelectorModal) {
+                itemSelectorModal.addEventListener('hidden.bs.modal', () => {
+                    activePriceRowItem = null;
+                });
+            }
+
+            function setPriceItemSelection(row, item) {
+                if (!row) return;
+                const itemInput = row.querySelector('[data-price-item-input]');
+                const itemLabel = row.querySelector('[data-price-item-label]');
+                if (itemInput) itemInput.value = item?.crand || '';
+                if (itemLabel) {
+                    itemLabel.textContent = item ? `#${item.crand} — ${item.name}` : 'No item selected';
+                    itemLabel.classList.toggle('text-muted', !item);
+                }
+            }
+
+            function clearPriceItemSelection(row) {
+                setPriceItemSelection(row, null);
+            }
+
+            function togglePriceItemSection(row) {
+                const currencySelect = row?.querySelector('[data-price-currency]');
+                const itemSection = row?.querySelector('[data-price-item-section]');
+                const itemInput = row?.querySelector('[data-price-item-input]');
+                const selectButton = row?.querySelector('[data-select-price-item]');
+                const isItemCurrency = currencySelect?.value === 'ITEM';
+                if (itemSection) itemSection.classList.toggle('opacity-50', !isItemCurrency);
+                if (selectButton) selectButton.disabled = !isItemCurrency;
+                if (itemInput) {
+                    itemInput.required = isItemCurrency;
+                    if (!isItemCurrency) {
+                        clearPriceItemSelection(row);
+                    }
+                }
+            }
 
             function addPriceRow(amount = '', currency = 'ADA', itemId = '') {
                 if (!priceRows) return;
@@ -552,14 +590,30 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
                 row.innerHTML = `
                     <td><input type="number" min="1" class="form-control" name="price_amount[]" value="${amount}" required></td>
                     <td>
-                        <select class="form-select" name="price_currency[]" required>
+                        <select class="form-select" name="price_currency[]" required data-price-currency>
                             <option value="ADA" ${currency === 'ADA' ? 'selected' : ''}>ADA</option>
                             <option value="USD" ${currency === 'USD' ? 'selected' : ''}>USD</option>
+                            <option value="ITEM" ${currency === 'ITEM' ? 'selected' : ''}>Item</option>
                         </select>
                     </td>
-                    <td><input type="number" min="0" class="form-control" name="price_item_id[]" value="${itemId}" placeholder="Optional item id"></td>
+                    <td>
+                        <input type="hidden" name="price_item_id[]" value="${itemId}" data-price-item-input>
+                        <div class="d-flex flex-column gap-2" data-price-item-section>
+                            <div class="small text-muted" data-price-item-label>${itemId ? `Item #${itemId}` : 'No item selected'}</div>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button type="button" class="btn btn-outline-primary btn-sm" data-select-price-item>
+                                    <i class="bi bi-search me-1"></i>Select Item
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-clear-price-item>
+                                    <i class="bi bi-x-lg me-1"></i>Clear
+                                </button>
+                            </div>
+                            <div class="form-text">Choose the item to use as currency.</div>
+                        </div>
+                    </td>
                     <td class="text-end"><button type="button" class="btn btn-outline-danger btn-sm" data-remove-price-row><i class="bi bi-trash"></i></button></td>
                 `;
+                togglePriceItemSection(row);
                 priceRows.appendChild(row);
             }
 
@@ -595,21 +649,32 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
             document.addEventListener('item-selector:selected', (event) => {
                 if (event.detail.selectorId !== itemSelectorId) return;
                 const item = event.detail;
-                if (baseItemIdInput) baseItemIdInput.value = item.crand;
-                if (baseItemTitle) baseItemTitle.textContent = `#${item.crand} — ${item.name}`;
-                if (baseItemMeta) baseItemMeta.textContent = item.type ? `${item.type}` : 'Base item selected';
-                if (baseItemPreview) {
-                    baseItemPreview.querySelector('img')?.remove();
-                    const fallback = baseItemPreview.querySelector('.bg-body-secondary');
-                    if (fallback) fallback.classList.toggle('d-none', !!item.icon);
-                    if (item.icon) {
-                        const img = document.createElement('img');
-                        img.src = item.icon;
-                        img.alt = item.name || 'Selected item';
-                        img.width = 48;
-                        img.height = 48;
-                        img.className = 'rounded';
-                        baseItemPreview.prepend(img);
+
+                if (activePriceRowItem) {
+                    const currencySelect = activePriceRowItem.querySelector('[data-price-currency]');
+                    if (currencySelect && currencySelect.value !== 'ITEM') {
+                        currencySelect.value = 'ITEM';
+                    }
+                    setPriceItemSelection(activePriceRowItem, item);
+                    togglePriceItemSection(activePriceRowItem);
+                    activePriceRowItem = null;
+                } else {
+                    if (baseItemIdInput) baseItemIdInput.value = item.crand;
+                    if (baseItemTitle) baseItemTitle.textContent = `#${item.crand} — ${item.name}`;
+                    if (baseItemMeta) baseItemMeta.textContent = item.type ? `${item.type}` : 'Base item selected';
+                    if (baseItemPreview) {
+                        baseItemPreview.querySelector('img')?.remove();
+                        const fallback = baseItemPreview.querySelector('.bg-body-secondary');
+                        if (fallback) fallback.classList.toggle('d-none', !!item.icon);
+                        if (item.icon) {
+                            const img = document.createElement('img');
+                            img.src = item.icon;
+                            img.alt = item.name || 'Selected item';
+                            img.width = 48;
+                            img.height = 48;
+                            img.className = 'rounded';
+                            baseItemPreview.prepend(img);
+                        }
                     }
                 }
 
@@ -627,6 +692,30 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
                 if (trigger) {
                     const row = trigger.closest('tr');
                     row?.remove();
+                    return;
+                }
+
+                const itemSelectTrigger = event.target.closest('[data-select-price-item]');
+                if (itemSelectTrigger && itemSelectorModal) {
+                    activePriceRowItem = itemSelectTrigger.closest('tr');
+                    const modalInstance = bootstrap.Modal.getOrCreateInstance(itemSelectorModal);
+                    modalInstance.show();
+                    return;
+                }
+
+                const clearItemTrigger = event.target.closest('[data-clear-price-item]');
+                if (clearItemTrigger) {
+                    const row = clearItemTrigger.closest('tr');
+                    clearPriceItemSelection(row);
+                    togglePriceItemSection(row);
+                }
+            });
+
+            document.addEventListener('change', (event) => {
+                const currencySelect = event.target.closest('[data-price-currency]');
+                if (currencySelect) {
+                    const row = currencySelect.closest('tr');
+                    togglePriceItemSection(row);
                 }
             });
 
