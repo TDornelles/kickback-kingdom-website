@@ -905,7 +905,7 @@ class StoreService
         $vPriceComponent = new vPriceComponent();
 
         $vPriceComponent->amount = $priceComponent->amount;
-        $vPriceComponent->item = is_null($priceComponent->item) ? null : static::vItemFromJson($priceComponent->item);
+        $vPriceComponent->item = is_null($priceComponent->item) ? null : static::vItemFromJson((object)$priceComponent->item);
         $vPriceComponent->currencyCode = is_null($priceComponent->currencyCode) ? null : CurrencyCode::from($priceComponent->currencyCode);
 
         return $vPriceComponent;
