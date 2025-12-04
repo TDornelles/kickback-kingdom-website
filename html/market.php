@@ -220,7 +220,7 @@ if (Session::isLoggedIn()) {
   flex-direction: column;
 }
 
-.item-title {
+.emberwood-store  .item-title {
   font-size: 1rem;
   color: #ffeeaa;
   text-shadow: 0 0 4px #ffaa00aa;
