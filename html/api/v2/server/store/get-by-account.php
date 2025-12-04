@@ -13,6 +13,7 @@ use Kickback\Services\StoreService;
 Endpoint::begin();
 try
 {
+    $sessionAccount = Endpoint::requireAccountSession();
     $request_contents_json = Endpoint::file_get_contents('php://input');
     $response = null;
     $response_code = StoreService::get_store_by_account($request_contents_json, $response);
