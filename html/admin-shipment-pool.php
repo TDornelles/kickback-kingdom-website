@@ -84,11 +84,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 $component = new \Kickback\Backend\Views\vPriceComponent('', 0, $amount);
-                $component->currencyCode = \Kickback\Backend\Models\Enums\CurrencyCode::from($currency);
 
-                $priceItemId = isset($priceItemIds[$idx]) ? (int) $priceItemIds[$idx] : 0;
-                if ($priceItemId > 0) {
+                if ($currency === 'ITEM') {
+                    $priceItemId = isset($priceItemIds[$idx]) ? (int) $priceItemIds[$idx] : 0;
+                    if ($priceItemId <= 0) {
+                        continue; // skip invalid item-backed price entries
+                    }
+
                     $component->item = new \Kickback\Backend\Views\vItem('', $priceItemId);
+                    $component->currencyCode = null;
+                } else {
+                    $currencyCode = \Kickback\Backend\Models\Enums\CurrencyCode::tryFrom($currency);
+                    if ($currencyCode === null) {
+                        continue; // skip unknown currency codes safely
+                    }
+
+                    $component->currencyCode = $currencyCode;
+
+                    $priceItemId = isset($priceItemIds[$idx]) ? (int) $priceItemIds[$idx] : 0;
+                    if ($priceItemId > 0) {
+                        $component->item = new \Kickback\Backend\Views\vItem('', $priceItemId);
+                    }
                 }
 
                 $priceComponents[] = $component;
