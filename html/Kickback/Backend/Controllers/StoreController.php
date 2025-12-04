@@ -2624,7 +2624,7 @@ class StoreController
                 if(is_null($alreadyExistingTotal))
                 {
                     //Clone price component so we don't affect the idividual price of items in the cart
-                    $totalComponent = new PriceComponent($priceComponent->amount, $priceComponent->currencyCode, $priceComponent->itemId);
+                    $totalComponent = new vPriceComponent('', 0, $priceComponent->amount, $priceComponent->item, $priceComponent->currencyCode);
 
                     array_push($totals, $totalComponent);
                 }
