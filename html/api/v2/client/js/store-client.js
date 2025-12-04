@@ -16,7 +16,7 @@ class StoreClient {
 
         try {
             const bodyData = {
-                "storeLocator": locator
+                "locator": locator
             };
 
             const response = await fetch(`api/v2/server/store/get-by-locator`, {
