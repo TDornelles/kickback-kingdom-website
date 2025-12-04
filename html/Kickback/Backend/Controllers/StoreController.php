@@ -3382,7 +3382,7 @@ class StoreController
         $cart->transaction = new vTransaction();
 
         $cart->account->username = $row["account_username"];
-        $cart->account->ctime = $row["account_ctime"];
+        $cart->account->ctime = "";
         $cart->account->crand = $row["account_crand"];
 
         $cart->store->name = $row["store_name"];
@@ -3395,7 +3395,7 @@ class StoreController
         $cart->checkedOut = boolval($row["checked_out"]);
         $cart->void = boolval($row["void"]);
 
-        $cart->ctime = "";
+        $cart->ctime = $row["ctime"];
         $cart->crand = $row["crand"];
 
         return $cart;

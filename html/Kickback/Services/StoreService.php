@@ -791,7 +791,7 @@ class StoreService
 
         $account = (object)$cart->account;
         $vCart->account->username = $account->username;
-        $vCart->account->ctime = $account->ctime;
+        $vCart->account->ctime = "";
         $vCart->account->crand = $account->crand;
 
         $store = (object)$cart->store;
