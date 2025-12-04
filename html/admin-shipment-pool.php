@@ -142,6 +142,9 @@ $poolItems = $poolResp->success ? $poolResp->data : [];
 $productOptionsResp = ShipmentController::getShipmentProductPoolOptions();
 $productOptions = $productOptionsResp->success ? $productOptionsResp->data : [];
 
+$storeOptionsResp = StoreController::getAllStores();
+$storeOptions = $storeOptionsResp->success ? $storeOptionsResp->data : [];
+
 $manifestExistsResp = ShipmentController::shipmentManifestExists($activeTrackingNumber);
 $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['exists'] ?? false);
 
@@ -204,6 +207,12 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
                 <?php if (!$productOptionsResp->success): ?>
                     <div class="alert alert-danger" role="alert">
                         <?= htmlspecialchars($productOptionsResp->message) ?>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (!$storeOptionsResp->success): ?>
+                    <div class="alert alert-danger" role="alert">
+                        <?= htmlspecialchars($storeOptionsResp->message) ?>
                     </div>
                 <?php endif; ?>
 
@@ -444,8 +453,15 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
                             </div>
                             <div class="col-12 col-md-6">
                                 <label class="form-label" for="store_locator">Store Locator</label>
-                                <input type="text" class="form-control" id="store_locator" name="store_locator" placeholder="e.g. merchants-guild" required>
-                                <div class="form-text">Locator for the store that will own this product.</div>
+                                <select class="form-select" id="store_locator" name="store_locator" required>
+                                    <option value="">Select a store</option>
+                                    <?php foreach ($storeOptions as $store): ?>
+                                        <option value="<?= htmlspecialchars($store->locator ?? '') ?>">
+                                            <?= htmlspecialchars($store->name ?? 'Unknown Store') ?> (<?= htmlspecialchars($store->locator ?? 'n/a') ?>)
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <div class="form-text">Choose the store that will own this product.</div>
                             </div>
                             <div class="col-12 col-md-6">
                                 <label class="form-label" for="product_locator">Product Locator (optional)</label>
@@ -556,11 +572,39 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
             function setPriceItemSelection(row, item) {
                 if (!row) return;
                 const itemInput = row.querySelector('[data-price-item-input]');
-                const itemLabel = row.querySelector('[data-price-item-label]');
+                const preview = row.querySelector('[data-price-item-preview]');
+                const fallback = row.querySelector('[data-price-item-fallback]');
+                const itemTitle = row.querySelector('[data-price-item-title]');
+                const itemMeta = row.querySelector('[data-price-item-meta]');
+
                 if (itemInput) itemInput.value = item?.crand || '';
-                if (itemLabel) {
-                    itemLabel.textContent = item ? `#${item.crand} — ${item.name}` : 'No item selected';
-                    itemLabel.classList.toggle('text-muted', !item);
+
+                if (preview) {
+                    preview.querySelector('img')?.remove();
+                    if (item?.icon) {
+                        const img = document.createElement('img');
+                        img.src = item.icon;
+                        img.alt = item.name || 'Selected item';
+                        img.width = 40;
+                        img.height = 40;
+                        img.className = 'rounded';
+                        preview.prepend(img);
+                    }
+                }
+
+                if (fallback) {
+                    fallback.classList.toggle('d-none', !!item?.icon);
+                }
+
+                if (itemTitle) {
+                    itemTitle.textContent = item ? `#${item.crand} — ${item.name}` : 'No item selected';
+                    itemTitle.classList.toggle('text-muted', !item);
+                }
+
+                if (itemMeta) {
+                    itemMeta.textContent = item ? (item.type || 'Item selected') : 'Select an item to use as currency.';
+                    itemMeta.classList.toggle('text-muted', !item);
+                    itemMeta.classList.remove('text-danger');
                 }
             }
 
@@ -575,7 +619,7 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
                 const selectButton = row?.querySelector('[data-select-price-item]');
                 const isItemCurrency = currencySelect?.value === 'ITEM';
                 if (itemSection) itemSection.classList.toggle('opacity-50', !isItemCurrency);
-                if (selectButton) selectButton.disabled = !isItemCurrency;
+                if (selectButton) selectButton.disabled = false;
                 if (itemInput) {
                     itemInput.required = isItemCurrency;
                     if (!isItemCurrency) {
@@ -599,7 +643,15 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
                     <td>
                         <input type="hidden" name="price_item_id[]" value="${itemId}" data-price-item-input>
                         <div class="d-flex flex-column gap-2" data-price-item-section>
-                            <div class="small text-muted" data-price-item-label>${itemId ? `Item #${itemId}` : 'No item selected'}</div>
+                            <div class="d-flex align-items-center gap-3" data-price-item-preview>
+                                <div class="bg-body-secondary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" data-price-item-fallback>
+                                    <i class="bi bi-gem text-muted"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-semibold text-muted" data-price-item-title>${itemId ? `Item #${itemId}` : 'No item selected'}</div>
+                                    <div class="text-muted small" data-price-item-meta>Select an item to use as currency.</div>
+                                </div>
+                            </div>
                             <div class="d-flex flex-wrap gap-2">
                                 <button type="button" class="btn btn-outline-primary btn-sm" data-select-price-item>
                                     <i class="bi bi-search me-1"></i>Select Item
@@ -611,8 +663,9 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
                             <div class="form-text">Choose the item to use as currency.</div>
                         </div>
                     </td>
-                    <td class="text-end"><button type="button" class="btn btn-outline-danger btn-sm" data-remove-price-row><i class="bi bi-trash"></i></button></td>
+                    <td class="text-end"><button type="button" class="btn btn-outline-danger btn-sm d-inline-flex align-items-center" data-remove-price-row><i class="bi bi-trash me-1"></i>Delete</button></td>
                 `;
+                setPriceItemSelection(row, itemId ? { crand: itemId, name: `Item #${itemId}` } : null);
                 togglePriceItemSection(row);
                 priceRows.appendChild(row);
             }

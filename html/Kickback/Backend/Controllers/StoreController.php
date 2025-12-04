@@ -4917,7 +4917,41 @@ class StoreController
             throw new Exception("Exception caught while getting store by account Id : $e");
         }
 
-        return $resp;  
+        return $resp;
+    }
+
+    public static function getAllStores() : Response
+    {
+        $resp = new Response(false, "Failed to load stores");
+
+        try
+        {
+            $sql = "SELECT ctime, crand, `name`, locator, `description`, owner_username, owner_ctime, owner_crand FROM v_store ORDER BY name";
+            $result = Database::executeSqlQuery($sql, []);
+
+            if($result === false)
+            {
+                $resp->message = "Unable to execute store query";
+                return $resp;
+            }
+
+            $stores = [];
+
+            while($row = $result->fetch_assoc())
+            {
+                $stores[] = static::rowToVStore($row);
+            }
+
+            $resp->success = true;
+            $resp->message = "Stores returned";
+            $resp->data = $stores;
+        }
+        catch(Exception $e)
+        {
+            $resp->message = "Failed to load stores: $e";
+        }
+
+        return $resp;
     }
 
     public static function getStoreByLocator(string $locator) : Response
