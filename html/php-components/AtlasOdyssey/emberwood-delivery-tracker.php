@@ -147,10 +147,27 @@ extract($trackerData, EXTR_SKIP);
                 <!-- side-bar colleps block stat-->
                 <div class="inventory-grid">
                     <?php if (!empty($shipmentManifest)): ?>
-                        <?php foreach ($shipmentManifest as $shipmentCargoItemStack): ?>
-                            <div class="inventory-item" onclick="ShowInventoryItemModal(<?= $shipmentCargoItemStack->item->crand; ?>);"  data-bs-toggle="tooltip" data-bs-dismiss="modal" data-bs-placement="bottom" data-bs-title="<?= htmlspecialchars($shipmentCargoItemStack->item->name)?>">
-                                <img src="<?= $shipmentCargoItemStack->item->iconSmall->getFullPath(); ?>" alt="Item <?= $shipmentCargoItemStack->item->name; ?>">
-                                <div class="item-count">x<?= $shipmentCargoItemStack->amount; ?></div>
+                        <?php foreach ($shipmentManifest as $shipmentCargoEntry): ?>
+                            <?php
+                                $product = $shipmentCargoEntry['product'] ?? null;
+                                $legacyItem = $shipmentCargoEntry['item'] ?? null;
+                                $count = $shipmentCargoEntry['count'] ?? 0;
+                                $iconPath = $product?->mediaSmall?->getFullPath() ?? ($legacyItem?->iconSmall?->getFullPath() ?? '');
+                                $displayName = $product?->name ?? $legacyItem?->name ?? 'Cargo';
+                                $subtitle = $product ? ($product->store->name ?? '') : ($legacyItem ? 'Legacy item' : '');
+                            ?>
+                            <div class="inventory-item" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="<?= htmlspecialchars($displayName) ?>">
+                                <?php if ($iconPath): ?>
+                                    <img src="<?= htmlspecialchars($iconPath) ?>" alt="<?= htmlspecialchars($displayName) ?>">
+                                <?php else: ?>
+                                    <div class="inventory-empty text-secondary">
+                                        <i class="fas fa-box"></i>
+                                    </div>
+                                <?php endif; ?>
+                                <div class="item-count">x<?= (int)$count; ?></div>
+                                <?php if ($subtitle): ?>
+                                    <div class="small text-secondary mt-1 text-center"><?= htmlspecialchars($subtitle) ?></div>
+                                <?php endif; ?>
                             </div>
                         <?php endforeach; ?>
                     <?php else: ?>

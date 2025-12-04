@@ -25,17 +25,19 @@ $activeTrackingNumber = $emberwoodShip->getTrackingNumber();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
-    $itemId = isset($_POST['item_id']) ? (int) $_POST['item_id'] : 0;
+    $productCtime = $_POST['product_ctime'] ?? '';
+    $productCrand = isset($_POST['product_crand']) ? (int) $_POST['product_crand'] : 0;
+    $legacyItemId = isset($_POST['legacy_item_id']) ? (int) $_POST['legacy_item_id'] : null;
 
     if ($action === 'save') {
         $probability = isset($_POST['probability']) ? (float) $_POST['probability'] : -1;
         $maxCount = isset($_POST['max_count']) ? (int) $_POST['max_count'] : 0;
 
-        $saveResp = ShipmentController::upsertShipmentPoolItem($itemId, $probability, $maxCount);
+        $saveResp = ShipmentController::upsertShipmentPoolItem($productCtime, $productCrand, $probability, $maxCount, $legacyItemId);
         $alertMessage = $saveResp->message;
         $alertVariant = $saveResp->success ? 'success' : 'danger';
     } elseif ($action === 'delete') {
-        $deleteResp = ShipmentController::deleteShipmentPoolItem($itemId);
+        $deleteResp = ShipmentController::deleteShipmentPoolItem($productCtime, $productCrand, $legacyItemId);
         $alertMessage = $deleteResp->message;
         $alertVariant = $deleteResp->success ? 'success' : 'danger';
     } elseif ($action === 'create_manifest') {
@@ -56,8 +58,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $poolResp = ShipmentController::getShipmentPool();
 $poolItems = $poolResp->success ? $poolResp->data : [];
 
-$itemOptionsResp = ShipmentController::getShipmentItemPoolOptions();
-$itemOptions = $itemOptionsResp->success ? $itemOptionsResp->data : [];
+$productOptionsResp = ShipmentController::getShipmentProductPoolOptions();
+$productOptions = $productOptionsResp->success ? $productOptionsResp->data : [];
 
 $manifestExistsResp = ShipmentController::shipmentManifestExists($activeTrackingNumber);
 $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['exists'] ?? false);
@@ -118,9 +120,9 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
                     </div>
                 <?php endif; ?>
 
-                <?php if (!$itemOptionsResp->success): ?>
+                <?php if (!$productOptionsResp->success): ?>
                     <div class="alert alert-danger" role="alert">
-                        <?= htmlspecialchars($itemOptionsResp->message) ?>
+                        <?= htmlspecialchars($productOptionsResp->message) ?>
                     </div>
                 <?php endif; ?>
 
@@ -156,12 +158,12 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
                 <div class="card mb-4">
                     <div class="card-body d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
                         <div>
-                            <h2 class="h5 mb-1">Add Items to the Pool</h2>
-                            <p class="text-muted mb-0">Use the reusable item picker to search by name or ID, then set the probability and count.</p>
+                        <h2 class="h5 mb-1">Add Products to the Pool</h2>
+                        <p class="text-muted mb-0">Use the product picker to search by name or locator, then set the probability and count.</p>
                         </div>
                         <div class="d-flex gap-2">
                             <button type="button" class="btn bg-ranked-1 text-white" data-open-pool-modal>
-                                <i class="bi bi-plus-lg me-1"></i> Add Item to Pool
+                                <i class="bi bi-plus-lg me-1"></i> Add Product to Pool
                             </button>
                         </div>
                     </div>
@@ -173,13 +175,13 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
                     </div>
                     <div class="card-body">
                         <?php if (empty($poolItems)): ?>
-                            <p class="text-muted mb-0">No items configured yet.</p>
+                            <p class="text-muted mb-0">No products configured yet.</p>
                         <?php else: ?>
                             <div class="table-responsive">
                                 <table class="table align-middle">
                                     <thead>
                                         <tr>
-                                            <th scope="col">Item</th>
+                                            <th scope="col">Product</th>
                                             <th scope="col">Probability</th>
                                             <th scope="col">Max Count</th>
                                             <th scope="col" class="text-end">Actions</th>
@@ -187,16 +189,34 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
                                     </thead>
                                     <tbody>
                                         <?php foreach ($poolItems as $entry): ?>
-                                            <?php $item = $entry['item']; ?>
+                                            <?php $product = $entry['product']; $legacyItem = $entry['item']; ?>
                                             <tr>
                                                 <td class="align-middle">
                                                     <div class="d-flex align-items-center gap-2">
-                                                        <?php if ($item->iconSmall && $item->iconSmall->isValid()): ?>
-                                                            <img src="<?= htmlspecialchars($item->iconSmall->getFullPath()) ?>" alt="<?= htmlspecialchars($item->name) ?>" width="40" height="40" class="rounded">
+                                                        <?php if ($product?->mediaSmall && $product->mediaSmall->isValid()): ?>
+                                                            <img src="<?= htmlspecialchars($product->mediaSmall->getFullPath()) ?>" alt="<?= htmlspecialchars($product->name) ?>" width="40" height="40" class="rounded">
+                                                        <?php elseif ($legacyItem?->iconSmall && $legacyItem->iconSmall->isValid()): ?>
+                                                            <img src="<?= htmlspecialchars($legacyItem->iconSmall->getFullPath()) ?>" alt="<?= htmlspecialchars($legacyItem->name) ?>" width="40" height="40" class="rounded">
                                                         <?php endif; ?>
                                                         <div>
-                                                            <div class="fw-semibold">#<?= $item->crand ?> — <?= htmlspecialchars($item->name) ?></div>
-                                                            <div class="text-muted small">Rarity: <?= $item->rarity->name ?? 'Unknown' ?></div>
+                                                            <div class="fw-semibold">
+                                                                <?php if ($product): ?>
+                                                                    #<?= $product->crand ?> — <?= htmlspecialchars($product->name) ?>
+                                                                <?php elseif ($legacyItem): ?>
+                                                                    #<?= $legacyItem->crand ?> — <?= htmlspecialchars($legacyItem->name) ?>
+                                                                <?php else: ?>
+                                                                    Unknown entry
+                                                                <?php endif; ?>
+                                                            </div>
+                                                            <div class="text-muted small">
+                                                                <?php if ($product): ?>
+                                                                    Store: <?= htmlspecialchars($product->store->name ?? 'Unknown') ?>
+                                                                <?php elseif ($legacyItem): ?>
+                                                                    Legacy Item
+                                                                <?php else: ?>
+                                                                    Missing reference
+                                                                <?php endif; ?>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -208,16 +228,20 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
                                                 </td>
                                                 <td class="align-middle text-end">
                                                     <div class="btn-group" role="group">
-                                                        <form method="POST" class="d-inline" id="update-<?= $item->crand ?>">
+                                                        <form method="POST" class="d-inline" id="update-<?= $product?->crand ?? $legacyItem?->crand ?>">
                                                             <input type="hidden" name="action" value="save" />
-                                                            <input type="hidden" name="item_id" value="<?= $item->crand ?>" />
+                                                            <input type="hidden" name="product_ctime" value="<?= htmlspecialchars($product?->ctime ?? '') ?>" />
+                                                            <input type="hidden" name="product_crand" value="<?= htmlspecialchars((string) ($product?->crand ?? 0)) ?>" />
+                                                            <input type="hidden" name="legacy_item_id" value="<?= htmlspecialchars((string) ($legacyItem->crand ?? 0)) ?>" />
                                                             <button type="submit" class="btn btn-outline-primary btn-sm">
                                                                 <i class="bi bi-save me-1"></i>Update
                                                             </button>
                                                         </form>
                                                         <form method="POST" class="d-inline">
                                                             <input type="hidden" name="action" value="delete" />
-                                                            <input type="hidden" name="item_id" value="<?= $item->crand ?>" />
+                                                            <input type="hidden" name="product_ctime" value="<?= htmlspecialchars($product?->ctime ?? '') ?>" />
+                                                            <input type="hidden" name="product_crand" value="<?= htmlspecialchars((string) ($product?->crand ?? 0)) ?>" />
+                                                            <input type="hidden" name="legacy_item_id" value="<?= htmlspecialchars((string) ($legacyItem->crand ?? 0)) ?>" />
                                                             <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Remove this item from the shipment pool?');">
                                                                 <i class="bi bi-trash3 me-1"></i>Remove
                                                             </button>
@@ -239,38 +263,40 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
         </div>
         
         <?php
-        $selectorId = 'adminItemSelector';
-        require("php-components/item-selector-modal.php");
+        $selectorId = 'adminProductSelector';
+        require("php-components/product-selector-modal.php");
         ?>
 
         <div class="modal fade" id="poolItemModal" tabindex="-1" aria-labelledby="poolItemModalLabel" aria-hidden="true">
             <div class="modal-dialog">
                 <form method="POST" class="modal-content" id="poolItemForm">
                     <input type="hidden" name="action" value="save" />
-                    <input type="hidden" name="item_id" id="pool_item_id" required />
+                    <input type="hidden" name="product_ctime" id="pool_product_ctime" required />
+                    <input type="hidden" name="product_crand" id="pool_product_crand" required />
+                    <input type="hidden" name="legacy_item_id" id="pool_legacy_item_id" />
                     <div class="modal-header">
                         <div>
-                            <h5 class="modal-title" id="poolItemModalLabel">Add Item to Shipment Pool</h5>
-                            <p class="text-muted small mb-0">Select an item with the search modal, then configure its probability and maximum count.</p>
+                            <h5 class="modal-title" id="poolItemModalLabel">Add Product to Shipment Pool</h5>
+                            <p class="text-muted small mb-0">Select a product with the search modal, then configure its probability and maximum count.</p>
                         </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label">Item</label>
+                            <label class="form-label">Product</label>
                             <div class="d-flex flex-column gap-2">
                                 <div class="border rounded p-3 d-flex align-items-center gap-3" data-selected-item-preview>
                                     <div class="bg-body-secondary rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
                                         <i class="bi bi-box-seam text-muted"></i>
                                     </div>
                                     <div>
-                                        <div class="fw-semibold" data-selected-item-title>No item selected</div>
-                                        <div class="text-muted small" data-selected-item-meta>Select an item to continue.</div>
+                                        <div class="fw-semibold" data-selected-item-title>No product selected</div>
+                                        <div class="text-muted small" data-selected-item-meta>Select a product to continue.</div>
                                     </div>
                                 </div>
                                 <div>
                                     <button type="button" class="btn btn-outline-primary" data-open-item-selector>
-                                        <i class="bi bi-search me-1"></i> Open Item Search
+                                        <i class="bi bi-search me-1"></i> Open Product Search
                                     </button>
                                 </div>
                             </div>
@@ -300,11 +326,11 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
 
 
     <?php require("php-components/base-page-javascript.php"); ?>
-    <script src="<?= Version::urlBetaPrefix(); ?>/assets/js/item-selector.js"></script>
+    <script src="<?= Version::urlBetaPrefix(); ?>/assets/js/product-selector.js"></script>
     <script>
         (function () {
-            const selectorId = 'adminItemSelector';
-            const selectorModal = ItemSelector.init(selectorId);
+            const selectorId = 'adminProductSelector';
+            const selectorModal = ProductSelector.init(selectorId);
             const poolModalEl = document.getElementById('poolItemModal');
             const poolModal = poolModalEl ? bootstrap.Modal.getOrCreateInstance(poolModalEl) : null;
             const openPoolButton = document.querySelector('[data-open-pool-modal]');
@@ -312,7 +338,9 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
             const selectedTitle = document.querySelector('[data-selected-item-title]');
             const selectedMeta = document.querySelector('[data-selected-item-meta]');
             const selectedPreview = document.querySelector('[data-selected-item-preview]');
-            const itemIdInput = document.getElementById('pool_item_id');
+            const productCtimeInput = document.getElementById('pool_product_ctime');
+            const productCrandInput = document.getElementById('pool_product_crand');
+            const legacyItemIdInput = document.getElementById('pool_legacy_item_id');
             const poolForm = document.getElementById('poolItemForm');
             const probabilityInput = document.getElementById('probability');
             const maxCountInput = document.getElementById('max_count');
@@ -339,14 +367,20 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
                     selectedPreview.prepend(img);
                 }
 
-                selectedTitle.textContent = item ? `#${item.crand} — ${item.name}` : 'No item selected';
-                selectedMeta.textContent = item ? `Rarity: ${item.rarity || 'Unknown'}` : 'Select an item to continue.';
+                selectedTitle.textContent = item ? `#${item.crand} — ${item.name}` : 'No product selected';
+                selectedMeta.textContent = item ? (item.store ? `Store: ${item.store}` : 'Available product') : 'Select a product to continue.';
                 selectedMeta.classList.toggle('text-danger', !item);
             }
 
             function resetForm() {
-                if (itemIdInput) {
-                    itemIdInput.value = '';
+                if (productCtimeInput) {
+                    productCtimeInput.value = '';
+                }
+                if (productCrandInput) {
+                    productCrandInput.value = '';
+                }
+                if (legacyItemIdInput) {
+                    legacyItemIdInput.value = '';
                 }
                 if (probabilityInput) {
                     probabilityInput.value = '0.25';
@@ -376,14 +410,20 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
                 });
             }
 
-            document.addEventListener('item-selector:selected', (event) => {
+            document.addEventListener('product-selector:selected', (event) => {
                 if (event.detail.selectorId !== selectorId) {
                     return;
                 }
 
                 const item = event.detail;
-                if (itemIdInput) {
-                    itemIdInput.value = item.crand;
+                if (productCtimeInput) {
+                    productCtimeInput.value = item.ctime;
+                }
+                if (productCrandInput) {
+                    productCrandInput.value = item.crand;
+                }
+                if (legacyItemIdInput) {
+                    legacyItemIdInput.value = item.legacyItemId || '';
                 }
                 updatePreview(item);
 
@@ -397,10 +437,10 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
 
             if (poolForm) {
                 poolForm.addEventListener('submit', (event) => {
-                    if (!itemIdInput || itemIdInput.value === '') {
+                    if (!productCtimeInput || productCtimeInput.value === '' || !productCrandInput || productCrandInput.value === '') {
                         event.preventDefault();
                         if (selectedMeta) {
-                            selectedMeta.textContent = 'Please select an item before saving to the pool.';
+                            selectedMeta.textContent = 'Please select a product before saving to the pool.';
                             selectedMeta.classList.add('text-danger');
                         }
                         if (openSearchButton) {
