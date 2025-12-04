@@ -18,6 +18,47 @@ use Kickback\Backend\Models\ItemCategory;
 
 class ItemController
 {
+    public static function getAllItems(bool $excludeExistingUniques = false): Response
+    {
+        $conn = Database::getConnection();
+
+        $sql = "SELECT * FROM v_item_info vi";
+
+        if ($excludeExistingUniques) {
+            $sql .= " WHERE NOT ((vi.type = ? OR vi.rarity = ?) AND EXISTS (SELECT 1 FROM loot l WHERE l.item_id = vi.Id))";
+        }
+
+        $sql .= " ORDER BY name";
+
+        $stmt = $conn->prepare($sql);
+
+        if (!$stmt) {
+            return new Response(false, "Failed to load items: " . $conn->error);
+        }
+
+        if ($excludeExistingUniques) {
+            $uniqueType = ItemType::Unique->value;
+            $uniqueRarity = ItemRarity::Unique->value;
+            $stmt->bind_param('ii', $uniqueType, $uniqueRarity);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $items = [];
+        while ($row = $result->fetch_assoc()) {
+            $itemId = new vRecordId(
+                $row['DateCreated'] ?? ($row['ctime'] ?? ''),
+                isset($row['Id']) ? (int)$row['Id'] : (int)($row['item_id'] ?? 0)
+            );
+            $items[] = self::row_to_vItem($row, $itemId);
+        }
+
+        $stmt->close();
+
+        return new Response(true, "Items retrieved successfully", $items);
+    }
+
     public static function insertItem(Item $item): Response {
         $conn = Database::getConnection();
     
