@@ -16,12 +16,14 @@
         const searchInput = modalEl.querySelector('[data-item-selector-search]');
         const typeFilter = modalEl.querySelector('[data-item-selector-filter="type"]');
         const categoryFilter = modalEl.querySelector('[data-item-selector-filter="category"]');
+        const rarityFilter = modalEl.querySelector('[data-item-selector-filter="rarity"]');
         const equipmentFilter = modalEl.querySelector('[data-item-selector-filter="equipment"]');
 
         return {
             search: normalizeFilterValue(searchInput?.value),
             type: normalizeFilterValue(typeFilter?.value),
             category: normalizeFilterValue(categoryFilter?.value),
+            rarity: normalizeFilterValue(rarityFilter?.value),
             equipment: normalizeFilterValue(equipmentFilter?.value),
         };
     }
@@ -42,7 +44,7 @@
     function applyPagination(modalEl) {
         const cards = Array.from(modalEl.querySelectorAll('[data-item-selector-item]'));
         const emptyState = modalEl.querySelector('[data-item-selector-empty]');
-        const { search, type, category, equipment } = getFilterValues(modalEl);
+        const { search, type, category, rarity, equipment } = getFilterValues(modalEl);
         const pageSize = getPageSize(modalEl);
 
         const matchingCards = [];
@@ -52,14 +54,16 @@
             const id = normalizeFilterValue(card.dataset.itemId);
             const cardType = normalizeFilterValue(card.dataset.itemType);
             const cardCategory = normalizeFilterValue(card.dataset.itemCategory);
+            const cardRarity = normalizeFilterValue(card.dataset.itemRarityKey || card.dataset.itemRarity);
             const cardEquipment = normalizeFilterValue(card.dataset.itemEquipment);
 
             const matchesSearch = !search || name.includes(search) || id.includes(search);
             const matchesType = !type || cardType === type;
             const matchesCategory = !category || cardCategory === category;
+            const matchesRarity = !rarity || cardRarity === rarity;
             const matchesEquipment = !equipment || cardEquipment === equipment;
 
-            const isMatch = matchesSearch && matchesType && matchesCategory && matchesEquipment;
+            const isMatch = matchesSearch && matchesType && matchesCategory && matchesRarity && matchesEquipment;
             card.classList.add('d-none');
             if (isMatch) {
                 matchingCards.push(card);

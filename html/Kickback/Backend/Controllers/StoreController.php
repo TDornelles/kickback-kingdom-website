@@ -4073,6 +4073,78 @@ class StoreController
         return $resp;
     }
 
+    /**
+     * Helper to build and persist a product from an existing base item reference.
+     * The helper will persist the product, link its price components, and optionally
+     * link a set of loot entries as starting stock for shipment fulfillment.
+     *
+     * @param vItem $item The base item used for naming/media defaults
+     * @param vStore $store The store that will own the product
+     * @param array<vPriceComponent> $priceComponents The price components for the product
+     * @param array<vLoot> $stockLoots Optional loot entries to link as stock
+     * @param string|null $nameOverride Optional override for the product display name
+     * @param string|null $descriptionOverride Optional override for the product description
+     * @param string|null $locatorOverride Optional locator override; a generated locator is used when null
+     *
+     * @return Response data => ['productId' => vRecordId]
+     */
+    public static function createProductFromItemAndPrice(
+        vItem $item,
+        vStore $store,
+        array $priceComponents,
+        array $stockLoots = [],
+        ?string $nameOverride = null,
+        ?string $descriptionOverride = null,
+        ?string $locatorOverride = null
+    ) : Response {
+        $resp = new Response(false, "unknown error while creating product from item", null);
+
+        if (!static::validatePriceComponentArray($priceComponents)) {
+            $resp->message = "Price components must contain only vPriceComponent or PriceComponent objects.";
+            return $resp;
+        }
+
+        $name = $nameOverride !== null && $nameOverride !== '' ? $nameOverride : $item->name;
+        $description = $descriptionOverride !== null && $descriptionOverride !== '' ? $descriptionOverride : $item->description;
+        $locator = $locatorOverride ?? strtolower(preg_replace('/\s+/', '-', $name)) . "-" . $store->crand;
+
+        $product = new Product(
+            $name,
+            $description,
+            false,
+            $locator,
+            'shipment',
+            [],
+            $store,
+            $priceComponents,
+            $item->iconBig,
+            $item->iconSmall,
+            $item->iconBack ?? $item->iconSmall
+        );
+
+        $product->categories = [];
+
+        $upsertResp = static::upsertProduct($product);
+        if (!$upsertResp->success) {
+            $resp->message = "Failed to persist product: {$upsertResp->message}";
+            return $resp;
+        }
+
+        if (!empty($stockLoots)) {
+            $linkResp = static::linkLootsToProductAsStock($product, $stockLoots);
+            if (!$linkResp->success) {
+                $resp->message = "Product created but failed to link stock: {$linkResp->message}";
+                return $resp;
+            }
+        }
+
+        $resp->success = true;
+        $resp->message = "Product created from base item.";
+        $resp->data = ['productId' => new vRecordId($product->ctime, $product->crand)];
+
+        return $resp;
+    }
+
     private static function convertPriceComponentViewArrayToModels(array $priceComponentViews) : array
     {
         $priceComponentModels = [];
@@ -4845,7 +4917,41 @@ class StoreController
             throw new Exception("Exception caught while getting store by account Id : $e");
         }
 
-        return $resp;  
+        return $resp;
+    }
+
+    public static function getAllStores() : Response
+    {
+        $resp = new Response(false, "Failed to load stores");
+
+        try
+        {
+            $sql = "SELECT ctime, crand, `name`, locator, `description`, owner_username, owner_ctime, owner_crand FROM v_store ORDER BY name";
+            $result = Database::executeSqlQuery($sql, []);
+
+            if($result === false)
+            {
+                $resp->message = "Unable to execute store query";
+                return $resp;
+            }
+
+            $stores = [];
+
+            while($row = $result->fetch_assoc())
+            {
+                $stores[] = static::rowToVStore($row);
+            }
+
+            $resp->success = true;
+            $resp->message = "Stores returned";
+            $resp->data = $stores;
+        }
+        catch(Exception $e)
+        {
+            $resp->message = "Failed to load stores: $e";
+        }
+
+        return $resp;
     }
 
     public static function getStoreByLocator(string $locator) : Response
