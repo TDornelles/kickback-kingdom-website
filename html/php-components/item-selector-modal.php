@@ -1,4 +1,7 @@
 <?php
+use Kickback\Backend\Models\ItemCategory;
+use Kickback\Backend\Models\ItemRarity;
+
 $selectorId = $selectorId ?? 'itemSelectorModal';
 $itemOptions = $itemOptions ?? [];
 
@@ -16,6 +19,20 @@ $humanizeLabel = static function (string $value, bool $preserveAcronyms = false)
 $filterTypes = [];
 $filterCategories = [];
 $filterEquipmentSlots = [];
+$filterRarities = [];
+
+$resolveEnumName = static function (mixed $value, string $enumClass): string {
+    if ($value instanceof \BackedEnum) {
+        return $value->name;
+    }
+
+    if (is_int($value) || ctype_digit((string) $value)) {
+        return $enumClass::tryFrom((int) $value)?->name ?? '';
+    }
+
+    $stringValue = is_string($value) ? trim($value) : '';
+    return $stringValue !== '' ? $stringValue : '';
+};
 
 foreach ($itemOptions as $option) {
     $typeName = $option->type->name ?? $option->item_type ?? $option->itemType ?? $option->lootContainerItemType ?? $option->loot_container_item_type ?? '';
@@ -23,9 +40,13 @@ foreach ($itemOptions as $option) {
         $filterTypes[strtolower($typeName)] = $humanizeLabel($typeName);
     }
 
-    $categoryName = $option->itemCategory?->name ?? $option->item_category?->name ?? '';
+    $categoryName = $resolveEnumName($option->itemCategory ?? $option->item_category ?? null, ItemCategory::class);
     $categoryKey = $categoryName !== '' ? strtolower($categoryName) : 'uncategorized';
     $filterCategories[$categoryKey] = $categoryName !== '' ? $humanizeLabel($categoryName) : 'Uncategorized';
+
+    $rarityName = $resolveEnumName($option->rarity ?? $option->itemRarity ?? $option->item_rarity ?? null, ItemRarity::class);
+    $rarityKey = $rarityName !== '' ? strtolower($rarityName) : 'unknown';
+    $filterRarities[$rarityKey] = $rarityName !== '' ? $humanizeLabel($rarityName) : 'Unknown';
 
     $equipmentName = $option->equipmentSlot?->name ?? $option->equipment_slot?->name ?? '';
     $equipmentKey = $equipmentName !== '' ? strtolower($equipmentName) : 'none';
@@ -34,11 +55,12 @@ foreach ($itemOptions as $option) {
 
 ksort($filterTypes);
 ksort($filterCategories);
+ksort($filterRarities);
 ksort($filterEquipmentSlots);
 ?>
 
 <div class="modal fade" id="<?= htmlspecialchars($selectorId) ?>" tabindex="-1" aria-labelledby="<?= htmlspecialchars($selectorId) ?>Label" aria-hidden="true" data-item-selector-modal>
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <div>
@@ -49,7 +71,7 @@ ksort($filterEquipmentSlots);
             </div>
             <div class="modal-body">
                 <div class="row g-3 align-items-end mb-3">
-                    <div class="col-12 col-lg-4">
+                    <div class="col-12 col-lg-3">
                         <div class="d-flex flex-column h-100 gap-1">
                             <label for="<?= htmlspecialchars($selectorId) ?>Search" class="form-label">Search</label>
                             <input type="search" class="form-control" id="<?= htmlspecialchars($selectorId) ?>Search" placeholder="Search by name or #ID" data-item-selector-search>
@@ -80,6 +102,17 @@ ksort($filterEquipmentSlots);
                     </div>
                     <div class="col-6 col-lg-2">
                         <div class="d-flex flex-column h-100 gap-1">
+                            <label for="<?= htmlspecialchars($selectorId) ?>Rarity" class="form-label">Rarity</label>
+                            <select class="form-select" id="<?= htmlspecialchars($selectorId) ?>Rarity" data-item-selector-filter="rarity">
+                                <option value="">All</option>
+                                <?php foreach ($filterRarities as $key => $label): ?>
+                                    <option value="<?= htmlspecialchars($key) ?>"><?= htmlspecialchars($label) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-2">
+                        <div class="d-flex flex-column h-100 gap-1">
                             <label for="<?= htmlspecialchars($selectorId) ?>Equipment" class="form-label">Equipment Slot</label>
                             <select class="form-select" id="<?= htmlspecialchars($selectorId) ?>Equipment" data-item-selector-filter="equipment">
                                 <option value="">All</option>
@@ -89,7 +122,7 @@ ksort($filterEquipmentSlots);
                             </select>
                         </div>
                     </div>
-                    <div class="col-6 col-lg-2">
+                    <div class="col-6 col-lg-1">
                         <div class="d-flex flex-column h-100 gap-1">
                             <label for="<?= htmlspecialchars($selectorId) ?>PageSize" class="form-label">Results per page</label>
                             <select class="form-select" id="<?= htmlspecialchars($selectorId) ?>PageSize" data-item-selector-page-size>
@@ -104,9 +137,9 @@ ksort($filterEquipmentSlots);
                     <?php foreach ($itemOptions as $option): ?>
                         <?php
                             $iconUrl = ($option->iconSmall && $option->iconSmall->isValid()) ? $option->iconSmall->getFullPath() : '';
-                            $rarityName = $option->rarity->name ?? 'Unknown';
+                            $rarityName = $resolveEnumName($option->rarity ?? $option->itemRarity ?? $option->item_rarity ?? null, ItemRarity::class) ?: 'Unknown';
                             $typeName = $option->type->name ?? $option->item_type ?? $option->itemType ?? $option->lootContainerItemType ?? $option->loot_container_item_type ?? '';
-                            $categoryName = $option->itemCategory?->name ?? $option->item_category?->name ?? '';
+                            $categoryName = $resolveEnumName($option->itemCategory ?? $option->item_category ?? null, ItemCategory::class);
                             $equipmentName = $option->equipmentSlot?->name ?? $option->equipment_slot?->name ?? '';
                             $typeKey = $typeName !== '' ? strtolower($typeName) : '';
                             $categoryKey = $categoryName !== '' ? strtolower($categoryName) : 'uncategorized';
@@ -115,7 +148,7 @@ ksort($filterEquipmentSlots);
                             $categoryLabel = $categoryName !== '' ? $humanizeLabel($categoryName) : 'Uncategorized';
                             $equipmentLabel = $equipmentName !== '' ? $humanizeLabel($equipmentName, true) : 'None';
                         ?>
-                        <div class="col-12 col-md-6 col-lg-4" data-item-selector-item data-item-id="<?= $option->crand ?>" data-item-name="<?= htmlspecialchars($option->name) ?>" data-item-rarity="<?= htmlspecialchars($rarityName) ?>" data-item-icon="<?= htmlspecialchars($iconUrl) ?>" data-item-type="<?= htmlspecialchars($typeKey) ?>" data-item-type-label="<?= htmlspecialchars($typeLabel) ?>" data-item-category="<?= htmlspecialchars($categoryKey) ?>" data-item-category-label="<?= htmlspecialchars($categoryLabel) ?>" data-item-equipment="<?= htmlspecialchars($equipmentKey) ?>" data-item-equipment-label="<?= htmlspecialchars($equipmentLabel) ?>">
+                        <div class="col-12 col-md-6 col-lg-4" data-item-selector-item data-item-id="<?= $option->crand ?>" data-item-name="<?= htmlspecialchars($option->name) ?>" data-item-rarity="<?= htmlspecialchars($rarityName) ?>" data-item-icon="<?= htmlspecialchars($iconUrl) ?>" data-item-type="<?= htmlspecialchars($typeKey) ?>" data-item-type-label="<?= htmlspecialchars($typeLabel) ?>" data-item-category="<?= htmlspecialchars($categoryKey) ?>" data-item-category-label="<?= htmlspecialchars($categoryLabel) ?>" data-item-equipment="<?= htmlspecialchars($equipmentKey) ?>" data-item-equipment-label="<?= htmlspecialchars($equipmentLabel) ?>" data-item-rarity-key="<?= htmlspecialchars(strtolower($rarityName)) ?>">
                             <div class="card h-100 shadow-sm">
                                 <div class="card-body d-flex flex-column gap-2">
                                     <div class="d-flex align-items-center gap-2">
