@@ -9,6 +9,8 @@ $session = require(\Kickback\SCRIPT_ROOT . "/api/v1/engine/session/verifySession
 require("php-components/base-page-pull-active-account-info.php");
 
 use Kickback\Backend\Controllers\ShipmentController;
+use Kickback\Backend\Controllers\StoreController;
+use Kickback\Backend\Controllers\ItemController;
 use Kickback\AtlasOdyssey\Emberwood\EmberwoodTradingCargoship;
 use Kickback\Common\Version;
 use Kickback\Services\Session;
@@ -51,6 +53,85 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $manifestResp = ShipmentController::createShipmentManifest($activeTrackingNumber);
             $alertMessage = $manifestResp->message;
             $alertVariant = $manifestResp->success ? 'success' : 'danger';
+        }
+    } elseif ($action === 'create_product') {
+        $storeLocator = trim($_POST['store_locator'] ?? '');
+        $baseItemId = isset($_POST['base_item_id']) ? (int) $_POST['base_item_id'] : 0;
+        $productName = trim($_POST['product_name'] ?? '');
+        $productDesc = trim($_POST['product_description'] ?? '');
+        $productLocator = trim($_POST['product_locator'] ?? '');
+
+        $priceAmounts = $_POST['price_amount'] ?? [];
+        $priceCurrencies = $_POST['price_currency'] ?? [];
+        $priceItemIds = $_POST['price_item_id'] ?? [];
+
+        $lootIdsRaw = array_filter(array_map('trim', explode(',', $_POST['stock_loot_ids'] ?? '')));
+        $lootQuantity = max(1, (int) ($_POST['stock_quantity'] ?? 1));
+
+        if ($storeLocator === '' || $baseItemId <= 0) {
+            $alertMessage = 'Store locator and base item are required to create a product.';
+            $alertVariant = 'danger';
+        } else {
+            $storeResp = StoreController::getStoreByLocator($storeLocator);
+            $itemResp = ItemController::getItemById(new \Kickback\Backend\Views\vRecordId('', $baseItemId));
+
+            $priceComponents = [];
+            foreach ($priceAmounts as $idx => $amountRaw) {
+                $amount = (int) $amountRaw;
+                $currency = $priceCurrencies[$idx] ?? '';
+                if ($amount <= 0 || $currency === '') {
+                    continue;
+                }
+
+                $component = new \Kickback\Backend\Views\vPriceComponent('', 0, $amount);
+                $component->currencyCode = \Kickback\Backend\Models\Enums\CurrencyCode::from($currency);
+
+                $priceItemId = isset($priceItemIds[$idx]) ? (int) $priceItemIds[$idx] : 0;
+                if ($priceItemId > 0) {
+                    $component->item = new \Kickback\Backend\Views\vItem('', $priceItemId);
+                }
+
+                $priceComponents[] = $component;
+            }
+
+            $lootLinks = [];
+            foreach ($lootIdsRaw as $lootId) {
+                $lootCrand = (int) $lootId;
+                if ($lootCrand <= 0) {
+                    continue;
+                }
+                $loot = new \Kickback\Backend\Views\vLoot('', $lootCrand);
+                $loot->quantity = $lootQuantity;
+                $lootLinks[] = $loot;
+            }
+
+            if (!$storeResp->success) {
+                $alertMessage = "Unable to load store: {$storeResp->message}";
+                $alertVariant = 'danger';
+            } elseif (!$itemResp->success) {
+                $alertMessage = "Unable to load base item: {$itemResp->message}";
+                $alertVariant = 'danger';
+            } elseif (count($priceComponents) === 0) {
+                $alertMessage = 'At least one valid price component is required.';
+                $alertVariant = 'danger';
+            } else {
+                $productResp = StoreController::createProductFromItemAndPrice(
+                    $itemResp->data,
+                    $storeResp->data,
+                    $priceComponents,
+                    $lootLinks,
+                    $productName,
+                    $productDesc,
+                    $productLocator === '' ? null : $productLocator
+                );
+
+                $alertMessage = $productResp->message;
+                if ($productResp->success && isset($productResp->data['productId'])) {
+                    $created = $productResp->data['productId'];
+                    $alertMessage .= " — New Product ID: {$created->ctime}|{$created->crand}";
+                }
+                $alertVariant = $productResp->success ? 'success' : 'danger';
+            }
         }
     }
 }
@@ -162,6 +243,9 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
                         <p class="text-muted mb-0">Use the product picker to search by name or locator, then set the probability and count.</p>
                         </div>
                         <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-secondary" data-open-create-product>
+                                <i class="bi bi-tools me-1"></i> Create Product
+                            </button>
                             <button type="button" class="btn bg-ranked-1 text-white" data-open-pool-modal>
                                 <i class="bi bi-plus-lg me-1"></i> Add Product to Pool
                             </button>
@@ -265,6 +349,9 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
         <?php
         $selectorId = 'adminProductSelector';
         require("php-components/product-selector-modal.php");
+
+        $itemSelectorId = 'adminItemSelector';
+        require("php-components/item-selector-modal.php");
         ?>
 
         <div class="modal fade" id="poolItemModal" tabindex="-1" aria-labelledby="poolItemModalLabel" aria-hidden="true">
@@ -295,8 +382,8 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
                                     </div>
                                 </div>
                                 <div>
-                                    <button type="button" class="btn btn-outline-primary" data-open-item-selector>
-                                        <i class="bi bi-search me-1"></i> Open Product Search
+                                <button type="button" class="btn btn-outline-primary" data-open-product-selector>
+                                    <i class="bi bi-search me-1"></i> Open Product Search
                                     </button>
                                 </div>
                             </div>
@@ -321,12 +408,113 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
                 </form>
             </div>
         </div>
+
+        <div class="modal fade" id="createProductModal" tabindex="-1" aria-labelledby="createProductModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <form method="POST" class="modal-content" id="createProductForm">
+                    <input type="hidden" name="action" value="create_product" />
+                    <input type="hidden" name="base_item_id" id="create_base_item_id" required />
+                    <div class="modal-header">
+                        <div>
+                            <h5 class="modal-title" id="createProductModalLabel">Create Shipment Product</h5>
+                            <p class="text-muted small mb-0">Select a base item, define price components, and optionally link stock loot.</p>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label">Base Item</label>
+                                <div class="d-flex flex-column gap-2">
+                                    <div class="border rounded p-3 d-flex align-items-center gap-3" data-selected-base-item-preview>
+                                        <div class="bg-body-secondary rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                                            <i class="bi bi-gem text-muted"></i>
+                                        </div>
+                                        <div>
+                                            <div class="fw-semibold" data-selected-base-item-title>No item selected</div>
+                                            <div class="text-muted small" data-selected-base-item-meta>Select a base item to continue.</div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <button type="button" class="btn btn-outline-primary" data-open-base-item-selector>
+                                            <i class="bi bi-search me-1"></i> Open Item Search
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="store_locator">Store Locator</label>
+                                <input type="text" class="form-control" id="store_locator" name="store_locator" placeholder="e.g. merchants-guild" required>
+                                <div class="form-text">Locator for the store that will own this product.</div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="product_locator">Product Locator (optional)</label>
+                                <input type="text" class="form-control" id="product_locator" name="product_locator" placeholder="auto-generated if left blank">
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="product_name">Product Name (optional)</label>
+                                <input type="text" class="form-control" id="product_name" name="product_name" placeholder="Defaults to base item name">
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="product_description">Product Description (optional)</label>
+                                <input type="text" class="form-control" id="product_description" name="product_description" placeholder="Defaults to base item description">
+                            </div>
+                        </div>
+
+                        <hr>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0">Price Components</h6>
+                            <button type="button" class="btn btn-sm btn-outline-primary" data-add-price-row>
+                                <i class="bi bi-plus-lg me-1"></i>Add Component
+                            </button>
+                        </div>
+                        <div class="table-responsive mb-3">
+                            <table class="table align-middle mb-0" id="priceComponentTable">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 25%;">Amount</th>
+                                        <th style="width: 25%;">Currency</th>
+                                        <th style="width: 35%;">Item (optional)</th>
+                                        <th style="width: 15%;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody data-price-rows>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="alert alert-info small" role="alert">
+                            Each price component can be currency-based (ADA/USD) with an optional item id for barter pricing.
+                        </div>
+
+                        <hr>
+                        <div class="row g-3">
+                            <div class="col-12 col-md-8">
+                                <label class="form-label" for="stock_loot_ids">Stock Loot IDs (optional)</label>
+                                <input type="text" class="form-control" id="stock_loot_ids" name="stock_loot_ids" placeholder="Comma separated loot IDs">
+                                <div class="form-text">Linked as product stock for shipments.</div>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label class="form-label" for="stock_quantity">Quantity per Loot</label>
+                                <input type="number" min="1" class="form-control" id="stock_quantity" name="stock_quantity" value="1">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn bg-ranked-1 text-white">
+                            <i class="bi bi-save me-1"></i> Create Product
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
         <?php require("php-components/base-page-footer.php"); ?>
     </main>
 
 
     <?php require("php-components/base-page-javascript.php"); ?>
     <script src="<?= Version::urlBetaPrefix(); ?>/assets/js/product-selector.js"></script>
+    <script src="<?= Version::urlBetaPrefix(); ?>/assets/js/item-selector.js"></script>
     <script>
         (function () {
             const selectorId = 'adminProductSelector';
@@ -334,7 +522,7 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
             const poolModalEl = document.getElementById('poolItemModal');
             const poolModal = poolModalEl ? bootstrap.Modal.getOrCreateInstance(poolModalEl) : null;
             const openPoolButton = document.querySelector('[data-open-pool-modal]');
-            const openSearchButton = document.querySelector('[data-open-item-selector]');
+            const openSearchButton = document.querySelector('[data-open-product-selector]');
             const selectedTitle = document.querySelector('[data-selected-item-title]');
             const selectedMeta = document.querySelector('[data-selected-item-meta]');
             const selectedPreview = document.querySelector('[data-selected-item-preview]');
@@ -345,6 +533,133 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
             const probabilityInput = document.getElementById('probability');
             const maxCountInput = document.getElementById('max_count');
             let shouldReopenPoolAfterSelect = false;
+
+            const itemSelectorId = 'adminItemSelector';
+            const itemSelectorModal = ItemSelector.init(itemSelectorId);
+            const createProductModalEl = document.getElementById('createProductModal');
+            const createProductModal = createProductModalEl ? bootstrap.Modal.getOrCreateInstance(createProductModalEl) : null;
+            const openCreateProductButton = document.querySelector('[data-open-create-product]');
+            const createProductForm = document.getElementById('createProductForm');
+            const baseItemIdInput = document.getElementById('create_base_item_id');
+            const baseItemPreview = document.querySelector('[data-selected-base-item-preview]');
+            const baseItemTitle = document.querySelector('[data-selected-base-item-title]');
+            const baseItemMeta = document.querySelector('[data-selected-base-item-meta]');
+            const priceRows = document.querySelector('[data-price-rows]');
+
+            function addPriceRow(amount = '', currency = 'ADA', itemId = '') {
+                if (!priceRows) return;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><input type="number" min="1" class="form-control" name="price_amount[]" value="${amount}" required></td>
+                    <td>
+                        <select class="form-select" name="price_currency[]" required>
+                            <option value="ADA" ${currency === 'ADA' ? 'selected' : ''}>ADA</option>
+                            <option value="USD" ${currency === 'USD' ? 'selected' : ''}>USD</option>
+                        </select>
+                    </td>
+                    <td><input type="number" min="0" class="form-control" name="price_item_id[]" value="${itemId}" placeholder="Optional item id"></td>
+                    <td class="text-end"><button type="button" class="btn btn-outline-danger btn-sm" data-remove-price-row><i class="bi bi-trash"></i></button></td>
+                `;
+                priceRows.appendChild(row);
+            }
+
+            function resetPriceRows() {
+                if (!priceRows) return;
+                priceRows.innerHTML = '';
+                addPriceRow(1, 'ADA', '');
+            }
+
+            function resetBaseItemPreview() {
+                if (baseItemTitle) baseItemTitle.textContent = 'No item selected';
+                if (baseItemMeta) {
+                    baseItemMeta.textContent = 'Select a base item to continue.';
+                    baseItemMeta.classList.remove('text-danger');
+                }
+                if (baseItemPreview) {
+                    baseItemPreview.querySelector('img')?.remove();
+                    const fallback = baseItemPreview.querySelector('.bg-body-secondary');
+                    if (fallback) fallback.classList.remove('d-none');
+                }
+                if (baseItemIdInput) baseItemIdInput.value = '';
+            }
+
+            if (openCreateProductButton && createProductModal) {
+                openCreateProductButton.addEventListener('click', () => {
+                    resetBaseItemPreview();
+                    resetPriceRows();
+                    createProductForm?.reset();
+                    createProductModal.show();
+                });
+            }
+
+            document.addEventListener('item-selector:selected', (event) => {
+                if (event.detail.selectorId !== itemSelectorId) return;
+                const item = event.detail;
+                if (baseItemIdInput) baseItemIdInput.value = item.crand;
+                if (baseItemTitle) baseItemTitle.textContent = `#${item.crand} — ${item.name}`;
+                if (baseItemMeta) baseItemMeta.textContent = item.type ? `${item.type}` : 'Base item selected';
+                if (baseItemPreview) {
+                    baseItemPreview.querySelector('img')?.remove();
+                    const fallback = baseItemPreview.querySelector('.bg-body-secondary');
+                    if (fallback) fallback.classList.toggle('d-none', !!item.icon);
+                    if (item.icon) {
+                        const img = document.createElement('img');
+                        img.src = item.icon;
+                        img.alt = item.name || 'Selected item';
+                        img.width = 48;
+                        img.height = 48;
+                        img.className = 'rounded';
+                        baseItemPreview.prepend(img);
+                    }
+                }
+
+                if (itemSelectorModal) {
+                    const selectorInstance = bootstrap.Modal.getOrCreateInstance(itemSelectorModal);
+                    selectorInstance.hide();
+                }
+                if (!createProductModalEl?.classList.contains('show')) {
+                    createProductModal?.show();
+                }
+            });
+
+            document.addEventListener('click', (event) => {
+                const trigger = event.target.closest('[data-remove-price-row]');
+                if (trigger) {
+                    const row = trigger.closest('tr');
+                    row?.remove();
+                }
+            });
+
+            const addPriceButton = document.querySelector('[data-add-price-row]');
+            if (addPriceButton) {
+                addPriceButton.addEventListener('click', () => addPriceRow());
+            }
+
+            if (createProductForm) {
+                createProductForm.addEventListener('submit', (event) => {
+                    if (!baseItemIdInput || baseItemIdInput.value === '') {
+                        event.preventDefault();
+                        baseItemMeta?.classList.add('text-danger');
+                        baseItemMeta?.classList.remove('text-muted');
+                        baseItemMeta?.classList.add('fw-semibold');
+                        if (baseItemMeta) baseItemMeta.textContent = 'Please select a base item.';
+                        return;
+                    }
+
+                    if (!priceRows || priceRows.children.length === 0) {
+                        event.preventDefault();
+                        addPriceRow();
+                    }
+                });
+            }
+
+            if (itemSelectorModal) {
+                const trigger = document.querySelector('[data-open-base-item-selector]');
+                trigger?.addEventListener('click', () => {
+                    const modalInstance = bootstrap.Modal.getOrCreateInstance(itemSelectorModal);
+                    modalInstance.show();
+                });
+            }
 
             function updatePreview(item) {
                 if (!selectedPreview || !selectedTitle || !selectedMeta) {
