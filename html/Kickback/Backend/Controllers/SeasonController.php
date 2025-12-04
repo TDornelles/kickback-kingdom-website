@@ -184,7 +184,7 @@ class SeasonController
             case self::SEASON_CHRISTMAS:
                 return [
                     'key'      => $season,
-                    'title'    => 'Happy Holidays from Kickback Kingdom',
+                    'title'    => 'Merry Christmas from Kickback Kingdom',
                     'subtitle' => 'Join special winter events, unlock festive loot, and celebrate with your guild.',
                     'images'   => [
                         '/assets/media/seasonal/484.png',
