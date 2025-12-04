@@ -131,16 +131,12 @@ class StoreClient {
     }
 
     static async addProductToCartById(cart, productId){
-        if (!cart) {
-            throw new Error('Cart is required');
-        }
 
         if (!productId) {
             throw new Error('ProductId is required');
         }
 
         const bodyData = {
-            "cart": cart,
             "productId": productId
         };
 
@@ -180,16 +176,11 @@ class StoreClient {
     }
 
     static async addProductToCartByLocator(cart, productLocator){
-        if (!cart) {
-            throw new Error('Cart is required');
-        }
-
         if (!productLocator) {
             throw new Error('productLocator is required');
         }
 
         const bodyData = {
-            "cart": cart,
             "productLocator": productLocator
         };
 
