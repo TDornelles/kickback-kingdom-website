@@ -66,13 +66,21 @@ class StoreService
 
         if(empty($body))
         {
-            $resp->message = "Product cannot be empty"; 
+            $resp->message = "Body cannot be empty"; 
+            return 400;
+        }
+
+        if(empty($body->cartProduct))
+        {
+            $resp->message = "cartProduct cannot be empty";
             return 400;
         }
 
         StoreService::initialize();
 
-        $cartProduct = static::vCartItemFromJson($body);
+        $cartProduct = (object)$body->cartProduct;
+
+        $cartProduct = static::vCartItemFromJson((object)$cartProduct);
 
         if(StoreController::doesCartProductBelongToAccount($account, $cartProduct))
         {
