@@ -839,15 +839,16 @@ class StoreService
         $vCartItem = new vCartItem();
 
             $product = (object)$cartItem->product;
+            $objCart = (object)$cartItem->cart;
 
             $price = static::vPriceComponentArrayFromJson($product->price);
 
-                $vProduct = new vProduct($cartItem->product->ctime, $cartItem->product->crand);
+                $vProduct = new vProduct($product->ctime, $product->crand);
                 $vProduct->price = $price;
-                $vProduct->stock = $cartItem->product->stock;
-                $vProduct->locator = $cartItem->product->locator;
-                $vProduct->name = $cartItem->product->name;
-                $vProduct->description = $cartItem->product->description;
+                $vProduct->stock = $product->stock;
+                $vProduct->locator = $product->locator;
+                $vProduct->name = $product->name;
+                $vProduct->description = $product->description;
 
                 $mediaSmall = (object)$product->mediaSmall;
                 $vProduct->mediaSmall = static::vMediaFromJson_FullURL($mediaSmall->url);
@@ -858,8 +859,8 @@ class StoreService
             $vCartItem->product = $vProduct;
 
                 $cart = new vCart();
-                $cart->ctime = $cartItem->cart->ctime;
-                $cart->crand = $cartItem->crand;
+                $cart->ctime = $objCart->ctime;
+                $cart->crand = $objCart->crand;
             $vCartItem->cart = $cart;
             
             $vCartItem->ctime = $cartItem->ctime;
