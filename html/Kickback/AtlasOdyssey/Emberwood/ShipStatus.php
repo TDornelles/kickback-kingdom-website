@@ -7,12 +7,14 @@ class ShipStatus
     public string $text;
     public string $icon;
     public string $bootstrapColorClass;
+    public string $type;
 
-    public function __construct(string $text, string $icon, string $bootstrapColorClass)
+    public function __construct(string $text, string $icon, string $bootstrapColorClass, string $type)
     {
         $this->text = $text;
         $this->icon = $icon;
         $this->bootstrapColorClass = $bootstrapColorClass;
+        $this->type = $type;
     }
 
     // Determine text color based on the bootstrapColorClass background color

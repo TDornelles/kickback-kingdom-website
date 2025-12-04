@@ -4,6 +4,7 @@ namespace Kickback\Services;
 use Exception;
 use Kickback\Backend\Controllers\AccountController;
 use Kickback\Backend\Controllers\StoreController;
+
 use Kickback\Backend\Models\Enums\CurrencyCode;
 use Kickback\Backend\Models\Response;
 use Kickback\Backend\Views\vAccount;
@@ -12,6 +13,7 @@ use Kickback\Backend\Views\vCartItem;
 use Kickback\Backend\Views\vItem;
 use Kickback\Backend\Views\vMedia;
 use Kickback\Backend\Views\vPrice;
+use Kickback\Backend\Views\vPriceComponent;
 use Kickback\Backend\Views\vProduct;
 use Kickback\Backend\Views\vRecordId;
 use Kickback\Backend\Views\vStore;
@@ -382,21 +384,10 @@ class StoreService
 
         $body = json_decode($request_contents_json, true);
 
-        if(!key_exists("cart", $body))
-        {
-            $resp->message = "Request body must contain the key : 'cart'";
-            return 400;
-        }
 
-        if(!key_exists("productId", $body))
+        if(!key_exists("productLocator", $body))
         {
-            $resp->message = "Request body must contain the key : 'productId'";
-            return 400;
-        }
-
-        if(empty($body["cart"]))
-        {
-            $resp->message = "Cart cannot be empty"; 
+            $resp->message = "Request body must contain the key : 'productLocator'";
             return 400;
         }
 
@@ -405,22 +396,15 @@ class StoreService
             $resp->message = "ProductLocator cannot be empty"; 
             return 400;
         }
-
-        $cart = (object)$body["cart"];
         $productLocator = $body["productLocator"];
 
 
         StoreService::initialize();
 
-        $cart = static::vCartFromJson($cart);
-
-        if($cart->account->equals($account));
-        {
-            $resp->message = "Cart does not belong to account";
-            return 403;
-        }
+        
 
         $productResp = StoreController::getProductByLocator($productLocator);
+        
 
         if(!$productResp->success)
         {
@@ -428,6 +412,26 @@ class StoreService
             return 400;
         }
 
+        $product = $productResp->data;
+
+        $cartResp = StoreController::getCartForAccount($account, $product->store);
+
+        if(!$cartResp->success)
+        {
+            $resp->message = "Failed to retrieve cart for account for product's store";
+            return 500;
+        }
+
+        $cart = $cartResp->data;
+
+        if(!$cart->account->equals($account))
+        {
+            $resp->message = "Cart does not belong to account";
+            $resp->data = ["forbiddenAccount"=>$account, "cartAccount"=>$cart->account];
+            return 403;
+        }
+
+    
         $addProductToCartResp = StoreController::addProductToCart($productResp->data, $cart);
 
         if(!$addProductToCartResp->success)
@@ -473,21 +477,9 @@ class StoreService
 
         $body = json_decode($request_contents_json, true);
 
-        if(!key_exists("cart", $body))
-        {
-            $resp->message = "Request body must contain the key : 'cart'";
-            return 400;
-        }
-
         if(!key_exists("productId", $body))
         {
             $resp->message = "Request body must contain the key : 'productId'";
-            return 400;
-        }
-
-        if(empty($body["cart"]))
-        {
-            $resp->message = "Cart cannot be empty"; 
             return 400;
         }
 
@@ -497,19 +489,37 @@ class StoreService
             return 400;
         }
 
-        $cart = (object)$body["cart"];
         $productId = (object)$body["productId"];
 
 
         StoreService::initialize();
 
-        $product = new vRecordId($productId->ctime, $productId->crand);
+        $productId = new vRecordId($productId->ctime, $productId->crand);
+        $productResp = StoreController::getProductById($productId);
 
-        $cart = static::vCartFromJson($cart);
-
-        if($cart->account->equals($account))
+        if(!$productResp->success)
         {
-            $resp->message = "Cart does not belong to account";
+            $resp->message = "Failed to get product by id to add it to cart";
+            return 500;
+        }
+
+        $product = $productResp->data;
+
+        $cartResp = StoreController::getCartForAccount($account, $product->store);
+
+        if(!$cartResp->success)
+        {
+            $resp->message = "Failed to retreive cart for account for product's store";
+            return 500;
+        }
+
+        $cart = $cartResp->data;
+
+        if(!$cart->account->equals($account))
+        {
+            $resp->message = "Cart does not belong to account"; 
+            $resp->data = ["forbiddenAccount"=>$account, "cartAccount"=>$cart->account];
+
             return 403;
         }
 
@@ -636,18 +646,6 @@ class StoreService
 
         $body = json_decode($request_contents_json, true);
 
-        if(!key_exists("cart", $body))
-        {
-            $resp->message = "Request body must contain the key : 'cart'";
-            return 400;
-        }
-
-        if(empty($body["cart"]))
-        {
-            $resp->message = "Cart cannot be empty"; 
-            return 400;
-        }
-
         if(!key_exists("couponCode", $body))
         {
             $resp->message = "Request body must contain the key : 'couponCode'";
@@ -660,13 +658,11 @@ class StoreService
             return 400;
         }
 
-
-        $cart = (object)$body["cart"];
-        $coupnCode = $body["couponCode"];
+        $couponCode = $body["couponCode"];
 
         StoreService::initialize();
 
-        $couponResp = StoreController::getCouponByCode($coupnCode);
+        $couponResp = StoreController::getCouponByCode($couponCode);
 
         if(!$couponResp->success)
         {
@@ -674,15 +670,26 @@ class StoreService
             return 400;
         }
 
-        $vCart = static::vCartFromJson($cart);
+        $coupon = $couponResp->data;
 
-        if($cart->account->equals($account))
+        $cartResp = StoreController::getCartForAccount($account, $coupon->storeId);
+
+        if(!$cartResp->success)
+        {
+            $resp->message = "Failed to retreive cart";
+            return 500;
+        }
+
+        $cart = $cartResp->data;
+
+        if(!$cart->account->equals($account))
         {
             $resp->message = "Cart does not belong to account";
+            $resp->data = ["forbiddenAccount"=>$account, "cartAccount"=>$cart->account];
             return 403;
         }
 
-        $applyCouponResp = StoreController::tryApplyCouponToCart($vCart, $couponResp->data);
+        $applyCouponResp = StoreController::tryApplyCouponToCart($cart, $couponResp->data);
 
         if(!$applyCouponResp->success)
         {
@@ -750,9 +757,10 @@ class StoreService
 
         $vCart = static::vCartFromJson($cart);
 
-        if($vCart->account->equals($account))
+        if(!$vCart->account->equals($account))
         {
             $resp->message = "Cart does not belong to account";
+            $resp->data = ["forbiddenAccount"=>$account, "cartAccount"=>$cart->account];
             return 403;
         }
 
@@ -783,7 +791,7 @@ class StoreService
 
         $account = (object)$cart->account;
         $vCart->account->username = $account->username;
-        $vCart->account->ctime = $account->ctime;
+        $vCart->account->ctime = "";
         $vCart->account->crand = $account->crand;
 
         $store = (object)$cart->store;
@@ -801,13 +809,12 @@ class StoreService
         $vCart->ctime = $cart->ctime;
         $vCart->crand = $cart->crand;
 
-        $transaction = (object)$cart->transaction;
+        /*$transaction = (object)$cart->transaction;
         $vTransaction = new vTransaction();
             $vTransaction->description = $transaction->description;
             $vTransaction->complete = $transaction->complete;
             $vTransaction->void = $transaction->void;
-            $vTransaction->price = $transaction->price;
-        $vCart->transaction = $vTransaction;
+        $vCart->transaction = $vTransaction;*/
 
         $vCart->cartProducts = [];
 

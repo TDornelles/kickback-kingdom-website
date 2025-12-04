@@ -18,6 +18,45 @@ use Kickback\Backend\Models\ItemCategory;
 
 class ItemController
 {
+    public static function getAllItems(bool $excludeExistingUniques = false): Response
+    {
+        $conn = Database::getConnection();
+
+        $sql = "SELECT * FROM v_item_info vi";
+
+        if ($excludeExistingUniques) {
+            $sql = "SELECT i.* FROM kickbackdb.v_item_info i " .
+                "LEFT JOIN loot l ON i.Id = l.item_id " .
+                "WHERE ((`type` IN (3, 5) OR (`type` = 4 AND l.Id IS NULL)) " .
+                "AND (i.Id NOT IN (15, 16, 17, 18))) " .
+                "GROUP BY i.Id";
+        }
+
+        $sql .= " ORDER BY name";
+
+        $stmt = $conn->prepare($sql);
+
+        if (!$stmt) {
+            return new Response(false, "Failed to load items: " . $conn->error);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $items = [];
+        while ($row = $result->fetch_assoc()) {
+            $itemId = new vRecordId(
+                $row['DateCreated'] ?? ($row['ctime'] ?? ''),
+                isset($row['Id']) ? (int)$row['Id'] : (int)($row['item_id'] ?? 0)
+            );
+            $items[] = self::row_to_vItem($row, $itemId);
+        }
+
+        $stmt->close();
+
+        return new Response(true, "Items retrieved successfully", $items);
+    }
+
     public static function insertItem(Item $item): Response {
         $conn = Database::getConnection();
     
@@ -301,7 +340,9 @@ class ItemController
         if (array_key_exists("nominated_by_id",$row) && $row["nominated_by_id"] != null)
         {
             $nominatedBy = new vAccount('', $row["nominated_by_id"]);
-            $nominatedBy->username = $row["nominated_by"];
+            if (array_key_exists("nominated_by", $row)) {
+                $nominatedBy->username = $row["nominated_by"];
+            }
             $item->nominatedBy = $nominatedBy;
         }
 

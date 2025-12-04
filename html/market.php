@@ -378,6 +378,192 @@ if (Session::isLoggedIn()) {
   color: #000;
 }
 
+/* --- UPCOMING DELIVERIES --- */
+.deliveries-panel {
+  position: relative;
+  margin-top: 0.5rem;
+  padding: 2rem 1.5rem 2.25rem;
+  border-radius: 18px;
+  overflow: hidden;
+  color: #cceeff;
+}
+
+.deliveries-panel::before,
+.deliveries-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.deliveries-panel::before {
+  background: radial-gradient(circle at 20% 20%, rgba(51, 255, 238, 0.12), transparent 30%),
+              radial-gradient(circle at 80% 0%, rgba(255, 215, 0, 0.1), transparent 28%);
+  opacity: 0.6;
+  filter: blur(6px);
+}
+
+.deliveries-panel::after {
+  background: linear-gradient(120deg, transparent 0%, rgba(51, 255, 238, 0.2) 40%, transparent 72%),
+              repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0 2px, transparent 2px 8px);
+  mix-blend-mode: screen;
+  opacity: 0.6;
+}
+
+.deliveries-grid {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 2.2fr 1fr;
+  gap: 1.25rem;
+  align-items: center;
+}
+
+@media (max-width: 992px) {
+  .deliveries-grid { grid-template-columns: 1fr; }
+}
+
+.deliveries-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(51, 255, 238, 0.12);
+  color: #86f7ff;
+  border: 1px solid #33ffee55;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.deliveries-title {
+  margin: 0.35rem 0 0.4rem;
+  font-size: 1.6rem;
+  color: #e6fbff;
+  text-shadow: 0 0 12px rgba(51, 255, 238, 0.3);
+}
+
+.deliveries-subtext {
+  color: #b7d8e6;
+  margin-bottom: 1rem;
+}
+
+.delivery-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.delivery-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid #33ffee44;
+  background: rgba(12, 32, 44, 0.75);
+  color: #c7eafd;
+  font-size: 0.9rem;
+  box-shadow: 0 0 12px rgba(51, 255, 238, 0.25) inset;
+}
+
+.delivery-timeline {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.timeline-card {
+  padding: 0.85rem 0.9rem;
+  border-radius: 12px;
+  background: rgba(9, 23, 34, 0.85);
+  border: 1px solid #33ffee33;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+}
+
+.timeline-card h4 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+  color: #e6fbff;
+}
+
+.timeline-card p {
+  margin: 0;
+  color: #9fcedd;
+  font-size: 0.95rem;
+}
+
+.timeline-icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(51, 255, 238, 0.18), rgba(255, 215, 0, 0.14));
+  color: #fff0c2;
+  margin-bottom: 0.45rem;
+  box-shadow: 0 0 12px rgba(51, 255, 238, 0.35);
+}
+
+.deliveries-cta {
+  justify-self: end;
+}
+
+.cta-card {
+  padding: 1.1rem;
+  border-radius: 14px;
+  border: 1px solid #ffd70066;
+  background: linear-gradient(145deg, #17293a 0%, #213b4d 100%);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  color: #ffeec6;
+  text-align: center;
+}
+
+.cta-card h3 {
+  margin-top: 0;
+  margin-bottom: 0.35rem;
+  font-size: 1.2rem;
+}
+
+.cta-card p { margin-bottom: 0.75rem; color: #f5dfa5; }
+
+.cta-card .btn {
+  border-radius: 999px;
+  padding: 0.55rem 1.25rem;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+}
+
+.cta-footer {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  color: #d8f3ff;
+}
+
+.cta-live-dot {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #39ff14;
+  box-shadow: 0 0 8px #39ff14, 0 0 16px #39ff14;
+  animation: livePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+  0%, 100% {
+    transform: scale(0.9);
+    box-shadow: 0 0 8px #39ff14, 0 0 16px #39ff14;
+  }
+  50% {
+    transform: scale(1.15);
+    box-shadow: 0 0 12px #7cff66, 0 0 24px #39ff14;
+  }
+}
+
 
     </style>
 
@@ -385,7 +571,16 @@ if (Session::isLoggedIn()) {
 
 <!-- HTML -->
 <main class="container pt-3 bg-body" style="margin-bottom: 56px;">
-  
+
+  <div class="row">
+    <div class="col-12">
+      <?php
+      $activePageName = htmlspecialchars($store->name ?? "Market");
+      require("php-components/base-page-breadcrumbs.php");
+      ?>
+    </div>
+  </div>
+
   <div class="row">
     <div class="col-12">
       <button id="open-store-json" class="btn btn-primary">
@@ -393,6 +588,7 @@ if (Session::isLoggedIn()) {
       </button>
     </div>
   </div>
+
 
   <div class="row">
     <div class="col-12">
@@ -413,8 +609,7 @@ if (Session::isLoggedIn()) {
           class="store-grid"
           data-store-ctime="<?= htmlspecialchars($store->ctime ?? '') ?>"
           data-store-crand="<?= htmlspecialchars((string)($store->crand ?? '')) ?>"
-          data-cart-ctime="<?= htmlspecialchars($cart?->ctime ?? '') ?>"
-          data-cart-crand="<?= htmlspecialchars((string)($cart?->crand ?? '')) ?>"
+          data-store-locator="<?= htmlspecialchars($locator ?? '') ?>"
         >
           <?php foreach ($products as $product): ?>
             <?php
@@ -493,6 +688,7 @@ if (Session::isLoggedIn()) {
                         <button class="buy-btn"
                                 data-product-ctime="<?= htmlspecialchars($product->ctime) ?>"
                                 data-product-crand="<?= htmlspecialchars($product->crand) ?>"
+                                data-product-locator="<?= htmlspecialchars((string)($product->locator ?? '')) ?>"
                                 title="Add to Cart">
                           <i class="fas fa-cart-plus"></i>
                         </button>
@@ -520,6 +716,62 @@ if (Session::isLoggedIn()) {
       </section>
     </div>
   </div>
+  
+  <div class="row mt-3">
+    <div class="col-12">
+      <section class="emberwood-store theme-default deliveries-panel" role="region" aria-label="Upcoming store deliveries">
+        <div class="deliveries-grid">
+          <div>
+            <div class="deliveries-chip">
+              <i class="fa-solid fa-satellite-dish"></i>
+              Logistics feed
+            </div>
+            <h2 class="deliveries-title">Upcoming Deliveries</h2>
+            <p class="deliveries-subtext mb-0">See what shipments are headed to Emberwood Market next and plan your haul.</p>
+
+            <div class="delivery-meta mt-2">
+              <span class="delivery-pill"><i class="fa-solid fa-sparkles"></i> Featured crates</span>
+              <span class="delivery-pill"><i class="fa-solid fa-fire"></i> Hot drop ETA</span>
+              <span class="delivery-pill"><i class="fa-solid fa-shield-heart"></i> Guild dispatch</span>
+            </div>
+
+            <div class="delivery-timeline">
+              <div class="timeline-card">
+                <div class="timeline-icon"><i class="fa-solid fa-truck-fast"></i></div>
+                <h4>Supply Run</h4>
+                <p class="mb-0">Priority delivery from Emberwood docks with fresh stock rotations.</p>
+              </div>
+              <div class="timeline-card">
+                <div class="timeline-icon"><i class="fa-solid fa-box-open"></i></div>
+                <h4>Premium Crates</h4>
+                <p class="mb-0">Limited bundles and rare artifacts getting queued for the next sale window.</p>
+              </div>
+              <div class="timeline-card">
+                <div class="timeline-icon"><i class="fa-solid fa-people-carry-box"></i></div>
+                <h4>Community Picks</h4>
+                <p class="mb-0">Top-voted items from guild requests will ship with this convoy.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="deliveries-cta">
+            <div class="cta-card">
+              <h3 class="mb-1">Track the convoy</h3>
+              <p class="mb-0">Live schedule with drop times and crate manifests.</p>
+              <a class="btn bg-ranked-1 mt-3" href="<?= Version::urlBetaPrefix(); ?>/emberwood-delivery.php">
+                <i class="fa-solid fa-route me-1"></i>
+                View schedule
+              </a>
+              <div class="cta-footer mt-3">
+                <span class="cta-live-dot" aria-hidden="true"></span>
+                <span class="cta-live-text">Live via Emberwood dispatch</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
   <?php require("php-components/base-page-footer.php"); ?>
 </main>
 
@@ -537,24 +789,90 @@ if (Session::isLoggedIn()) {
                 return;
             }
 
+            const storeLocator = productsGrid.dataset.storeLocator || '';
             const storeCtime = productsGrid.dataset.storeCtime || '';
             const storeCrand = productsGrid.dataset.storeCrand || '';
-            const cartCtime = productsGrid.dataset.cartCtime || '';
-            const cartCrand = productsGrid.dataset.cartCrand || '';
+            let cart = <?php echo json_encode($cart, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR); ?>;
 
             async function refreshProducts()
             {
-                console.log("refresh products");
+                if(!storeLocator)
+                {
+                    console.error("Missing store locator; unable to refresh products");
+                    return;
+                }
+
+                try
+                {
+                    const storeResp = await StoreClient.getStoreByLocator(storeLocator);
+                    const products = Array.isArray(storeResp?.data?.products) ? storeResp.data.products : [];
+                    const productMap = new Map(products.map((p) => [p.locator, p]));
+
+                    productsGrid.dataset.storeCtime = storeResp?.data?.ctime ?? '';
+                    productsGrid.dataset.storeCrand = storeResp?.data?.crand ?? '';
+
+                    productsGrid.querySelectorAll('.card-flip').forEach((card) =>
+                    {
+                        const addButton = card.querySelector('.buy-btn');
+                        const productLocator = addButton?.dataset.productLocator || '';
+                        const product = productMap.get(productLocator);
+                        const stockEl = card.querySelector('.item-stock');
+
+                        if(!product)
+                        {
+                            card.style.display = 'none';
+                            return;
+                        }
+
+                        const available = product.amountAvailable;
+                        const hasStockInfo = available !== null && available !== undefined;
+
+                        if(stockEl)
+                        {
+                            if(hasStockInfo)
+                            {
+                                stockEl.textContent = `In Stock: ${available}`;
+                                stockEl.style.display = '';
+                            }
+                            else
+                            {
+                                stockEl.style.display = 'none';
+                            }
+                        }
+
+                        if(addButton)
+                        {
+                            const disablePurchase = hasStockInfo && Number(available) <= 0;
+                            addButton.disabled = disablePurchase;
+                            addButton.title = disablePurchase ? 'Out of stock' : 'Add to Cart';
+                        }
+                    });
+                }
+                catch(e)
+                {
+                    console.error("Failed to refresh products", e);
+                }
             }
 
-            const requireLogin = cartCtime === '' || cartCrand === '';
 
-            function showModal(modalId, message)
+            function requireLogin()
+            {
+                return cart === null;
+            }
+
+            function showModal(modalId, message, title)
             {
                 const modalBody = document.getElementById(modalId + "Message");
                 if(modalBody)
                 {
                     modalBody.textContent = message;
+                }
+
+                const modalTitle = document.getElementById(modalId + "Label");
+                if(modalTitle)
+                {
+                    const fallbackTitle = modalId === "errorModal" ? "Error" : modalId === "successModal" ? "Success" : modalTitle.textContent;
+                    modalTitle.textContent = title || fallbackTitle;
                 }
 
                 const modalElement = document.getElementById(modalId);
@@ -565,67 +883,55 @@ if (Session::isLoggedIn()) {
                 }
             }
 
-            async function addProductToCart(productCtime, productCrand)
+            async function refreshCartFromShared()
             {
-                if(productCtime === undefined || productCrand === undefined || productCtime === '' || productCrand === '')
+                const fetchCartFn = window.fetchCart;
+
+                if (typeof fetchCartFn !== 'function')
+                {
+                    console.warn('Cart handler unavailable; unable to refresh cart.');
+                    return null;
+                }
+
+                const refreshedCart = await fetchCartFn({ storeLocatorOverride: storeLocator, showLoading: true });
+
+                if (refreshedCart)
+                {
+                    cart = refreshedCart;
+                }
+
+                return refreshedCart;
+            }
+
+            async function addProductToCart(productLocator)
+            {
+                if(productLocator === undefined || productLocator === '')
                 {
                     console.error("Missing product identifiers for cart action");
                     return;
                 }
 
-                if(requireLogin)
+                if(requireLogin())
                 {
                     const redirectUrl = encodeURIComponent("market.php");
                     window.location.href = `<?= Version::urlBetaPrefix(); ?>/login.php?redirect=${redirectUrl}`;
-                    showModal("errorModal", "You must be logged in to add items to your cart.");
-                    
+                    showModal("errorModal", "You must be logged in to add items to your cart.", "Login required");
+
                     return;
                 }
 
                 try
                 {
-                    const formData = new FormData();
-
-                    formData.append("storeCtime", storeCtime);
-                    formData.append("storeCrand", storeCrand);
-                    formData.append("cartCtime", cartCtime);
-                    formData.append("cartCrand", cartCrand);
-                    formData.append("productCtime", productCtime);
-                    formData.append("productCrand", productCrand);
-
-                    const response = await fetch('/php-components/store/add-to-cart.php',
-                        {
-                            method: 'POST',
-                            body: formData
-                        }
-                    );
-
-                    if(response.ok)
-                    {
-                        const respJson = await response.json();
-                        const message = respJson.message;
-
-                        if(respJson.success === true)
-                        {
-                            showModal("successModal", "Successfully added product to cart.");
-                            await refreshProducts();
-                        }
-                        else
-                        {
-                            showModal("errorModal", "Error adding product to cart: " + message);
-                            console.error("Failed to add product to cart", message);
-                        }
-                    }
-                    else
-                    {
-                        showModal("errorModal", "An error occurred attempting to add product to cart.");
-                        console.error("Failed to add product to cart:", await response.text());
-                    }
+                    await StoreClient.addProductToCartByLocator(cart, productLocator);
+                    showModal("successModal", "Successfully added product to cart.", "Added to cart");
+                    await refreshCartFromShared();
+                    await refreshProducts();
                 }
                 catch(e)
                 {
                     console.error("Exception caught while adding product to cart", e);
-                    showModal("errorModal", "An unexpected error occurred while adding the product to your cart.");
+                    const message = e?.message || "An unexpected error occurred while adding the product to your cart.";
+                    showModal("errorModal", message, "Unable to add to cart");
                 }
             }
 
@@ -635,9 +941,8 @@ if (Session::isLoggedIn()) {
                 {
                     event.preventDefault();
 
-                    const productCtime = button.dataset.productCtime;
-                    const productCrand = button.dataset.productCrand;
-                    await addProductToCart(productCtime, productCrand);
+                    const productLocator = button.dataset.productLocator || '';
+                    await addProductToCart(productLocator);
                 });
             });
         })();
@@ -649,7 +954,7 @@ if (Session::isLoggedIn()) {
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header text-bg-danger">
-                        <h1 class="modal-title fs-5" id="errorModalLabel">Modal title</h1>
+                        <h1 class="modal-title fs-5" id="errorModalLabel">Error</h1>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
@@ -667,7 +972,7 @@ if (Session::isLoggedIn()) {
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="successModalLabel">Modal title</h1>
+                        <h1 class="modal-title fs-5" id="successModalLabel">Success</h1>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">

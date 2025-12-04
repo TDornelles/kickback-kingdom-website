@@ -538,7 +538,7 @@ class StoreTester
 
             $getProductResp = StoreController::getProductById($product);
             if(!$getProductResp->success) throw new Exception("COMPONENT TEST FAILED : failed to get product after insertion : $getProductResp->message");
-            if(!($getProductResp->data->getVRecordId()->equals($product->getVRecordId()))) throw new Exception("COMPONENT TEST FAILED : product retreived was not the product inserted : $getProductResp->message");
+            if(!($getProductResp->data->equals($product))) throw new Exception("COMPONENT TEST FAILED : product retreived was not the product inserted : $getProductResp->message");
 
             $productRemovedResp = StoreController::removeProductById($product);
             if(!$productRemovedResp->success) throw new Exception("COMPONENT TEST FAILED : failed to removed product : $productRemovedResp->message");
@@ -1475,7 +1475,7 @@ class StoreTester
         $price = new price();
 
         $price->amount = $amount;
-        $price->itemId = $priceItem->getVRecordId();
+        $price->itemId = $priceItem;
 
         return $price;
     }
@@ -2004,7 +2004,7 @@ class StoreTester
         {
             $id = new recordId();
 
-            $raffleTicketId = static::returnMockPriceObject("raffleticket")->itemId->getVRecordId();
+            $raffleTicketId = static::returnMockPriceObject("raffleticket")->itemId;
 
             $valueClause .= "($id->crand, 1, 'raffle ticket', 'raffle ticket', $account->crand, $raffleTicketId->crand, -1, NOW(), 1, NULL, 1)";
 

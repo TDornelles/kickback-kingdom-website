@@ -14,6 +14,7 @@ class vCoupon extends vRecordId
     public ?string $description = null;
     public ?int $requiredQuantityOfProduct = null;
     public ?vRecordId $productId = null;
+    public ?vRecordId $storeId = null;
     public ?int $timesUsed = null;
     public ?int $maxTimesUsed = null;
     public ?int $maxTimesUsedPerAccount = null;
