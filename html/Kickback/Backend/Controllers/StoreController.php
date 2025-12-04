@@ -2593,7 +2593,7 @@ class StoreController
      */
     public static function calculateCartTotalPriceCompnents(array $cartItems) : array
     {
-        $totalprice = [];
+        $totals = [];
 
         foreach($cartItems as $cartItem)
         {
@@ -2601,38 +2601,41 @@ class StoreController
 
             foreach($price as $priceComponent)
             {
-                $priceComponentAlreadyExists = null;
+                $alreadyExistingTotal = null;
 
-                foreach($totalprice as $total)
+                foreach($totals as $total)
                 {
 
                     //Does priceComponent being checked match an already existing total
                     if(
-                        (!is_null($priceComponent->item) && !is_null($total->item) 
-                        && $priceComponent->item->ctime == $total->item->ctime && $priceComponent->item->crand == $total->item->crand)
+                        (!is_null($priceComponent->item) && !is_null($total->item) && 
+                        $priceComponent->item->ctime == $total->item->ctime && $priceComponent->item->crand == $total->item->crand)
                         ||
                         (!is_null($priceComponent->currencyCode) && !is_null($total->currencyCode) &&
                         $priceComponent->currencyCode == $total->currencyCode)
                     )
                     {
-                        $priceComponentAlreadyExists = $total;
+                        $alreadyExistingTotal = $total;
                         break;
                     }
                 }
 
                 //Add amount of already existing total or create new total
-                if(is_null($priceComponentAlreadyExists))
+                if(is_null($alreadyExistingTotal))
                 {
-                    array_push($totalprice, $priceComponent);
+                    //Clone price component so we don't affect the idividual price of items in the cart
+                    $totalComponent = new PriceComponent($priceComponent->amount, $priceComponent->currencyCode, $priceComponent->itemId);
+
+                    array_push($totals, $totalComponent);
                 }
                 else
                 {
-                    $priceComponentAlreadyExists->amount = $priceComponentAlreadyExists->amount + $priceComponent->amount;
+                    $alreadyExistingTotal->amount = $alreadyExistingTotal->amount + $priceComponent->amount;
                 }
             }
         }
 
-        return $totalprice;
+        return $totals;
     }
 
     public static string $columnsInCartView = "
