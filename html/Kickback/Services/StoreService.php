@@ -424,7 +424,7 @@ class StoreService
 
         $cart = $cartResp->data;
 
-        if(!$cart->account->equals($account));
+        if(!$cart->account->equals($account))
         {
             $resp->message = "Cart does not belong to account";
             $resp->data = ["forbiddenAccount"=>$account, "cartAccount"=>$cart->account];
