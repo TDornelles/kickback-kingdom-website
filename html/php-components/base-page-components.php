@@ -1550,7 +1550,7 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
                         <li><a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/stewards-guild.php"><i class="nav-icon fa-solid fa-person-digging"></i> Stewards Guild</a></li>-->
                     </ul>
                 </li>
-                <li class="nav-item dropdown" data-bs-theme="light">
+                <li class="nav-item dropdown d-none" data-bs-theme="light">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
                         aria-expanded="false">
                         <i class="nav-icon fa-solid fa-university "></i> Store
