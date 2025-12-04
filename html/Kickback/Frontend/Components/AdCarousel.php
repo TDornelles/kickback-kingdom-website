@@ -7,6 +7,7 @@ use Kickback\Common\Primitives\Str;
 use Kickback\Backend\Controllers\QuestController;
 use Kickback\Backend\Controllers\TreasureHuntController;
 use Kickback\Backend\Views\vTreasureHuntEvent;
+use Kickback\Backend\Controllers\SeasonController;
 use Kickback\Common\Version;
 
 class AdCarousel
@@ -159,16 +160,27 @@ class AdCarousel
         $this->ads[0]->isActive = true;
     }
 
-    private function addDefaultAd(): void
-    {
-        
-        array_push($this->ads, new CarouselAd(
-            "/assets/images/kk-1.jpg",
-            "/assets/images/kk-2.jpg",
-            "Welcome to Kickback Kingdom",
-            "The gaming realm where friendships are formed and scores are settled."
-        ));
-    }
+private function addDefaultAd(): void
+{
+    // Ask the SeasonController what the current season config is
+    $seasonController = new SeasonController();
+    $config = $seasonController->getSeasonConfig(); // returns ['key', 'title', 'subtitle', 'images' => [...]]    
+
+    // Fallbacks in case something is missing
+    $image1 = $config['images'][0] ?? "/assets/images/kk-1.jpg";
+    $image2 = $config['images'][1] ?? "/assets/images/kk-2.jpg";
+
+    $title    = $config['title']    ?? "Welcome to Kickback Kingdom";
+    $subtitle = $config['subtitle'] ?? "The gaming realm where friendships are formed and scores are settled.";
+
+    $this->ads[] = new CarouselAd(
+        $image1,
+        $image2,
+        $title,
+        $subtitle
+    );
+}
+
 
     public function render(): string
     {

@@ -845,12 +845,21 @@ class QuestController
         }
 
         $conn = Database::getConnection();
+        
+
         // Predefined standard reward IDs
         $standardRewardIds = [3, 4, 15];
+
+        // Seasonal participation rewards (e.g., Candy Cane at Christmas)
+        $seasonalRewardIds = SeasonController::getSeasonalParticipationRewardItemIds();
+
+        // Merge base rewards + seasonal rewards
+        $rewardIds = array_merge($standardRewardIds, $seasonalRewardIds);
+
         $success = true;
         $errorMessages = [];
 
-        foreach ($standardRewardIds as $rewardId) {
+        foreach ($rewardIds as $rewardId) {
             $sql = "INSERT INTO quest_reward (quest_id, item_id, category, participation) VALUES (?, ?, 'Participation',1)";
             
             $stmt = mysqli_prepare($conn, $sql);
