@@ -199,7 +199,7 @@ class QuestLineController {
         // Check if content ID is null and handle content insertion if needed
         if (!$questLineResp->data->hasPageContent()) {
             $newContentId = ContentController::insertNewContent();
-            self::updateQuestLineContent($questLineResp->data, $newContentId);
+            self::updateQuestLineContent($questLineResp->data, new vRecordId('',$newContentId));
 
             // Re-fetch the quest line after inserting the content
             $questLineResp = self::queryQuestLineByLocatorAsResponse($questLineLocator);
