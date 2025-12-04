@@ -10,6 +10,7 @@ use Kickback\AtlasOdyssey\Emberwood\EmberwoodTradingCargoship;
 use Kickback\AtlasOdyssey\Emberwood\ShipStatus;
 use Kickback\Backend\Models\Response;
 use Kickback\Backend\Models\ShipmentManifestItem;
+use Kickback\Backend\Models\RecordId;
 use Kickback\Backend\Views\vRecordId;
 use Kickback\Services\Database;
 use Exception;
@@ -85,15 +86,27 @@ class ShipmentController
 
         $conn = Database::getConnection();
 
-        $stmt = $conn->prepare("INSERT INTO shipment_order_pool (item_id, probability, max_count) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE probability = VALUES(probability), max_count = VALUES(max_count)");
+        $stmt = $conn->prepare("INSERT INTO shipment_order_pool (ctime, crand, item_id, probability, max_count) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE probability = VALUES(probability), max_count = VALUES(max_count)");
 
         if (!$stmt) {
             return new Response(false, "Failed to save shipment pool item: " . $conn->error);
         }
 
-        $stmt->bind_param('idi', $itemId, $probability, $maxCount);
+        $ctime = RecordId::getCTime();
 
-        if (!$stmt->execute()) {
+        while (true) {
+            $crand = RecordId::generateCRand();
+            $stmt->bind_param('siidi', $ctime, $crand, $itemId, $probability, $maxCount);
+
+            if ($stmt->execute()) {
+                break;
+            }
+
+            if ($stmt->errno === 1062) {
+                // Duplicate crand; retry with a new one
+                continue;
+            }
+
             $error = $stmt->error;
             $stmt->close();
             return new Response(false, "Failed to save shipment pool item: " . $error);
@@ -138,6 +151,8 @@ class ShipmentController
             $conn = Database::getConnection();
             $conn->begin_transaction();
 
+            $ctime = RecordId::getCTime();
+
             // Get items from ShipmentOrderPool with their probabilities and max count
             $sql = "SELECT item_id, probability, max_count FROM shipment_order_pool";
             $result = $conn->query($sql);
@@ -156,12 +171,34 @@ class ShipmentController
             // Insert items into the shipmentmanifest table
             $insertedRows = 0;
             foreach ($manifestItems as $item) {
-                $stmt = $conn->prepare("
-                    INSERT INTO shipment_manifest (ctime, crand, tracking_number, item_id, count)
-                    VALUES (?, ?, ?, ?, ?)
-                ");
-                $stmt->bind_param("sissi", $ctime, $crand, $trackingNumber, $item['item_id'], $item['count']);
-                $stmt->execute();
+                $stmt = $conn->prepare(
+                    "INSERT INTO shipment_manifest (ctime, crand, tracking_number, item_id, count) VALUES (?, ?, ?, ?, ?)"
+                );
+
+                if (!$stmt) {
+                    throw new Exception("Failed to prepare shipment manifest insert: " . $conn->error);
+                }
+
+                while (true) {
+                    $crand = RecordId::generateCRand();
+
+                    $stmt->bind_param("sissi", $ctime, $crand, $trackingNumber, $item['item_id'], $item['count']);
+                    $stmt->execute();
+
+                    if ($stmt->errno === 1062) {
+                        // Duplicate crand; try again with a new one
+                        continue;
+                    }
+
+                    if ($stmt->errno) {
+                        $errorMessage = $stmt->error;
+                        $stmt->close();
+                        throw new Exception("Failed to insert shipment manifest item: " . $errorMessage);
+                    }
+
+                    break;
+                }
+
                 $insertedRows += $stmt->affected_rows;
                 $stmt->close();
             }
