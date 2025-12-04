@@ -564,9 +564,16 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
             const priceRows = document.querySelector('[data-price-rows]');
             let activePriceRowItem = null;
 
+            let reopenCreateProductAfterSelector = false;
+
             if (itemSelectorModal) {
                 itemSelectorModal.addEventListener('hidden.bs.modal', () => {
                     activePriceRowItem = null;
+
+                    if (reopenCreateProductAfterSelector) {
+                        createProductModal?.show();
+                        reopenCreateProductAfterSelector = false;
+                    }
                 });
             }
 
@@ -736,10 +743,21 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
                     const selectorInstance = bootstrap.Modal.getOrCreateInstance(itemSelectorModal);
                     selectorInstance.hide();
                 }
-                if (!createProductModalEl?.classList.contains('show')) {
-                    createProductModal?.show();
-                }
             });
+
+            function openItemSelectorFromCreateProduct() {
+                if (!itemSelectorModal) {
+                    return;
+                }
+
+                if (createProductModalEl?.classList.contains('show')) {
+                    reopenCreateProductAfterSelector = true;
+                    createProductModal?.hide();
+                }
+
+                const modalInstance = bootstrap.Modal.getOrCreateInstance(itemSelectorModal);
+                modalInstance.show();
+            }
 
             document.addEventListener('click', (event) => {
                 const trigger = event.target.closest('[data-remove-price-row]');
@@ -752,8 +770,7 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
                 const itemSelectTrigger = event.target.closest('[data-select-price-item]');
                 if (itemSelectTrigger && itemSelectorModal) {
                     activePriceRowItem = itemSelectTrigger.closest('tr');
-                    const modalInstance = bootstrap.Modal.getOrCreateInstance(itemSelectorModal);
-                    modalInstance.show();
+                    openItemSelectorFromCreateProduct();
                     return;
                 }
 
@@ -798,10 +815,7 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
 
             if (itemSelectorModal) {
                 const trigger = document.querySelector('[data-open-base-item-selector]');
-                trigger?.addEventListener('click', () => {
-                    const modalInstance = bootstrap.Modal.getOrCreateInstance(itemSelectorModal);
-                    modalInstance.show();
-                });
+                trigger?.addEventListener('click', openItemSelectorFromCreateProduct);
             }
 
             function updatePreview(item) {
