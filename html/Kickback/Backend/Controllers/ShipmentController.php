@@ -219,7 +219,7 @@ class ShipmentController
     public static function getShipmentManifest(string $trackingNumber): Response
     {
         $conn = Database::getConnection();
-        
+
         $sql = "SELECT item_id, count FROM shipment_manifest WHERE tracking_number = ?";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("s", $trackingNumber);
@@ -238,6 +238,35 @@ class ShipmentController
         }
 
         return new Response(true, "Shipment manifest retrieved successfully", $items);
+    }
+
+    public static function shipmentManifestExists(string $trackingNumber): Response
+    {
+        $conn = Database::getConnection();
+
+        $stmt = $conn->prepare("SELECT COUNT(*) as manifest_count FROM shipment_manifest WHERE tracking_number = ?");
+
+        if (!$stmt) {
+            return new Response(false, "Failed to check shipment manifest existence: " . $conn->error);
+        }
+
+        $stmt->bind_param("s", $trackingNumber);
+
+        if (!$stmt->execute()) {
+            $error = $stmt->error;
+            $stmt->close();
+            return new Response(false, "Failed to check shipment manifest existence: " . $error);
+        }
+
+        $result = $stmt->get_result();
+        $count = (int) ($result->fetch_assoc()['manifest_count'] ?? 0);
+
+        $stmt->close();
+
+        return new Response(true, $count > 0 ? 'Shipment manifest already exists' : 'Shipment manifest not found', [
+            'exists' => $count > 0,
+            'count' => $count,
+        ]);
     }
 
     public static function validateTrackingNumber(string $trackingNumber): Response

@@ -9,6 +9,7 @@ $session = require(\Kickback\SCRIPT_ROOT . "/api/v1/engine/session/verifySession
 require("php-components/base-page-pull-active-account-info.php");
 
 use Kickback\Backend\Controllers\ShipmentController;
+use Kickback\AtlasOdyssey\Emberwood\EmberwoodTradingCargoship;
 use Kickback\Common\Version;
 use Kickback\Services\Session;
 
@@ -19,6 +20,8 @@ if (!Session::isAdmin()) {
 
 $alertMessage = '';
 $alertVariant = '';
+$emberwoodShip = new EmberwoodTradingCargoship();
+$activeTrackingNumber = $emberwoodShip->getTrackingNumber();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -35,6 +38,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $deleteResp = ShipmentController::deleteShipmentPoolItem($itemId);
         $alertMessage = $deleteResp->message;
         $alertVariant = $deleteResp->success ? 'success' : 'danger';
+    } elseif ($action === 'create_manifest') {
+        $manifestExistsResp = ShipmentController::shipmentManifestExists($activeTrackingNumber);
+        $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['exists'] ?? false);
+
+        if ($manifestExists) {
+            $alertMessage = "A shipment manifest already exists for tracking #{$activeTrackingNumber}.";
+            $alertVariant = 'warning';
+        } else {
+            $manifestResp = ShipmentController::createShipmentManifest($activeTrackingNumber);
+            $alertMessage = $manifestResp->message;
+            $alertVariant = $manifestResp->success ? 'success' : 'danger';
+        }
     }
 }
 
@@ -43,6 +58,9 @@ $poolItems = $poolResp->success ? $poolResp->data : [];
 
 $itemOptionsResp = ShipmentController::getShipmentItemPoolOptions();
 $itemOptions = $itemOptionsResp->success ? $itemOptionsResp->data : [];
+
+$manifestExistsResp = ShipmentController::shipmentManifestExists($activeTrackingNumber);
+$manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['exists'] ?? false);
 
 ?>
 
@@ -105,6 +123,35 @@ $itemOptions = $itemOptionsResp->success ? $itemOptionsResp->data : [];
                         <?= htmlspecialchars($itemOptionsResp->message) ?>
                     </div>
                 <?php endif; ?>
+
+                <div class="card mb-4">
+                    <div class="card-body d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+                        <div>
+                            <h2 class="h5 mb-1">Active Emberwood Shipment</h2>
+                            <p class="text-muted mb-2">Tracking #<?= htmlspecialchars($activeTrackingNumber); ?></p>
+                            <?php if ($manifestExists): ?>
+                                <span class="badge text-bg-success">Manifest ready</span>
+                            <?php else: ?>
+                                <span class="badge text-bg-warning text-dark">No manifest created yet</span>
+                            <?php endif; ?>
+                            <?php if (!$manifestExistsResp->success): ?>
+                                <div class="text-danger small mt-1">Unable to verify manifest status: <?= htmlspecialchars($manifestExistsResp->message); ?></div>
+                            <?php endif; ?>
+                        </div>
+                        <div class="d-flex gap-2 align-items-center">
+                            <?php if (!$manifestExists): ?>
+                                <form method="POST" class="d-inline">
+                                    <input type="hidden" name="action" value="create_manifest" />
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-clipboard-plus me-1"></i> Create Manifest from Pool
+                                    </button>
+                                </form>
+                            <?php else: ?>
+                                <span class="text-muted small">Manifest generated for current shipment.</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="card mb-4">
                     <div class="card-body d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
