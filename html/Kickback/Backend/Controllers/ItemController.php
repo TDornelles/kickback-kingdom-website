@@ -25,7 +25,11 @@ class ItemController
         $sql = "SELECT * FROM v_item_info vi";
 
         if ($excludeExistingUniques) {
-            $sql .= " WHERE NOT ((vi.type = ? OR vi.rarity = ?) AND EXISTS (SELECT 1 FROM loot l WHERE l.item_id = vi.Id))";
+            $sql = "SELECT i.* FROM kickbackdb.v_item_info i " .
+                "LEFT JOIN loot l ON i.Id = l.item_id " .
+                "WHERE ((`type` IN (3, 5) OR (`type` = 4 AND l.Id IS NULL)) " .
+                "AND (i.Id NOT IN (15, 16, 17, 18))) " .
+                "GROUP BY i.Id";
         }
 
         $sql .= " ORDER BY name";
@@ -34,12 +38,6 @@ class ItemController
 
         if (!$stmt) {
             return new Response(false, "Failed to load items: " . $conn->error);
-        }
-
-        if ($excludeExistingUniques) {
-            $uniqueType = ItemType::Unique->value;
-            $uniqueRarity = ItemRarity::Unique->value;
-            $stmt->bind_param('ii', $uniqueType, $uniqueRarity);
         }
 
         $stmt->execute();
@@ -342,7 +340,9 @@ class ItemController
         if (array_key_exists("nominated_by_id",$row) && $row["nominated_by_id"] != null)
         {
             $nominatedBy = new vAccount('', $row["nominated_by_id"]);
-            $nominatedBy->username = $row["nominated_by"];
+            if (array_key_exists("nominated_by", $row)) {
+                $nominatedBy->username = $row["nominated_by"];
+            }
             $item->nominatedBy = $nominatedBy;
         }
 
