@@ -2969,7 +2969,9 @@ class StoreController
         }
         catch(Exception $e)
         {
-            throw new Exception("Execption caught while linking product to cart : $e");
+            $debugInfo = json_encode(["product"=>$product,"cart"=>$cart]);
+            throw new Exception("Execption caught while linking product to cart | Debug Info $debugInfo : $e");
+            //throw new Exception("Execption caught while linking product to cart : $e");
         }
 
         return $resp;
