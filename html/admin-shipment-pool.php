@@ -360,6 +360,7 @@ $manifestExists = $manifestExistsResp->success && ($manifestExistsResp->data['ex
         require("php-components/product-selector-modal.php");
 
         $itemSelectorId = 'adminItemSelector';
+        $selectorId = $itemSelectorId;
         require("php-components/item-selector-modal.php");
         ?>
 
