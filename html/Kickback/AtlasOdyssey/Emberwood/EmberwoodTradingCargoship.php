@@ -164,7 +164,44 @@ class EmberwoodTradingCargoship
             $selectedStatus['status'],
             $statusIcon,
             $statusColor,
+            $statusType,
         );
+    }
+
+    public function getJourneyWaypoints(): array
+    {
+        $poiIcons = [
+            'Station' => 'fa-warehouse',
+            'Docked' => 'fa-anchor',
+            'Orbiting' => 'fa-satellite',
+            'En route' => 'fa-route',
+            'Default' => 'fa-map-marker-alt',
+        ];
+
+        $waypoints = [];
+
+        foreach (EmberwoodPOI::cases() as $poi) {
+            $label = $poi->value;
+
+            if (str_contains($label, 'En route')) {
+                $icon = $poiIcons['En route'];
+            } elseif (str_contains($label, 'Orbiting')) {
+                $icon = $poiIcons['Orbiting'];
+            } elseif (str_contains($label, 'Docked')) {
+                $icon = $poiIcons['Docked'];
+            } elseif (str_contains($label, 'Station')) {
+                $icon = $poiIcons['Station'];
+            } else {
+                $icon = $poiIcons['Default'];
+            }
+
+            $waypoints[] = [
+                'label' => $label,
+                'icon' => $icon,
+            ];
+        }
+
+        return $waypoints;
     }
 
     

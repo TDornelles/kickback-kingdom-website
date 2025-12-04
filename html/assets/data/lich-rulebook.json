@@ -96,7 +96,7 @@
                 },
                 {
                   "rid": "BP-SRC-002",
-                  "text": "When an Avatar occupies a Source Stone tile, its controller must draw 1 pure source if able.",
+                  "text": "When an Avatar occupies a Source Stone tile, its controller must put 1 pure source into their source zone from their deck, tapped.",
                   "tags": [
                     "source-stones",
                     "draw"
@@ -117,6 +117,47 @@
                   "tags": [
                     "source-stones",
                     "line-of-sight"
+                  ]
+                }
+              ]
+            },
+            {
+              "title": "Chests",
+              "rules": [
+                {
+                  "rid": "BP-CHT-001",
+                  "text": "Chests are placed on the board before play.",
+                  "tags": [
+                    "chests",
+                    "setup"
+                  ]
+                },
+                {
+                  "rid": "BP-CHT-002",
+                  "text": "Chests start in their 'locked' state. To unlock a chest, on your turn, you must expend 4 AP and pay 4 source of any colors while your Avatar is adjacent to the chest.",
+                  "tags": [
+                    "chests",
+                    "avatar",
+                    "unlock",
+                    "locked"
+                  ]
+                },
+                {
+                  "rid": "BP-CHT-003",
+                  "text": "While a chest remains unlocked and not destroyed, you may, on your turn, spend 1 AP and search the chest while your Avatar is adjacent to it.",
+                  "tags": [
+                    "chests",
+                    "search",
+                    "avatar"
+                  ]
+                },
+                {
+                  "rid": "BP-CHT-004",
+                  "text": "Upon searching a chest, roll a 20-sided die; resolving the matching effect from the result of the dice-roll: <br> 1 - Destroy the chest, spread death fog to the chest's previous tile and all adjcent tiles <br> 2 - Destroy the chest, spread fire to the chest's previous tile and all adjcent tiles <br> 3 - Destroy the chest, spread sludge to the chest's previous tile and all adjcent tiles <br> 4 - Destroy the chest, spread vines to the chest's previous tile and all adjcent tiles <br> 5 - Destroy the chest, spread water to the chest's previous tile and all adjcent tiles <br> 6-10 - Nothing <br> 11-19 - Draw 1 card <br> 20 - Draw 2 cards",
+                  "tags": [
+                    "chests",
+                    "search",
+                    "avatar"
                   ]
                 }
               ]
@@ -229,6 +270,36 @@
                   "tags": [
                     "action-zone",
                     "public-info"
+                  ]
+                }
+              ]
+            },
+            {
+              "title": "Skill Zones",
+              "rules": [
+                {
+                  "rid": "FZ-SKZ-001",
+                  "text": "There are 2 dedicated skill zones; each of which may only hold 1 skill at a time.",
+                  "tags": [
+                    "skill-zone"
+                  ]
+                },
+                {
+                  "rid": "FZ-SKZ-002",
+                  "text": "All skill zones are public knowledge at all times.",
+                  "tags": [
+                    "skill-zone",
+                    "public-info"
+                  ]
+                },
+                {
+                  "rid": "FZ-SKZ-002",
+                  "text": "If you wish to play a skill card while you have already expended both skill zones, you may 'forget' a skill at the time of playing the new skill. Forgetting a skill Damns that skill.",
+                  "tags": [
+                    "skill-zone",
+                    "public-info",
+                    "damn",
+                    "forget"
                   ]
                 }
               ]
@@ -518,7 +589,7 @@
           "rules": [
             {
               "rid": "AP-001",
-              "text": "Each player has 2 AP, refreshed at the Start Phase.",
+              "text": "Each player has 4 AP, refreshed at the Start Phase.",
               "tags": [
                 "ap"
               ]
