@@ -22,7 +22,7 @@ class TreasureHuntController
         $conn = Database::getConnection();
 
         // Hard-coded list of allowed item IDs (feel free to expand)
-        $allowedItemIds = [4, 5, 14, 115, 124];
+        $allowedItemIds = [4, 5, 14, 115, 124, 467];
 
         // Build parameter placeholders
         $placeholders = implode(',', array_fill(0, count($allowedItemIds), '?'));
