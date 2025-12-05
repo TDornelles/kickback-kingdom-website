@@ -1,9 +1,9 @@
 <?php
 require_once(__DIR__ . "/../../engine/engine.php");
 
-use Kickback\Backend\Controllers\SupportTicketController;
+use Kickback\Backend\Controllers\TicketController;
 
 OnlyPOST();
 
-return SupportTicketController::createTicketFromRequest($_POST, $_FILES);
+return TicketController::createSupportTicketFromRequest($_POST, $_FILES);
 ?>
