@@ -46,6 +46,45 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                     require("../php-components/base-page-breadcrumbs.php");
                 ?>
 
+                <div class="row g-3 mb-3">
+                    <div class="col-6 col-lg-3">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-body">
+                                <div class="text-muted small">Total Tickets</div>
+                                <div class="h4 mb-0" id="statTotal">0</div>
+                                <div class="small text-secondary" id="statLastUpdated">Updated --</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-body">
+                                <div class="text-muted small">Open</div>
+                                <div class="h4 mb-0" id="statOpen">0</div>
+                                <div class="small text-secondary">Waiting for action</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-body">
+                                <div class="text-muted small">In Progress</div>
+                                <div class="h4 mb-0" id="statInProgress">0</div>
+                                <div class="small text-secondary">Owned by teammates</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-body">
+                                <div class="text-muted small">Urgent & High</div>
+                                <div class="h4 mb-0" id="statHigh">0</div>
+                                <div class="small text-secondary">Needs fast response</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="card shadow-sm mb-3">
                     <div class="card-body d-flex align-items-center">
                         <div class="p-3 bg-primary text-white rounded-3 me-3">
@@ -173,97 +212,6 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                         </div>
                     </div>
                 </div>
-
-                <div class="card shadow-sm mb-4" id="ticketDetail">
-                    <div class="card-body">
-                        <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-2">
-                            <div>
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="badge text-bg-secondary" id="detailStatus">Open</span>
-                                    <span class="badge text-bg-primary" id="detailPriority">Medium</span>
-                                </div>
-                                <h3 class="h5 mt-2 mb-1" id="detailSubject">Ticket subject</h3>
-                                <div class="text-muted" id="detailMeta">Requester • Date</div>
-                            </div>
-                            <div class="d-flex flex-wrap gap-2">
-                                <button class="btn btn-outline-primary" id="assignSelf"><i class="fa-solid fa-user-plus me-1"></i>Assign to me</button>
-                                <button class="btn btn-outline-secondary" id="assignGuild"><i class="fa-solid fa-people-group me-1"></i>Assign to guild</button>
-                                <button class="btn btn-outline-danger" id="escalatePriority"><i class="fa-solid fa-arrow-up me-1"></i>Escalate</button>
-                            </div>
-                        </div>
-                        <p class="text-muted" id="detailDescription"></p>
-
-                        <div class="row g-4 mt-1">
-                            <div class="col-12 col-lg-7">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <h4 class="h6 mb-0">Comments</h4>
-                                    <div class="btn-group btn-group-sm" role="group" aria-label="comment visibility">
-                                        <input type="radio" class="btn-check" name="commentVisibility" id="visibilityPublic" autocomplete="off" checked>
-                                        <label class="btn btn-outline-primary" for="visibilityPublic"><i class="fa-regular fa-message me-1"></i>Public</label>
-                                        <input type="radio" class="btn-check" name="commentVisibility" id="visibilityInternal" autocomplete="off">
-                                        <label class="btn btn-outline-secondary" for="visibilityInternal"><i class="fa-solid fa-user-shield me-1"></i>Internal</label>
-                                    </div>
-                                </div>
-                                <div id="commentThread" class="comment-thread"></div>
-                                <div class="mt-3">
-                                    <label for="commentInput" class="form-label">Add a comment</label>
-                                    <textarea class="form-control" id="commentInput" rows="3" placeholder="Share an update or internal note"></textarea>
-                                    <div class="d-flex justify-content-between align-items-center mt-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" value="1" id="notifyRequester" checked>
-                                            <label class="form-check-label" for="notifyRequester">Notify requester by email</label>
-                                        </div>
-                                        <button class="btn btn-primary" id="addComment"><i class="fa-solid fa-paper-plane me-1"></i>Post update</button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-12 col-lg-5">
-                                <div class="card border-0 bg-light mb-3">
-                                    <div class="card-body">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <h4 class="h6 mb-0">Status & Assignment</h4>
-                                            <span class="badge text-bg-light" id="detailTicketId"></span>
-                                        </div>
-                                        <div class="mb-2">
-                                            <label for="detailStatusSelect" class="form-label">Status</label>
-                                            <select id="detailStatusSelect" class="form-select form-select-sm">
-                                                <option value="open">Open</option>
-                                                <option value="in-progress">In Progress</option>
-                                                <option value="waiting">Waiting on Customer</option>
-                                                <option value="resolved">Resolved</option>
-                                            </select>
-                                        </div>
-                                        <div class="mb-2">
-                                            <label for="detailPrioritySelect" class="form-label">Priority</label>
-                                            <select id="detailPrioritySelect" class="form-select form-select-sm">
-                                                <option value="urgent">Urgent</option>
-                                                <option value="high">High</option>
-                                                <option value="medium">Medium</option>
-                                                <option value="low">Low</option>
-                                            </select>
-                                        </div>
-                                        <div class="mb-2">
-                                            <label for="detailAssignee" class="form-label">Assignee</label>
-                                            <input type="text" id="detailAssignee" class="form-control form-control-sm" placeholder="Enter username or guild">
-                                        </div>
-                                        <button class="btn btn-outline-primary w-100" id="saveTicketMeta"><i class="fa-solid fa-floppy-disk me-1"></i>Save</button>
-                                    </div>
-                                </div>
-                                <div class="card border-0">
-                                    <div class="card-body">
-                                        <h4 class="h6">History</h4>
-                                        <ul class="list-unstyled" id="historyList"></ul>
-                                        <div class="mt-2">
-                                            <label for="quickNote" class="form-label">Quick internal note</label>
-                                            <textarea id="quickNote" class="form-control" rows="2"></textarea>
-                                            <button class="btn btn-outline-secondary btn-sm mt-2" id="saveQuickNote"><i class="fa-solid fa-lock me-1"></i>Save internal note</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <?php require("../php-components/base-page-discord.php"); ?>
@@ -337,8 +285,21 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
         ];
 
         let filteredTickets = [...tickets];
-        let selectedTicketId = tickets[0]?.id || null;
         let notificationCount = 3;
+
+        function renderStats() {
+            const total = filteredTickets.length;
+            const openCount = filteredTickets.filter(t => t.status === 'open').length;
+            const inProgressCount = filteredTickets.filter(t => t.status === 'in-progress').length;
+            const highCount = filteredTickets.filter(t => t.priority === 'urgent' || t.priority === 'high').length;
+            const lastUpdated = filteredTickets.reduce((latest, ticket) => ticket.updated > latest ? ticket.updated : latest, '');
+
+            document.getElementById('statTotal').textContent = total;
+            document.getElementById('statOpen').textContent = openCount;
+            document.getElementById('statInProgress').textContent = inProgressCount;
+            document.getElementById('statHigh').textContent = highCount;
+            document.getElementById('statLastUpdated').textContent = lastUpdated ? `Updated ${lastUpdated}` : 'Updated --';
+        }
 
         function applyPrefill() {
             document.getElementById('filterStatus').value = prefillFilters.status || '';
@@ -379,9 +340,11 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td><input type="checkbox" class="form-check-input ticket-checkbox" data-id="${ticket.id}"></td>
-                    <td class="ticket-subject" data-id="${ticket.id}">
-                        <div class="fw-semibold">${ticket.subject}</div>
-                        <div class="small text-muted">${ticket.id} • ${ticket.requester}</div>
+                    <td class="ticket-subject position-relative" data-id="${ticket.id}">
+                        <a class="stretched-link text-decoration-none text-dark" href="<?= Version::urlBetaPrefix(); ?>/tickets/view.php?id=${ticket.id}">
+                            <div class="fw-semibold">${ticket.subject}</div>
+                            <div class="small text-muted">${ticket.id} • ${ticket.requester}</div>
+                        </a>
                     </td>
                     <td><span class="badge status-pill status-${ticket.status}">${ticket.status.replace('-', ' ')}</span></td>
                     <td><span class="badge priority-pill priority-${ticket.priority}">${ticket.priority}</span></td>
@@ -393,56 +356,16 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
             });
             document.getElementById('listSummary').textContent = `${filteredTickets.length} ticket${filteredTickets.length === 1 ? '' : 's'}`;
             bindTicketSelection();
-        }
-
-        function renderDetail() {
-            const ticket = tickets.find(t => t.id === selectedTicketId);
-            if (!ticket) return;
-            document.getElementById('detailStatus').textContent = ticket.status;
-            document.getElementById('detailStatus').className = `badge text-bg-secondary status-${ticket.status}`;
-            document.getElementById('detailPriority').textContent = ticket.priority;
-            document.getElementById('detailPriority').className = `badge text-bg-primary priority-${ticket.priority}`;
-            document.getElementById('detailSubject').textContent = ticket.subject;
-            document.getElementById('detailMeta').textContent = `${ticket.requester} • Updated ${ticket.updated}`;
-            document.getElementById('detailDescription').textContent = ticket.description;
-            document.getElementById('detailAssignee').value = ticket.assignee;
-            document.getElementById('detailStatusSelect').value = ticket.status;
-            document.getElementById('detailPrioritySelect').value = ticket.priority;
-            document.getElementById('detailTicketId').textContent = ticket.id;
-
-            const historyList = document.getElementById('historyList');
-            historyList.innerHTML = '';
-            ticket.history.forEach(item => {
-                const li = document.createElement('li');
-                li.className = 'mb-1';
-                li.innerHTML = `<small class="text-muted">${item.time}</small><div>${item.entry}</div>`;
-                historyList.appendChild(li);
-            });
-
-            const thread = document.getElementById('commentThread');
-            thread.innerHTML = '';
-            ticket.comments.forEach(comment => {
-                const card = document.createElement('div');
-                card.className = `comment card mb-2 ${comment.type === 'internal' ? 'comment-internal' : ''}`;
-                card.innerHTML = `
-                    <div class="card-body py-2">
-                        <div class="d-flex justify-content-between">
-                            <strong>${comment.author}</strong>
-                            <span class="small text-muted">${comment.time}</span>
-                        </div>
-                        <p class="mb-0">${comment.message}</p>
-                        <span class="badge bg-light text-dark mt-1">${comment.type === 'internal' ? 'Internal' : 'Public'}</span>
-                    </div>
-                `;
-                thread.appendChild(card);
-            });
+            renderStats();
         }
 
         function bindTicketSelection() {
             document.querySelectorAll('.ticket-subject').forEach(cell => {
-                cell.addEventListener('click', () => {
-                    selectedTicketId = cell.dataset.id;
-                    renderDetail();
+                cell.addEventListener('click', (event) => {
+                    const target = event.target.closest('a');
+                    if (target) {
+                        window.location.href = target.href;
+                    }
                 });
             });
         }
@@ -450,10 +373,6 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
         function applyFiltersAndRender() {
             filteredTickets = tickets.filter(ticketMatchesFilters);
             renderTickets();
-            if (!tickets.find(t => t.id === selectedTicketId) && filteredTickets.length > 0) {
-                selectedTicketId = filteredTickets[0].id;
-            }
-            renderDetail();
         }
 
         function updateBadge() {
@@ -475,10 +394,6 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                 method: 'POST',
                 body: payload
             }).catch(() => console.warn('Notification endpoint unreachable'));    
-        }
-
-        function addHistory(ticket, entry) {
-            ticket.history.unshift({ time: new Date().toLocaleString(), entry });
         }
 
         document.getElementById('applyFilters').addEventListener('click', applyFiltersAndRender);
@@ -509,85 +424,14 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                     if (type === 'priority') ticket.priority = value;
                     if (type === 'note') {
                         ticket.comments.push({ author: activeUser || 'System', type: 'internal', message: value, time: new Date().toLocaleTimeString() });
-                        addHistory(ticket, `Internal note added by ${activeUser || 'system'}`);
                     }
                 });
                 applyFiltersAndRender();
             });
         });
 
-        document.getElementById('addComment').addEventListener('click', () => {
-            const ticket = tickets.find(t => t.id === selectedTicketId);
-            if (!ticket) return;
-            const message = document.getElementById('commentInput').value.trim();
-            if (!message) return;
-            const isInternal = document.getElementById('visibilityInternal').checked;
-            ticket.comments.push({
-                author: activeUser || 'Staff',
-                type: isInternal ? 'internal' : 'public',
-                message,
-                time: new Date().toLocaleTimeString()
-            });
-            addHistory(ticket, `${isInternal ? 'Internal note' : 'Comment'} added by ${activeUser || 'staff'}`);
-            document.getElementById('commentInput').value = '';
-            renderDetail();
-            if (!isInternal && document.getElementById('notifyRequester').checked) {
-                queueNotification(ticket, 'New ticket update posted.');
-            }
-        });
-
-        document.getElementById('saveTicketMeta').addEventListener('click', () => {
-            const ticket = tickets.find(t => t.id === selectedTicketId);
-            if (!ticket) return;
-            ticket.status = document.getElementById('detailStatusSelect').value;
-            ticket.priority = document.getElementById('detailPrioritySelect').value;
-            ticket.assignee = document.getElementById('detailAssignee').value;
-            addHistory(ticket, `${activeUser || 'Staff'} updated status and assignment`);
-            queueNotification(ticket, 'Ticket routing updated.');
-            applyFiltersAndRender();
-        });
-
-        document.getElementById('assignSelf').addEventListener('click', () => {
-            const ticket = tickets.find(t => t.id === selectedTicketId);
-            if (!ticket || !activeUser) return;
-            ticket.assignee = activeUser;
-            addHistory(ticket, `Assigned to ${activeUser}`);
-            queueNotification(ticket, 'Ticket assigned to you.');
-            applyFiltersAndRender();
-        });
-
-        document.getElementById('assignGuild').addEventListener('click', () => {
-            const ticket = tickets.find(t => t.id === selectedTicketId);
-            if (!ticket) return;
-            const guild = prompt('Assign to which guild?');
-            if (!guild) return;
-            ticket.assignee = guild + ' Guild';
-            addHistory(ticket, `Reassigned to ${guild} Guild`);
-            queueNotification(ticket, 'Ticket routed to guild.');
-            applyFiltersAndRender();
-        });
-
-        document.getElementById('escalatePriority').addEventListener('click', () => {
-            const ticket = tickets.find(t => t.id === selectedTicketId);
-            if (!ticket) return;
-            ticket.priority = 'urgent';
-            addHistory(ticket, 'Escalated to urgent');
-            queueNotification(ticket, 'Priority escalated');
-            applyFiltersAndRender();
-        });
-
-        document.getElementById('saveQuickNote').addEventListener('click', () => {
-            const note = document.getElementById('quickNote').value.trim();
-            const ticket = tickets.find(t => t.id === selectedTicketId);
-            if (!ticket || !note) return;
-            ticket.comments.push({ author: activeUser || 'Staff', type: 'internal', message: note, time: new Date().toLocaleTimeString() });
-            addHistory(ticket, 'Internal note added');
-            document.getElementById('quickNote').value = '';
-            renderDetail();
-        });
-
         document.getElementById('notificationTest').addEventListener('click', () => {
-            const ticket = tickets.find(t => t.id === selectedTicketId);
+            const ticket = filteredTickets[0] || tickets[0];
             if (ticket) {
                 queueNotification(ticket, 'Test notification from dashboard');
             }
