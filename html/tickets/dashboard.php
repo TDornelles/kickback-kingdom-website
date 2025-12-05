@@ -141,7 +141,9 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                             </div>
                             <div class="col-sm-6 col-lg-3">
                                 <label for="filterAssignee" class="form-label">Assignee</label>
-                                <input type="text" class="form-control" id="filterAssignee" placeholder="User or Team">
+                                <select class="form-select" id="filterAssignee">
+                                    <option value="">Any</option>
+                                </select>
                             </div>
                             <div class="col-sm-6 col-lg-3">
                                 <label for="filterGuild" class="form-label">Guild</label>
@@ -230,6 +232,10 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
         let notificationCount = 0;
         let isLoading = false;
         let loadError = '';
+        let assigneeOptions = [];
+        let isLoadingAssignees = false;
+        let assigneeLoadError = '';
+        let pendingAssigneeValue = prefillFilters.assignee || '';
 
         function getFilterValues() {
             return {
@@ -241,6 +247,90 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                 to: document.getElementById('filterTo').value,
                 search: document.getElementById('filterSearch').value,
             };
+        }
+
+        async function fetchAssignees() {
+            isLoadingAssignees = true;
+            assigneeLoadError = '';
+            renderAssigneeOptions();
+
+            try {
+                const response = await fetch('<?= Version::urlBetaPrefix(); ?>/api/v1/tickets/assignees.php', {
+                    method: 'POST',
+                    credentials: 'same-origin'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Request failed with status ${response.status}`);
+                }
+
+                const result = await response.json();
+                if (result.success && Array.isArray(result.data)) {
+                    assigneeOptions = result.data;
+                } else {
+                    assigneeOptions = [];
+                    assigneeLoadError = result.message || 'Unable to load assignees.';
+                }
+            } catch (error) {
+                console.error('Failed to load assignees', error);
+                assigneeOptions = [];
+                assigneeLoadError = 'Failed to load assignees. Please try again.';
+            }
+
+            isLoadingAssignees = false;
+            renderAssigneeOptions();
+        }
+
+        function renderAssigneeOptions() {
+            const select = document.getElementById('filterAssignee');
+            const currentValue = select.value;
+            select.innerHTML = '';
+
+            const anyOption = document.createElement('option');
+            anyOption.value = '';
+            anyOption.textContent = 'Any';
+            select.appendChild(anyOption);
+
+            if (isLoadingAssignees) {
+                select.disabled = true;
+                const loadingOption = document.createElement('option');
+                loadingOption.disabled = true;
+                loadingOption.textContent = 'Loading assignees...';
+                select.appendChild(loadingOption);
+                return;
+            }
+
+            select.disabled = false;
+
+            if (assigneeLoadError) {
+                const errorOption = document.createElement('option');
+                errorOption.disabled = true;
+                errorOption.textContent = assigneeLoadError;
+                select.appendChild(errorOption);
+                select.value = '';
+                return;
+            }
+
+            if (assigneeOptions.length === 0) {
+                const emptyOption = document.createElement('option');
+                emptyOption.disabled = true;
+                emptyOption.textContent = 'No assignees found';
+                select.appendChild(emptyOption);
+                select.value = '';
+                return;
+            }
+
+            assigneeOptions.forEach(option => {
+                const opt = document.createElement('option');
+                opt.value = (option.username || '').toLowerCase();
+                opt.textContent = option.username || `Account #${option.id}`;
+                select.appendChild(opt);
+            });
+
+            const desiredValue = (pendingAssigneeValue || currentValue).toLowerCase();
+            const hasDesiredOption = Array.from(select.options).some(opt => opt.value === desiredValue);
+            select.value = hasDesiredOption ? desiredValue : '';
+            pendingAssigneeValue = hasDesiredOption ? '' : pendingAssigneeValue;
         }
 
         async function fetchTickets(filters = {}) {
@@ -312,7 +402,7 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
         function applyPrefill() {
             document.getElementById('filterStatus').value = (prefillFilters.status || '').replace('-', '_');
             document.getElementById('filterPriority').value = prefillFilters.priority || '';
-            document.getElementById('filterAssignee').value = prefillFilters.assignee || '';
+            pendingAssigneeValue = prefillFilters.assignee || '';
             document.getElementById('filterGuild').value = prefillFilters.guild || '';
             document.getElementById('filterFrom').value = prefillFilters.dateFrom || '';
             document.getElementById('filterTo').value = prefillFilters.dateTo || '';
@@ -326,7 +416,7 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
             if (normalizedStatus && ticket.status !== normalizedStatus) return false;
             if (priority && ticket.priority !== priority) return false;
             if (guild && (ticket.guild || '') !== guild) return false;
-            if (assignee && !(ticket.assignee || '').toLowerCase().includes(assignee)) return false;
+            if (assignee && (ticket.assignee || '').toLowerCase() !== assignee) return false;
             if (from && ticket.updated < from) return false;
             if (to && ticket.updated > to) return false;
             if (searchTerm) {
@@ -473,6 +563,7 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
         });
 
         applyPrefill();
+        fetchAssignees();
         fetchTickets(getFilterValues());
     </script>
 
