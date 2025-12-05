@@ -8,6 +8,13 @@ use Kickback\Common\Version;
 use Kickback\Services\Session;
 
 $ticketId = $_GET['id'] ?? '';
+$ticketCtime = $_GET['ctime'] ?? '';
+$ticketCrand = isset($_GET['crand']) ? (int) $_GET['crand'] : 0;
+
+if ($ticketCtime === '' && $ticketId !== '' && preg_match('/^([0-9]{10,})[-:](\d+)$/', $ticketId, $matches)) {
+    $ticketCtime = $matches[1];
+    $ticketCrand = (int) $matches[2];
+}
 
 if (!Session::isLoggedIn()) {
     $redirectTarget = 'tickets/view.php' . ($ticketId ? ('?id=' . urlencode($ticketId)) : '');
@@ -32,7 +39,7 @@ $currentAccount = Session::getCurrentAccount();
         <div class="row">
             <div class="col-12">
                 <?php
-                    $activePageName = $ticketId ? "Ticket " . htmlspecialchars($ticketId) : "Ticket";
+                    $activePageName = ($ticketCtime && $ticketCrand) ? "Ticket {$ticketCtime}-{$ticketCrand}" : "Ticket";
                     require("../php-components/base-page-breadcrumbs.php");
                 ?>
 
@@ -95,11 +102,12 @@ $currentAccount = Session::getCurrentAccount();
                                     <label for="detailStatusSelect" class="form-label">Status</label>
                                     <select id="detailStatusSelect" class="form-select form-select-sm">
                                         <option value="open">Open</option>
-                                        <option value="in-progress">In Progress</option>
+                                        <option value="in_progress">In Progress</option>
                                         <option value="waiting">Waiting on Customer</option>
                                         <option value="resolved">Resolved</option>
+                                        <option value="closed">Closed</option>
                                     </select>
-                                </div>
+                </div>
                                 <div class="mb-2">
                                     <label for="detailPrioritySelect" class="form-label">Priority</label>
                                     <select id="detailPrioritySelect" class="form-select form-select-sm">
@@ -138,96 +146,57 @@ $currentAccount = Session::getCurrentAccount();
     <?php require("../php-components/base-page-javascript.php"); ?>
     <script>
         const activeUser = <?= json_encode(isset($currentAccount->username) ? $currentAccount->username : ''); ?>;
-        const ticketId = <?= json_encode($ticketId); ?>;
+        const ticketCtime = <?= json_encode($ticketCtime); ?>;
+        const ticketCrand = <?= json_encode($ticketCrand); ?>;
 
-        const tickets = [
-            {
-                id: 'TCK-1024',
-                subject: 'Card deck sync is stuck',
-                description: 'Players report that the new deck list is not updating in the lobby.',
-                status: 'open',
-                priority: 'high',
-                assignee: 'Astra',
-                guild: 'Lich',
-                requester: 'Kara',
-                updated: '2025-03-02',
-                history: [
-                    { time: '2025-03-02 09:15', entry: 'Ticket created by Kara' },
-                    { time: '2025-03-02 10:00', entry: 'Assigned to Astra' }
-                ],
-                comments: [
-                    { author: 'Kara', type: 'public', message: 'Deck is frozen after the last patch.', time: '09:20' },
-                    { author: 'Astra', type: 'public', message: 'Investigating logs now.', time: '10:05' }
-                ]
-            },
-            {
-                id: 'TCK-2048',
-                subject: 'Guild treasury export for March',
-                description: 'Need CSV export for merchant ledgers before finance meeting.',
-                status: 'in-progress',
-                priority: 'medium',
-                assignee: 'Ledger Team',
-                guild: 'Merchants',
-                requester: 'Finley',
-                updated: '2025-03-01',
-                history: [
-                    { time: '2025-02-28 14:10', entry: 'Ticket created by Finley' },
-                    { time: '2025-02-28 14:45', entry: 'Marked In Progress by Ledger Team' }
-                ],
-                comments: [
-                    { author: 'Finley', type: 'public', message: 'Deadline is Friday.', time: '14:12' },
-                    { author: 'Ledger Team', type: 'public', message: 'We can deliver by Thursday.', time: '14:50' }
-                ]
-            },
-            {
-                id: 'TCK-3001',
-                subject: 'Tournament registration stuck in pending',
-                description: 'Three entrants cannot complete payment flow for Emberwood event.',
-                status: 'waiting',
-                priority: 'urgent',
-                assignee: '',
-                guild: 'Adventurers',
-                requester: 'QuestAdmin',
-                updated: '2025-03-03',
-                history: [
-                    { time: '2025-03-03 08:00', entry: 'Ticket created by QuestAdmin' }
-                ],
-                comments: [
-                    { author: 'QuestAdmin', type: 'public', message: 'Registrations stuck after redirect.', time: '08:02' }
-                ]
-            }
-        ];
+        let ticket = null;
+        let assignments = [];
+        let comments = [];
 
-        let ticket = tickets.find(t => t.id === ticketId) || null;
+        function markUnavailable(message) {
+            document.getElementById('ticketTitle').textContent = message;
+            document.getElementById('ticketMeta').textContent = 'Please return to the dashboard and try another ticket.';
+            document.getElementById('ticketDescription').textContent = '';
+            document.querySelectorAll('button, input, textarea, select').forEach(el => el.disabled = true);
+        }
+
+        function formatStatus(status) {
+            return (status || '').replace(/_/g, ' ');
+        }
+
+        function formatDate(raw) {
+            if (!raw) return '';
+            const parsed = new Date(raw);
+            return isNaN(parsed.getTime()) ? raw : parsed.toLocaleString();
+        }
 
         function renderTicket() {
             if (!ticket) {
-                document.getElementById('ticketTitle').textContent = 'Ticket not found';
-                document.getElementById('ticketMeta').textContent = 'The requested ticket does not exist or is unavailable.';
-                document.getElementById('ticketDescription').textContent = '';
-                document.querySelectorAll('button, input, textarea, select').forEach(el => el.disabled = true);
+                markUnavailable('Ticket not found');
                 return;
             }
 
+            const ticketId = `${ticket.ctime}-${ticket.crand}`;
+
             document.getElementById('ticketTitle').textContent = ticket.subject;
-            document.getElementById('ticketMeta').textContent = `${ticket.requester} • Updated ${ticket.updated}`;
+            document.getElementById('ticketMeta').textContent = `Updated ${formatDate(ticket.updatedAt)}`;
             document.getElementById('ticketDescription').textContent = ticket.description;
-            document.getElementById('ticketStatus').textContent = ticket.status;
+            document.getElementById('ticketStatus').textContent = formatStatus(ticket.status);
             document.getElementById('ticketStatus').className = `badge text-bg-secondary status-${ticket.status}`;
             document.getElementById('ticketPriority').textContent = ticket.priority;
             document.getElementById('ticketPriority').className = `badge text-bg-primary priority-${ticket.priority}`;
-            document.getElementById('ticketIdBadge').textContent = ticket.id;
-            document.getElementById('detailTicketId').textContent = ticket.id;
+            document.getElementById('ticketIdBadge').textContent = ticketId;
+            document.getElementById('detailTicketId').textContent = ticketId;
             document.getElementById('detailStatusSelect').value = ticket.status;
             document.getElementById('detailPrioritySelect').value = ticket.priority;
-            document.getElementById('detailAssignee').value = ticket.assignee;
+            document.getElementById('detailAssignee').value = assignments[0]?.accountCrand ? `Account #${assignments[0].accountCrand}` : '';
 
             const metaBadges = document.getElementById('ticketMetaBadges');
             metaBadges.innerHTML = '';
             const fields = [
-                { label: 'Guild', value: ticket.guild },
-                { label: 'Assignee', value: ticket.assignee || 'Unassigned' },
-                { label: 'Requester', value: ticket.requester }
+                { label: 'Tags', value: (ticket.tags || []).join(', ') || 'None' },
+                { label: 'Created', value: formatDate(ticket.ctime) },
+                { label: 'Updated', value: formatDate(ticket.updatedAt) },
             ];
             fields.forEach(field => {
                 const span = document.createElement('span');
@@ -243,82 +212,100 @@ $currentAccount = Session::getCurrentAccount();
         function renderHistory() {
             const historyList = document.getElementById('historyList');
             historyList.innerHTML = '';
-            ticket.history.forEach(item => {
-                const li = document.createElement('li');
-                li.className = 'mb-1';
-                li.innerHTML = `<small class="text-muted">${item.time}</small><div>${item.entry}</div>`;
-                historyList.appendChild(li);
-            });
+
+            const entries = [];
+            entries.push({ time: ticket?.ctime, entry: 'Ticket created' });
+            assignments.forEach(assign => entries.push({ time: assign.assignedAt, entry: `Assigned to account #${assign.accountCrand}` }));
+            comments.forEach(comment => entries.push({ time: comment.ctime, entry: `Comment from ${comment.authorCrand ? 'account #' + comment.authorCrand : 'system'}` }));
+
+            entries
+                .filter(entry => entry.time)
+                .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+                .forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'mb-1';
+                    li.innerHTML = `<small class="text-muted">${formatDate(item.time)}</small><div>${item.entry}</div>`;
+                    historyList.appendChild(li);
+                });
         }
 
         function renderComments() {
             const thread = document.getElementById('commentThread');
             thread.innerHTML = '';
-            ticket.comments.forEach(comment => {
+            comments.forEach(comment => {
                 const card = document.createElement('div');
-                card.className = `comment card mb-2 ${comment.type === 'internal' ? 'comment-internal' : ''}`;
+                card.className = 'comment card mb-2';
                 card.innerHTML = `
                     <div class="card-body py-2">
                         <div class="d-flex justify-content-between">
-                            <strong>${comment.author}</strong>
-                            <span class="small text-muted">${comment.time}</span>
+                            <strong>${comment.authorCrand ? 'Account #' + comment.authorCrand : 'System'}</strong>
+                            <span class="small text-muted">${formatDate(comment.ctime)}</span>
                         </div>
-                        <p class="mb-0">${comment.message}</p>
-                        <span class="badge bg-light text-dark mt-1">${comment.type === 'internal' ? 'Internal' : 'Public'}</span>
+                        <p class="mb-0">${comment.body || ''}</p>
                     </div>
                 `;
                 thread.appendChild(card);
             });
         }
 
-        function addHistory(entry) {
-            ticket.history.unshift({ time: new Date().toLocaleString(), entry });
-            renderHistory();
+        function bindReadOnlyHandlers() {
+            document.getElementById('addComment').addEventListener('click', (event) => {
+                event.preventDefault();
+                alert('Commenting from this view is not available yet.');
+            });
+            document.getElementById('saveTicketMeta').addEventListener('click', (event) => {
+                event.preventDefault();
+                alert('Editing ticket metadata is not available yet.');
+            });
+            document.getElementById('saveQuickNote').addEventListener('click', (event) => {
+                event.preventDefault();
+                alert('Adding notes from this page is not available yet.');
+            });
         }
 
-        document.getElementById('addComment').addEventListener('click', () => {
-            if (!ticket) return;
-            const message = document.getElementById('commentInput').value.trim();
-            if (!message) return;
-            const isInternal = document.getElementById('visibilityInternal').checked;
-            ticket.comments.push({
-                author: activeUser || 'Staff',
-                type: isInternal ? 'internal' : 'public',
-                message,
-                time: new Date().toLocaleTimeString()
-            });
-            addHistory(`${isInternal ? 'Internal note' : 'Comment'} added by ${activeUser || 'staff'}`);
-            document.getElementById('commentInput').value = '';
-            renderComments();
-        });
+        async function loadTicket() {
+            if (!ticketCtime || !ticketCrand) {
+                markUnavailable('Ticket not found');
+                return;
+            }
 
-        document.getElementById('saveTicketMeta').addEventListener('click', () => {
-            if (!ticket) return;
-            ticket.status = document.getElementById('detailStatusSelect').value;
-            ticket.priority = document.getElementById('detailPrioritySelect').value;
-            ticket.assignee = document.getElementById('detailAssignee').value;
-            addHistory(`${activeUser || 'Staff'} updated status and assignment`);
-            renderTicket();
-        });
+            try {
+                const formData = new FormData();
+                formData.append('ctime', ticketCtime);
+                formData.append('crand', ticketCrand);
 
-        document.getElementById('saveQuickNote').addEventListener('click', () => {
-            if (!ticket) return;
-            const note = document.getElementById('quickNote').value.trim();
-            if (!note) return;
-            ticket.comments.push({ author: activeUser || 'Staff', type: 'internal', message: note, time: new Date().toLocaleTimeString() });
-            addHistory('Internal note added');
-            document.getElementById('quickNote').value = '';
-            renderComments();
-        });
+                const response = await fetch('<?= Version::urlBetaPrefix(); ?>/api/v1/tickets/view.php', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin',
+                });
 
-        renderTicket();
+                const result = await response.json();
+                if (!result.success) {
+                    markUnavailable(result.message || 'Unable to load ticket.');
+                    return;
+                }
+
+                ticket = result.data.ticket || null;
+                assignments = Array.isArray(result.data.assignments) ? result.data.assignments : [];
+                comments = Array.isArray(result.data.comments) ? result.data.comments : [];
+                renderTicket();
+            } catch (error) {
+                console.error('Failed to load ticket', error);
+                markUnavailable('Unable to load ticket right now.');
+            }
+        }
+
+        bindReadOnlyHandlers();
+        loadTicket();
     </script>
 
     <style>
         .status-open { background: #e8f5ff; color: #0b6cbf; }
-        .status-in-progress { background: #fff4e5; color: #c46a00; }
+        .status-in_progress { background: #fff4e5; color: #c46a00; }
         .status-waiting { background: #f3e8ff; color: #6f42c1; }
         .status-resolved { background: #e9f9ee; color: #0f9d58; }
+        .status-closed { background: #f1f3f5; color: #495057; }
         .priority-urgent { background: #ffebee; color: #c62828; }
         .priority-high { background: #fff3cd; color: #a66f00; }
         .priority-medium { background: #e3f2fd; color: #1565c0; }

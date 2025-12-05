@@ -225,71 +225,43 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
         const prefillFilters = <?= json_encode($prefillFilters); ?>;
         const notificationEmail = <?= json_encode($notificationEmail); ?>;
 
-        const tickets = [
-            {
-                id: 'TCK-1024',
-                subject: 'Card deck sync is stuck',
-                description: 'Players report that the new deck list is not updating in the lobby.',
-                status: 'open',
-                priority: 'high',
-                assignee: 'Astra',
-                guild: 'Lich',
-                requester: 'Kara',
-                updated: '2025-03-02',
-                history: [
-                    { time: '2025-03-02 09:15', entry: 'Ticket created by Kara' },
-                    { time: '2025-03-02 10:00', entry: 'Assigned to Astra' }
-                ],
-                comments: [
-                    { author: 'Kara', type: 'public', message: 'Deck is frozen after the last patch.', time: '09:20' },
-                    { author: 'Astra', type: 'public', message: 'Investigating logs now.', time: '10:05' }
-                ]
-            },
-            {
-                id: 'TCK-2048',
-                subject: 'Guild treasury export for March',
-                description: 'Need CSV export for merchant ledgers before finance meeting.',
-                status: 'in-progress',
-                priority: 'medium',
-                assignee: 'Ledger Team',
-                guild: 'Merchants',
-                requester: 'Finley',
-                updated: '2025-03-01',
-                history: [
-                    { time: '2025-02-28 14:10', entry: 'Ticket created by Finley' },
-                    { time: '2025-02-28 14:45', entry: 'Marked In Progress by Ledger Team' }
-                ],
-                comments: [
-                    { author: 'Finley', type: 'public', message: 'Deadline is Friday.', time: '14:12' },
-                    { author: 'Ledger Team', type: 'public', message: 'We can deliver by Thursday.', time: '14:50' }
-                ]
-            },
-            {
-                id: 'TCK-3001',
-                subject: 'Tournament registration stuck in pending',
-                description: 'Three entrants cannot complete payment flow for Emberwood event.',
-                status: 'waiting',
-                priority: 'urgent',
-                assignee: '',
-                guild: 'Adventurers',
-                requester: 'QuestAdmin',
-                updated: '2025-03-03',
-                history: [
-                    { time: '2025-03-03 08:00', entry: 'Ticket created by QuestAdmin' }
-                ],
-                comments: [
-                    { author: 'QuestAdmin', type: 'public', message: 'Registrations stuck after redirect.', time: '08:02' }
-                ]
-            }
-        ];
+        let tickets = [];
+        let filteredTickets = [];
+        let notificationCount = 0;
 
-        let filteredTickets = [...tickets];
-        let notificationCount = 3;
+        async function fetchTickets() {
+            try {
+                const response = await fetch('<?= Version::urlBetaPrefix(); ?>/api/v1/tickets/list.php', {
+                    method: 'POST',
+                    credentials: 'same-origin'
+                });
+
+                const result = await response.json();
+                if (result.success && Array.isArray(result.data)) {
+                    tickets = result.data.map((ticket) => ({
+                        ...ticket,
+                        id: `${ticket.ctime}-${ticket.crand}`,
+                        requester: ticket.createdByCrand ? `Account #${ticket.createdByCrand}` : 'Unknown',
+                        updated: ticket.updatedAt || '',
+                        assignee: ticket.assignee || '',
+                        guild: ticket.guild || '',
+                    }));
+                } else {
+                    tickets = [];
+                }
+            } catch (error) {
+                console.error('Failed to load tickets', error);
+                tickets = [];
+            }
+
+            filteredTickets = [...tickets];
+            renderTickets();
+        }
 
         function renderStats() {
             const total = filteredTickets.length;
             const openCount = filteredTickets.filter(t => t.status === 'open').length;
-            const inProgressCount = filteredTickets.filter(t => t.status === 'in-progress').length;
+            const inProgressCount = filteredTickets.filter(t => t.status === 'in_progress').length;
             const highCount = filteredTickets.filter(t => t.priority === 'urgent' || t.priority === 'high').length;
             const lastUpdated = filteredTickets.reduce((latest, ticket) => ticket.updated > latest ? ticket.updated : latest, '');
 
@@ -320,12 +292,12 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
 
             if (status && ticket.status !== status) return false;
             if (priority && ticket.priority !== priority) return false;
-            if (guild && ticket.guild !== guild) return false;
+            if (guild && (ticket.guild || '') !== guild) return false;
             if (assignee && !(ticket.assignee || '').toLowerCase().includes(assignee)) return false;
             if (from && ticket.updated < from) return false;
             if (to && ticket.updated > to) return false;
             if (search) {
-                const haystack = `${ticket.subject} ${ticket.description} ${ticket.requester} ${ticket.id}`.toLowerCase();
+                const haystack = `${ticket.subject || ''} ${ticket.description || ''} ${ticket.requester || ''} ${ticket.id || ''}`.toLowerCase();
                 if (!haystack.includes(search)) return false;
             }
             if (!canManageTickets && activeUser && ticket.requester !== activeUser && ticket.assignee !== activeUser) return false;
@@ -337,15 +309,16 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
             tbody.innerHTML = '';
             filteredTickets.forEach(ticket => {
                 const row = document.createElement('tr');
+                const detailLink = `<?= Version::urlBetaPrefix(); ?>/tickets/view.php?ctime=${encodeURIComponent(ticket.ctime)}&crand=${encodeURIComponent(ticket.crand)}`;
                 row.innerHTML = `
                     <td><input type="checkbox" class="form-check-input ticket-checkbox" data-id="${ticket.id}"></td>
                     <td class="ticket-subject position-relative" data-id="${ticket.id}">
-                        <a class="stretched-link text-decoration-none text-dark" href="<?= Version::urlBetaPrefix(); ?>/tickets/view.php?id=${ticket.id}">
+                        <a class="stretched-link text-decoration-none text-dark" href="${detailLink}">
                             <div class="fw-semibold">${ticket.subject}</div>
                             <div class="small text-muted">${ticket.id} • ${ticket.requester}</div>
                         </a>
                     </td>
-                    <td><span class="badge status-pill status-${ticket.status}">${ticket.status.replace('-', ' ')}</span></td>
+                    <td><span class="badge status-pill status-${ticket.status}">${ticket.status.replace(/[_-]/g, ' ')}</span></td>
                     <td><span class="badge priority-pill priority-${ticket.priority}">${ticket.priority}</span></td>
                     <td>${ticket.assignee || 'Unassigned'}</td>
                     <td>${ticket.guild}</td>
@@ -437,15 +410,18 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
         });
 
         applyPrefill();
-        applyFiltersAndRender();
-        updateBadge();
+        fetchTickets().then(() => {
+            applyFiltersAndRender();
+            updateBadge();
+        });
     </script>
 
     <style>
         .status-open { background: #e8f5ff; color: #0b6cbf; }
-        .status-in-progress { background: #fff4e5; color: #c46a00; }
+        .status-in_progress { background: #fff4e5; color: #c46a00; }
         .status-waiting { background: #f3e8ff; color: #6f42c1; }
         .status-resolved { background: #e9f9ee; color: #0f9d58; }
+        .status-closed { background: #f1f3f5; color: #495057; }
         .priority-urgent { background: #ffebee; color: #c62828; }
         .priority-high { background: #fff3cd; color: #a66f00; }
         .priority-medium { background: #e3f2fd; color: #1565c0; }

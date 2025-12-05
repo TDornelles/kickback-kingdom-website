@@ -305,6 +305,41 @@ class TicketController
         return new Response(true, 'Tickets loaded.', $tickets);
     }
 
+    /**
+     * @param array<string,mixed> $payload
+     */
+    public static function viewTicket(array $payload): Response
+    {
+        $ticketCtime = trim((string) ($payload['ctime'] ?? ''));
+        $ticketCrand = (int) ($payload['crand'] ?? 0);
+
+        if ($ticketCtime === '' || $ticketCrand === 0) {
+            return new Response(false, 'Ticket identifiers are required.', null);
+        }
+
+        if (!Session::readCurrentAccountInto($account)) {
+            return new Response(false, 'You must be logged in to view tickets.', null);
+        }
+
+        $ticket = self::fetchTicket($ticketCtime, $ticketCrand);
+        if ($ticket === null) {
+            return new Response(false, 'Ticket not found.', null);
+        }
+
+        if (!self::canModifyTicket($ticket, $account->crand, $account->isAdmin)) {
+            return new Response(false, 'You do not have permission to view this ticket.', null);
+        }
+
+        $assignments = self::getAssignments($ticketCtime, $ticketCrand);
+        $comments = self::getComments($ticketCtime, $ticketCrand);
+
+        return new Response(true, 'Ticket loaded.', [
+            'ticket' => $ticket,
+            'assignments' => $assignments,
+            'comments' => $comments,
+        ]);
+    }
+
     private static function validateTicketFields(string $subject, string $description, string $priority, ?string $status = null): Response
     {
         if ($subject === '' || $description === '') {
@@ -575,6 +610,33 @@ class TicketController
             $authorCrand,
             $body
         ));
+    }
+
+    /**
+     * @return TicketComment[]
+     */
+    private static function getComments(string $ticketCtime, int $ticketCrand): array
+    {
+        $conn = Database::getConnection();
+        $stmt = $conn->prepare('SELECT * FROM ' . self::COMMENT_TABLE . ' WHERE ticket_ctime = ? AND ticket_crand = ? ORDER BY ctime ASC');
+        if ($stmt === false) {
+            return [];
+        }
+
+        $stmt->bind_param('si', $ticketCtime, $ticketCrand);
+        if (!$stmt->execute()) {
+            $stmt->close();
+            return [];
+        }
+
+        $result = $stmt->get_result();
+        $comments = [];
+        while ($row = $result->fetch_assoc()) {
+            $comments[] = TicketComment::fromRow($row);
+        }
+        $stmt->close();
+
+        return $comments;
     }
 
     private static function fetchTicket(string $ctime, int $crand): ?Ticket
