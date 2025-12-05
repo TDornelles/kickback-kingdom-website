@@ -776,7 +776,7 @@ class StoreService
 
         if(!$checkoutCartResp->success)
         {
-            $resp->message = "Failed to checkout cart";
+            $resp->message = "Failed to checkout cart : $checkoutCartResp->message";
             return 500;
         }
 
