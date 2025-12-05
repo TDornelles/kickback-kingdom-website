@@ -55,6 +55,12 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
     $redirectUri = substr($redirectUri, strlen($betaPrefix) + 1);
 }
 
+$supportPath = 'tickets/new-ticket.php';
+$supportNavHref = Version::urlBetaPrefix() . '/' . $supportPath;
+if (!Session::isLoggedIn()) {
+    $supportNavHref = Version::urlBetaPrefix() . '/login.php?redirect=' . urlencode($supportPath);
+}
+
 ?>
 
 <!--CONFETTI-->
@@ -1368,6 +1374,9 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
             <li class="nav-item">
                 <a class="nav-link mobile-menu-item" href="<?php echo Version::urlBetaPrefix(); ?>/guild-halls.php"><i class="nav-icon fa-solid fa-signs-post"></i> Guild Halls <i class="fa-solid fa-chevron-right mobile-menu-item-arrow"></i></a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link mobile-menu-item" href="<?php echo $supportNavHref; ?>"><i class="nav-icon fa-solid fa-life-ring"></i> Support & Tickets <i class="fa-solid fa-chevron-right mobile-menu-item-arrow"></i></a>
+            </li>
             <?php
 
             if (Session::isAdmin())
@@ -1538,6 +1547,11 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
                             <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/analytics.php"><i class="nav-icon fa-solid fa-chart-line"></i> Analytics</a>
                         </li>
                     </ul>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="<?php echo $supportNavHref; ?>">
+                        <i class="nav-icon fa-solid fa-life-ring"></i> Support
+                    </a>
                 </li>
             </ul>
             <ul class="navbar-nav">
