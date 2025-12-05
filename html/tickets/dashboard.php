@@ -124,9 +124,9 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                                 <select class="form-select" id="filterStatus">
                                     <option value="">Any</option>
                                     <option value="open">Open</option>
-                                    <option value="in-progress">In Progress</option>
+                                    <option value="in_progress">In Progress</option>
                                     <option value="resolved">Resolved</option>
-                                    <option value="waiting">Waiting on Customer</option>
+                                    <option value="closed">Closed</option>
                                 </select>
                             </div>
                             <div class="col-sm-6 col-lg-3">
@@ -228,13 +228,44 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
         let tickets = [];
         let filteredTickets = [];
         let notificationCount = 0;
+        let isLoading = false;
+        let loadError = '';
 
-        async function fetchTickets() {
+        function getFilterValues() {
+            return {
+                status: document.getElementById('filterStatus').value,
+                priority: document.getElementById('filterPriority').value,
+                assignee: document.getElementById('filterAssignee').value.toLowerCase(),
+                guild: document.getElementById('filterGuild').value,
+                from: document.getElementById('filterFrom').value,
+                to: document.getElementById('filterTo').value,
+                search: document.getElementById('filterSearch').value,
+            };
+        }
+
+        async function fetchTickets(filters = {}) {
+            isLoading = true;
+            loadError = '';
+            renderTickets();
+
+            const payload = new FormData();
+            const normalizedStatus = (filters.status || '').replace('-', '_');
+            if (normalizedStatus) payload.append('status', normalizedStatus);
+            if (filters.priority) payload.append('priority', filters.priority);
+            if (filters.from) payload.append('from', filters.from);
+            if (filters.to) payload.append('to', filters.to);
+            if (filters.search) payload.append('search', filters.search);
+
             try {
                 const response = await fetch('<?= Version::urlBetaPrefix(); ?>/api/v1/tickets/list.php', {
                     method: 'POST',
-                    credentials: 'same-origin'
+                    credentials: 'same-origin',
+                    body: payload
                 });
+
+                if (!response.ok) {
+                    throw new Error(`Request failed with status ${response.status}`);
+                }
 
                 const result = await response.json();
                 if (result.success && Array.isArray(result.data)) {
@@ -245,17 +276,23 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                         updated: ticket.updatedAt || '',
                         assignee: ticket.assignee || '',
                         guild: ticket.guild || '',
+                        status: ticket.status || '',
+                        priority: ticket.priority || '',
+                        comments: Array.isArray(ticket.comments) ? ticket.comments : [],
                     }));
                 } else {
                     tickets = [];
+                    loadError = result.message || 'Unable to load tickets.';
                 }
             } catch (error) {
                 console.error('Failed to load tickets', error);
                 tickets = [];
+                loadError = 'Failed to load tickets. Please try again.';
             }
 
-            filteredTickets = [...tickets];
-            renderTickets();
+            isLoading = false;
+            applyFiltersAndRender();
+            syncNotificationCount();
         }
 
         function renderStats() {
@@ -273,7 +310,7 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
         }
 
         function applyPrefill() {
-            document.getElementById('filterStatus').value = prefillFilters.status || '';
+            document.getElementById('filterStatus').value = (prefillFilters.status || '').replace('-', '_');
             document.getElementById('filterPriority').value = prefillFilters.priority || '';
             document.getElementById('filterAssignee').value = prefillFilters.assignee || '';
             document.getElementById('filterGuild').value = prefillFilters.guild || '';
@@ -282,23 +319,19 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
         }
 
         function ticketMatchesFilters(ticket) {
-            const status = document.getElementById('filterStatus').value;
-            const priority = document.getElementById('filterPriority').value;
-            const assignee = document.getElementById('filterAssignee').value.toLowerCase();
-            const guild = document.getElementById('filterGuild').value;
-            const search = document.getElementById('filterSearch').value.toLowerCase();
-            const from = document.getElementById('filterFrom').value;
-            const to = document.getElementById('filterTo').value;
+            const { status, priority, assignee, guild, search, from, to } = getFilterValues();
+            const normalizedStatus = status.replace('-', '_');
+            const searchTerm = (search || '').toLowerCase();
 
-            if (status && ticket.status !== status) return false;
+            if (normalizedStatus && ticket.status !== normalizedStatus) return false;
             if (priority && ticket.priority !== priority) return false;
             if (guild && (ticket.guild || '') !== guild) return false;
             if (assignee && !(ticket.assignee || '').toLowerCase().includes(assignee)) return false;
             if (from && ticket.updated < from) return false;
             if (to && ticket.updated > to) return false;
-            if (search) {
+            if (searchTerm) {
                 const haystack = `${ticket.subject || ''} ${ticket.description || ''} ${ticket.requester || ''} ${ticket.id || ''}`.toLowerCase();
-                if (!haystack.includes(search)) return false;
+                if (!haystack.includes(searchTerm)) return false;
             }
             if (!canManageTickets && activeUser && ticket.requester !== activeUser && ticket.assignee !== activeUser) return false;
             return true;
@@ -307,6 +340,27 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
         function renderTickets() {
             const tbody = document.querySelector('#ticketTable tbody');
             tbody.innerHTML = '';
+
+            if (isLoading) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4">Loading tickets...</td></tr>';
+                document.getElementById('listSummary').textContent = 'Loading...';
+                renderStats();
+                return;
+            }
+
+            if (loadError) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-4">${loadError}</td></tr>`;
+                document.getElementById('listSummary').textContent = '0 tickets';
+                renderStats();
+                return;
+            }
+
+            if (filteredTickets.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4">No tickets match your filters yet.</td></tr>';
+                document.getElementById('listSummary').textContent = '0 tickets';
+                renderStats();
+                return;
+            }
             filteredTickets.forEach(ticket => {
                 const row = document.createElement('tr');
                 const detailLink = `<?= Version::urlBetaPrefix(); ?>/tickets/view.php?ctime=${encodeURIComponent(ticket.ctime)}&crand=${encodeURIComponent(ticket.crand)}`;
@@ -342,13 +396,22 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
             });
         }
 
-        function applyFiltersAndRender() {
+        function applyFiltersAndRender(refetch = false) {
+            if (refetch) {
+                fetchTickets(getFilterValues());
+                return;
+            }
             filteredTickets = tickets.filter(ticketMatchesFilters);
             renderTickets();
         }
 
         function updateBadge() {
             document.getElementById('ticketNotificationBadge').textContent = notificationCount;
+        }
+
+        function syncNotificationCount() {
+            notificationCount = tickets.filter(t => t.status === 'open' || t.status === 'in_progress').length;
+            updateBadge();
         }
 
         function queueNotification(ticket, message) {
@@ -368,12 +431,12 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
             }).catch(() => console.warn('Notification endpoint unreachable'));    
         }
 
-        document.getElementById('applyFilters').addEventListener('click', applyFiltersAndRender);
+        document.getElementById('applyFilters').addEventListener('click', () => applyFiltersAndRender(true));
         document.getElementById('resetFilters').addEventListener('click', () => {
             ['filterStatus','filterPriority','filterAssignee','filterGuild','filterFrom','filterTo','filterSearch'].forEach(id => {
                 document.getElementById(id).value = '';
             });
-            applyFiltersAndRender();
+            applyFiltersAndRender(true);
         });
 
         document.getElementById('selectAllTickets').addEventListener('change', (e) => {
@@ -410,10 +473,7 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
         });
 
         applyPrefill();
-        fetchTickets().then(() => {
-            applyFiltersAndRender();
-            updateBadge();
-        });
+        fetchTickets(getFilterValues());
     </script>
 
     <style>
