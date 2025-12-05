@@ -327,6 +327,63 @@ class TicketController
         return new Response(true, 'Tickets loaded.', $tickets);
     }
 
+    public static function listAssignees(): Response
+    {
+        if (!Session::readCurrentAccountInto($account)) {
+            return new Response(false, 'You must be logged in to view assignees.', null);
+        }
+
+        $conn = Database::getConnection();
+
+        $baseQuery =
+            'SELECT DISTINCT ta.account_crand AS id, COALESCE(acc.Username, CONCAT("Account #", ta.account_crand)) AS username '
+            . 'FROM ' . self::ASSIGNMENT_TABLE . ' ta '
+            . 'JOIN ' . self::TICKET_TABLE . ' t ON t.ctime = ta.ticket_ctime AND t.crand = ta.ticket_crand '
+            . 'LEFT JOIN account acc ON acc.Id = ta.account_crand';
+
+        $conditions = [];
+        $params = [];
+        $types = '';
+
+        if (!$account->isAdmin) {
+            $conditions[] =
+                '(t.created_by_crand = ? OR EXISTS (SELECT 1 FROM ' . self::ASSIGNMENT_TABLE . ' ta2 '
+                . 'WHERE ta2.ticket_ctime = t.ctime AND ta2.ticket_crand = t.crand AND ta2.account_crand = ?))';
+            $params[] = $account->crand;
+            $params[] = $account->crand;
+            $types .= 'ii';
+        }
+
+        $whereClause = empty($conditions) ? '' : (' WHERE ' . implode(' AND ', $conditions));
+        $query = $baseQuery . $whereClause . ' ORDER BY username ASC';
+
+        $stmt = $conn->prepare($query);
+        if ($stmt === false) {
+            return new Response(false, 'Unable to load assignees.', null);
+        }
+
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        if (!$stmt->execute()) {
+            $stmt->close();
+            return new Response(false, 'Failed to load assignees.', null);
+        }
+
+        $result = $stmt->get_result();
+        $assignees = [];
+        while ($row = $result->fetch_assoc()) {
+            $assignees[] = [
+                'id' => (int) $row['id'],
+                'username' => (string) $row['username'],
+            ];
+        }
+        $stmt->close();
+
+        return new Response(true, 'Assignees loaded.', $assignees);
+    }
+
     /**
      * @param array<string,mixed> $payload
      */
