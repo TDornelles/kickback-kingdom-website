@@ -1,6 +1,7 @@
 <?php 
 use Kickback\Backend\Controllers\AnalyticController;
 use Kickback\Backend\Controllers\TreasureHuntController;
+use Kickback\Backend\Controllers\SeasonController;
 use Kickback\Common\Version;
 $pageVisitId = AnalyticController::getCurrentPage();
 
@@ -107,6 +108,8 @@ $currentTreasureHunts = TreasureHuntController::getCurrentEvents()->data;
 $currentHiddenObjects = TreasureHuntController::getHiddenObjectsOnPage($pageVisitId)->data;
 $treasureHuntPossibleItems = TreasureHuntController::getPossibleTreasureItems()->data;
 
+$seasonController = new SeasonController();
+$seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
 ?>
 <head>
     <meta charset="UTF-8">
@@ -185,6 +188,7 @@ $treasureHuntPossibleItems = TreasureHuntController::getPossibleTreasureItems()-
     <link rel="stylesheet" href="<?php echo Version::urlBetaPrefix(); ?>/assets/vendors/datatable/jquery.dataTables.css" />
   
     
+
     <?php if (isset($_GET['borderless'])) { ?>
     <style>
         body {
@@ -198,10 +202,11 @@ $treasureHuntPossibleItems = TreasureHuntController::getPossibleTreasureItems()-
     </style>
     <?php } ?>
 
+    <?php if (!isset($_GET['borderless']) && $seasonBackgroundUrl !== null) { ?>
     <style>
-        /*body {
-            background-image: url(/assets/media/seasonal/486.png) !important;
-        }*/
-
+        body {
+            background-image: url('<?= $seasonBackgroundUrl ?>') !important;
+        }
     </style>
+    <?php } ?>
 </head>

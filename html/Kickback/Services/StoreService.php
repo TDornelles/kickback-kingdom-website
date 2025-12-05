@@ -66,15 +66,23 @@ class StoreService
 
         if(empty($body))
         {
-            $resp->message = "Product cannot be empty"; 
+            $resp->message = "Body cannot be empty"; 
+            return 400;
+        }
+
+        if(empty($body->cartProduct))
+        {
+            $resp->message = "cartProduct cannot be empty";
             return 400;
         }
 
         StoreService::initialize();
 
-        $cartProduct = static::vCartItemFromJson($body);
+        $cartProduct = (object)$body->cartProduct;
 
-        if(StoreController::doesCartProductBelongToAccount($account, $cartProduct))
+        $cartProduct = static::vCartItemFromJson((object)$cartProduct);
+
+        if(!StoreController::doesCartProductBelongToAccount($account, $cartProduct))
         {
             $resp->message = "Cart Product does not belong to account";
             return 403;
@@ -823,7 +831,32 @@ class StoreService
             array_push($vCart->cartProducts, static::vCartItemFromJson((object)$product));
         }
 
+        $vCart->totals = static::vCartToTotatlsFromJson($cart);
+
         return $vCart;
+    }
+
+    private static function vCartToTotatlsFromJson(object $cart) : array
+    {
+        $totals = $cart->totals;
+
+        $objTotals = [];
+
+        foreach($totals as $total)
+        {
+            $item = static::vItemFromJson((object)$total["item"]);
+            $currencyCode = is_null($total["currencyCode"]) ? null : CurrencyCode::from($total["currencyCode"]);
+
+            $objTotal = new vPriceComponent();
+
+            $objTotal->amount = $total["amount"];
+            $objTotal->currencyCode = $currencyCode;
+            $objTotal->item = $item;
+
+            array_push($objTotals, $objTotal);
+        }
+
+        return $objTotals;
     }
 
     private static function vCartItemFromJson(object $cartItem) : vCartItem
@@ -831,15 +864,16 @@ class StoreService
         $vCartItem = new vCartItem();
 
             $product = (object)$cartItem->product;
+            $objCart = (object)$cartItem->cart;
 
             $price = static::vPriceComponentArrayFromJson($product->price);
 
-                $vProduct = new vProduct($cartItem->product->ctime, $cartItem->product->crand);
+                $vProduct = new vProduct($product->ctime, $product->crand);
                 $vProduct->price = $price;
-                $vProduct->stock = $cartItem->product->stock;
-                $vProduct->locator = $cartItem->product->locator;
-                $vProduct->name = $cartItem->product->name;
-                $vProduct->description = $cartItem->product->description;
+                $vProduct->stock = $product->stock;
+                $vProduct->locator = $product->locator;
+                $vProduct->name = $product->name;
+                $vProduct->description = $product->description;
 
                 $mediaSmall = (object)$product->mediaSmall;
                 $vProduct->mediaSmall = static::vMediaFromJson_FullURL($mediaSmall->url);
@@ -850,8 +884,8 @@ class StoreService
             $vCartItem->product = $vProduct;
 
                 $cart = new vCart();
-                $cart->ctime = $cartItem->cart->ctime;
-                $cart->crand = $cartItem->crand;
+                $cart->ctime = $objCart->ctime;
+                $cart->crand = $objCart->crand;
             $vCartItem->cart = $cart;
             
             $vCartItem->ctime = $cartItem->ctime;
@@ -886,7 +920,7 @@ class StoreService
 
         foreach($price as $priceComponent)
         {
-            array_push($vPrice, static::vPriceFromJson($priceComponent));
+            array_push($vPrice, static::vPriceFromJson((object)$priceComponent));
         }
 
         return $vPrice;
@@ -897,7 +931,7 @@ class StoreService
         $vPriceComponent = new vPriceComponent();
 
         $vPriceComponent->amount = $priceComponent->amount;
-        $vPriceComponent->item = is_null($priceComponent->item) ? null : static::vItemFromJson($priceComponent->item);
+        $vPriceComponent->item = is_null($priceComponent->item) ? null : static::vItemFromJson((object)$priceComponent->item);
         $vPriceComponent->currencyCode = is_null($priceComponent->currencyCode) ? null : CurrencyCode::from($priceComponent->currencyCode);
 
         return $vPriceComponent;
@@ -910,9 +944,9 @@ class StoreService
         $vItem->name = $item->name;
         $vItem->description = $item->description;
 
-        $vItem->iconSmall = static::vMediaFromJson_FullURL($item->iconSmall->url);
-        $vItem->iconBig = static::vMediaFromJson_FullURL($item->iconBig->url);
-        $vItem->iconBack = static::vMediaFromJson_FullURL($item->iconBack->url);
+        $vItem->iconSmall = static::vMediaFromJson_FullURL($item->iconSmall["url"]);
+        $vItem->iconBig = static::vMediaFromJson_FullURL($item->iconBig["url"]);
+        $vItem->iconBack = static::vMediaFromJson_FullURL($item->iconBack["url"]);
         $vItem->fungible = $item->fungible;
 
         return $vItem;

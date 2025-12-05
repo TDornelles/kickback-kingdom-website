@@ -13,9 +13,10 @@ use Kickback\Services\StoreService;
 Endpoint::begin();
 try
 {
+    $sessionAccount = Endpoint::requireAccountSession();
     $request_contents_json = Endpoint::file_get_contents('php://input');
     $response = null;
-    $response_code = StoreService::get_store_by_account($request_contents_json, $response);
+    $response_code = StoreService::get_store_by_locator($request_contents_json, $response);
     if ( $response_code !== 0 ) {
         \http_response_code($response_code);
         // Otherwise let PHP/Apache/HTTPD respond with what it feels is appropriate.
@@ -27,7 +28,7 @@ catch( \Throwable $e )
     $code = ($code === 0) ? 500 : $code;
     \http_response_code($code);
     $response = new Response(false,
-        'Failed to get store by account: ' . ThrowableOverrides::message($e),
+        'Failed to get store by locator: ' . ThrowableOverrides::message($e),
         $e->__toString());
 }
 finally {

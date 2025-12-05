@@ -2593,7 +2593,7 @@ class StoreController
      */
     public static function calculateCartTotalPriceCompnents(array $cartItems) : array
     {
-        $totalprice = [];
+        $totals = [];
 
         foreach($cartItems as $cartItem)
         {
@@ -2601,38 +2601,41 @@ class StoreController
 
             foreach($price as $priceComponent)
             {
-                $priceComponentAlreadyExists = null;
+                $alreadyExistingTotal = null;
 
-                foreach($totalprice as $total)
+                foreach($totals as $total)
                 {
 
                     //Does priceComponent being checked match an already existing total
                     if(
-                        (!is_null($priceComponent->item) && !is_null($total->item) 
-                        && $priceComponent->item->ctime == $total->item->ctime && $priceComponent->item->crand == $total->item->crand)
+                        (!is_null($priceComponent->item) && !is_null($total->item) && 
+                        $priceComponent->item->ctime == $total->item->ctime && $priceComponent->item->crand == $total->item->crand)
                         ||
                         (!is_null($priceComponent->currencyCode) && !is_null($total->currencyCode) &&
                         $priceComponent->currencyCode == $total->currencyCode)
                     )
                     {
-                        $priceComponentAlreadyExists = $total;
+                        $alreadyExistingTotal = $total;
                         break;
                     }
                 }
 
                 //Add amount of already existing total or create new total
-                if(is_null($priceComponentAlreadyExists))
+                if(is_null($alreadyExistingTotal))
                 {
-                    array_push($totalprice, $priceComponent);
+                    //Clone price component so we don't affect the idividual price of items in the cart
+                    $totalComponent = new vPriceComponent('', 0, $priceComponent->amount, $priceComponent->item, $priceComponent->currencyCode);
+
+                    array_push($totals, $totalComponent);
                 }
                 else
                 {
-                    $priceComponentAlreadyExists->amount = $priceComponentAlreadyExists->amount + $priceComponent->amount;
+                    $alreadyExistingTotal->amount = $alreadyExistingTotal->amount + $priceComponent->amount;
                 }
             }
         }
 
-        return $totalprice;
+        return $totals;
     }
 
     public static string $columnsInCartView = "
@@ -2969,7 +2972,9 @@ class StoreController
         }
         catch(Exception $e)
         {
-            throw new Exception("Execption caught while linking product to cart : $e");
+            $debugInfo = json_encode(["product"=>$product,"cart"=>$cart]);
+            throw new Exception("Execption caught while linking product to cart | Debug Info $debugInfo : $e");
+            //throw new Exception("Execption caught while linking product to cart : $e");
         }
 
         return $resp;
@@ -6231,7 +6236,7 @@ class StoreController
         $sql = "SELECT 1 FROM cart c 
         JOIN v_cart_item vci ON c.ctime = vci.cart_ctime AND c.crand = vci.cart_crand
         JOIN account a ON a.id = c.ref_account_crand
-        WHERE c.checked_out = 0 AND c.removed = 0 AND
+        WHERE c.checked_out = 0 AND c.void = 0 AND
         c.ref_account_crand = ? AND vci.cart_product_link_ctime = ? AND vci.cart_product_link_crand = ?;";
         $params = [$account->crand, $cartProduct->ctime, $cartProduct->crand];
 

@@ -1,5 +1,11 @@
 RewriteEngine On
 
+# --- API v2: map extensionless endpoints to .php files ---
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}.php -f
+RewriteRule ^api/v2/(.+)$ api/v2/$1.php [L]
+
 # Redirect HTTP to HTTPS except for localhost
 RewriteCond %{HTTPS} off
 RewriteCond %{HTTP_HOST} !^localhost$

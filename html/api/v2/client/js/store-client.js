@@ -12,16 +12,20 @@ class StoreClient {
         if (!locator) {
             throw new Error('Store Locator is required');
         }
+        
 
         try {
+            const bodyData = {
+                "locator": locator
+            };
+
             const response = await fetch(`api/v2/server/store/get-by-locator`, {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
                 },
-                body:{
-                    locator
-                }
+                body: JSON.stringify(bodyData)
             });
 
             if (!response.ok) {
@@ -55,14 +59,17 @@ class StoreClient {
         }
 
         try {
+            const bodyData = {
+                "accountId": accountId
+            };
+
             const response = await fetch(`api/v2/server/store/get-by-account`, {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
                 },
-                body:{
-                    accountId
-                }
+                body: JSON.stringify(bodyData)
             });
 
             if (!response.ok) {
