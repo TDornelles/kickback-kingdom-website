@@ -40,7 +40,7 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
 
     <main class="container pt-3 bg-body" style="margin-bottom: 56px;">
         <div class="row">
-            <div class="col-12 col-xl-9">
+            <div class="col-12">
                 <?php
                     $activePageName = "Ticket Dashboard";
                     require("../php-components/base-page-breadcrumbs.php");
@@ -214,7 +214,6 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                 </div>
             </div>
 
-            <?php require("../php-components/base-page-discord.php"); ?>
         </div>
         <?php require("../php-components/base-page-footer.php"); ?>
     </main>

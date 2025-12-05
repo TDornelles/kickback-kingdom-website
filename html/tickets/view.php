@@ -30,7 +30,7 @@ $currentAccount = Session::getCurrentAccount();
 
     <main class="container pt-3 bg-body" style="margin-bottom: 56px;">
         <div class="row">
-            <div class="col-12 col-xl-9">
+            <div class="col-12">
                 <?php
                     $activePageName = $ticketId ? "Ticket " . htmlspecialchars($ticketId) : "Ticket";
                     require("../php-components/base-page-breadcrumbs.php");
@@ -131,7 +131,6 @@ $currentAccount = Session::getCurrentAccount();
                 </div>
             </div>
 
-            <?php require("../php-components/base-page-discord.php"); ?>
         </div>
         <?php require("../php-components/base-page-footer.php"); ?>
     </main>
