@@ -2483,7 +2483,7 @@ class StoreController
         $whereClause = static::returnWhereClauseForcanAccountAffordItemPriceInCart($cart->cartProducts);
         $params = static::returnParamsForCanAccountAffordItemPriceForCart($cart);
 
-        $sql = "SELECT item_id, SUM(Quantity) AS `amount` FROM loot WHERE account_id = ? AND opened = 1 AND redeemed = 1$whereClause GROUP BY item_id;";
+        $sql = "SELECT l.item_id, SUM(l.Quantity) AS `amount` FROM loot l LEFT JOIN raffle_submissions rs ON l.Id = rs.loot_id WHERE rs.loot_id IS NULL AND l.account_id = ? $whereClause GROUP BY l.item_id;";
 
         $result = Database::executeSqlQuery($sql, $params);
 
@@ -2546,7 +2546,7 @@ class StoreController
             {
                 if(is_null($priceComponent->item)) continue;
 
-                $priceComponentWhereClause .= "item_id = ? OR ";
+                $priceComponentWhereClause .= "l.item_id = ? OR ";
             }
 
             //trim the last "OR" off
