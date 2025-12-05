@@ -144,6 +144,7 @@ $currentAccount = Session::getCurrentAccount();
     </main>
 
     <?php require("../php-components/base-page-javascript.php"); ?>
+    <?php require("../php-components/content-viewer-javascript.php"); ?>
     <script>
         const activeUser = <?= json_encode(isset($currentAccount->username) ? $currentAccount->username : ''); ?>;
         const ticketCtime = <?= json_encode($ticketCtime); ?>;
@@ -152,6 +153,20 @@ $currentAccount = Session::getCurrentAccount();
         let ticket = null;
         let assignments = [];
         let comments = [];
+
+        function renderCommentMarkdown(markdownText) {
+            if (typeof renderMarkdownToHtml === 'function') {
+                return renderMarkdownToHtml(markdownText || '');
+            }
+
+            if (typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
+                return DOMPurify.sanitize(marked.parse(markdownText || ''));
+            }
+
+            const fallback = document.createElement('div');
+            fallback.textContent = markdownText || '';
+            return fallback.innerHTML;
+        }
 
         function markUnavailable(message) {
             document.getElementById('ticketTitle').textContent = message;
@@ -241,9 +256,11 @@ $currentAccount = Session::getCurrentAccount();
                             <strong>${comment.authorCrand ? 'Account #' + comment.authorCrand : 'System'}</strong>
                             <span class="small text-muted">${formatDate(comment.ctime)}</span>
                         </div>
-                        <p class="mb-0">${comment.body || ''}</p>
+                        <div class="comment-content markdown-content mb-0"></div>
                     </div>
                 `;
+                const content = card.querySelector('.comment-content');
+                content.innerHTML = renderCommentMarkdown(comment.body || '');
                 thread.appendChild(card);
             });
         }
