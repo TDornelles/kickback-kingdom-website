@@ -252,6 +252,9 @@ class TicketController
 
         $statusFilter = isset($payload['status']) ? strtolower(trim((string) $payload['status'])) : null;
         $priorityFilter = isset($payload['priority']) ? strtolower(trim((string) $payload['priority'])) : null;
+        $fromFilter = isset($payload['updatedFrom']) ? trim((string) $payload['updatedFrom']) : null;
+        $toFilter = isset($payload['updatedTo']) ? trim((string) $payload['updatedTo']) : null;
+        $searchFilter = isset($payload['search']) ? trim((string) $payload['search']) : null;
 
         $conn = Database::getConnection();
 
@@ -269,6 +272,25 @@ class TicketController
             $conditions[] = 't.priority = ?';
             $params[] = $priorityFilter;
             $types .= 's';
+        }
+
+        if ($fromFilter !== null && $fromFilter !== '') {
+            $conditions[] = 'DATE(t.updated_at) >= ?';
+            $params[] = $fromFilter;
+            $types .= 's';
+        }
+
+        if ($toFilter !== null && $toFilter !== '') {
+            $conditions[] = 'DATE(t.updated_at) <= ?';
+            $params[] = $toFilter;
+            $types .= 's';
+        }
+
+        if ($searchFilter !== null && $searchFilter !== '') {
+            $conditions[] = '(t.subject LIKE ? OR t.description LIKE ?)';
+            $params[] = '%' . $searchFilter . '%';
+            $params[] = '%' . $searchFilter . '%';
+            $types .= 'ss';
         }
 
         if (!$account->isAdmin) {
