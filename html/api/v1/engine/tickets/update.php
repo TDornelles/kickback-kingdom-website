@@ -25,6 +25,21 @@ function parseList(string $key): array
     return [];
 }
 
+function parseOptionalInt(string $key): ?int
+{
+    if (!isset($_POST[$key])) {
+        return null;
+    }
+
+    $value = $_POST[$key];
+    if ($value === '' || is_null($value)) {
+        return null;
+    }
+
+    $intVal = (int) $value;
+    return $intVal > 0 ? $intVal : null;
+}
+
 function parseEmailPrefs(): array
 {
     $raw = $_POST['assignmentEmailOptIn'] ?? null;
@@ -44,9 +59,14 @@ $payload = [
     'subject' => isset($_POST['subject']) ? Validate($_POST['subject']) : null,
     'description' => isset($_POST['description']) ? trim((string) $_POST['description']) : null,
     'priority' => isset($_POST['priority']) ? Validate($_POST['priority']) : null,
+    'severity' => $_POST['severity'] ?? null,
     'status' => isset($_POST['status']) ? Validate($_POST['status']) : null,
     'tags' => isset($_POST['tags']) ? parseList('tags') : null,
     'guildIds' => isset($_POST['guildIds']) ? parseList('guildIds') : null,
+    'guildId' => parseOptionalInt('guildId'),
+    'gameId' => parseOptionalInt('gameId'),
+    'serverCtime' => isset($_POST['serverCtime']) ? Validate($_POST['serverCtime']) : null,
+    'serverCrand' => parseOptionalInt('serverCrand'),
     'assignees' => isset($_POST['assignees']) ? parseList('assignees') : null,
     'comment' => isset($_POST['comment']) ? trim((string) $_POST['comment']) : null,
     'unsubscribeToken' => isset($_POST['unsubscribeToken']) ? trim((string) $_POST['unsubscribeToken']) : null,

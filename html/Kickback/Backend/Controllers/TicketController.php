@@ -27,8 +27,20 @@ class TicketController
 
     /** @var string[] */
     private const VALID_STATUSES = ['open', 'in_progress', 'resolved', 'closed'];
-    /** @var string[] */
-    private const VALID_PRIORITIES = ['low', 'medium', 'high', 'urgent'];
+    /** @var array<string,int> */
+    private const PRIORITY_LABELS = [
+        'low' => 1,
+        'medium' => 2,
+        'high' => 3,
+        'urgent' => 4,
+    ];
+    /** @var array<string,int> */
+    private const SEVERITY_LABELS = [
+        'cosmetic' => 1,
+        'minor' => 2,
+        'major' => 3,
+        'critical' => 4,
+    ];
 
     /**
      * @param array<string,mixed> $payload
@@ -41,12 +53,27 @@ class TicketController
 
         $subject = trim((string) ($payload['subject'] ?? ''));
         $description = trim((string) ($payload['description'] ?? ''));
-        $priority = strtolower(trim((string) ($payload['priority'] ?? 'medium')));
+        $priorityInput = $payload['priority'] ?? 'medium';
+        $severityInput = $payload['severity'] ?? null;
         $tags = self::normalizeTags($payload['tags'] ?? []);
         $guildIds = self::normalizeIntList($payload['guildIds'] ?? []);
+        $guildId = self::normalizeNullableInt($payload['guildId'] ?? ($guildIds[0] ?? null));
+        $gameId = self::normalizeNullableInt($payload['gameId'] ?? null);
+        $serverCtime = self::normalizeNullableString($payload['serverCtime'] ?? null);
+        $serverCrand = self::normalizeNullableInt($payload['serverCrand'] ?? null);
         $assignees = self::normalizeIntList($payload['assignees'] ?? []);
 
-        $validation = self::validateTicketFields($subject, $description, $priority);
+        $priority = self::normalizePriority($priorityInput);
+        if ($priority === null) {
+            return new Response(false, 'Priority is invalid.', null);
+        }
+
+        $severity = self::normalizeSeverity($severityInput);
+        if ($severityInput !== null && $severityInput !== '' && is_null($severity)) {
+            return new Response(false, 'Severity is invalid.', null);
+        }
+
+        $validation = self::validateTicketFields($subject, $description, $priority, $severity);
         if (!$validation->success) {
             return $validation;
         }
@@ -56,8 +83,10 @@ class TicketController
 
         $conn = Database::getConnection();
         $stmt = $conn->prepare(
-            'INSERT INTO ' . self::TICKET_TABLE . ' (ctime, crand, created_by_crand, status, priority, subject, description, tags_json, updated_at)
-             VALUES (?, ?, ?, "open", ?, ?, ?, ?, ?)' 
+            'INSERT INTO ' . self::TICKET_TABLE
+            . ' (ctime, crand, created_by_crand, guild_id, game_id, server_ctime, server_crand, status, priority, severity,'
+            . ' subject, description, tags_json, updated_at, updated_by_crand)'
+            . ' VALUES (?, ?, ?, ?, ?, ?, ?, "open", ?, ?, ?, ?, ?, ?, ?)'
         );
 
         if ($stmt === false) {
@@ -66,17 +95,24 @@ class TicketController
 
         $tagsJson = json_encode($tags, JSON_THROW_ON_ERROR);
         $createdBy = $account->crand;
+        $updatedBy = $account->crand;
 
         $stmt->bind_param(
-            'siisssss',
+            'siiiisiiissssi',
             $recordId->ctime,
             $recordId->crand,
             $createdBy,
+            $guildId,
+            $gameId,
+            $serverCtime,
+            $serverCrand,
             $priority,
+            $severity,
             $subject,
             $description,
             $tagsJson,
-            $now
+            $now,
+            $updatedBy
         );
 
         if (!$stmt->execute()) {
@@ -95,9 +131,18 @@ class TicketController
             $description,
             'open',
             $priority,
+            $severity,
             $tags,
+            $guildId,
+            $gameId,
+            $serverCtime,
+            $serverCrand,
             $createdBy,
-            $now
+            $updatedBy,
+            $now,
+            null,
+            null,
+            null
         );
 
         if (!empty($assignments)) {
@@ -111,6 +156,7 @@ class TicketController
     }
 
     /**
+
      * @param array<string,mixed> $payload
      */
     public static function updateTicket(array $payload): Response
@@ -137,10 +183,23 @@ class TicketController
 
         $subject = isset($payload['subject']) ? trim((string) $payload['subject']) : $ticket->subject;
         $description = isset($payload['description']) ? trim((string) $payload['description']) : $ticket->description;
-        $priority = isset($payload['priority']) ? strtolower(trim((string) $payload['priority'])) : $ticket->priority;
+        $priorityInput = $payload['priority'] ?? $ticket->priority;
+        $severityInput = array_key_exists('severity', $payload) ? $payload['severity'] : $ticket->severity;
         $status = isset($payload['status']) ? strtolower(trim((string) $payload['status'])) : $ticket->status;
         $tags = array_key_exists('tags', $payload) ? self::normalizeTags($payload['tags']) : $ticket->tags;
-        $guildIds = array_key_exists('guildIds', $payload) ? self::normalizeIntList($payload['guildIds']) : null;
+        $guildIds = array_key_exists('guildIds', $payload) ? self::normalizeIntList($payload['guildIds']) : [];
+        $guildId = (array_key_exists('guildId', $payload) || !empty($guildIds))
+            ? self::normalizeNullableInt($payload['guildId'] ?? ($guildIds[0] ?? null))
+            : $ticket->guildId;
+        $gameId = array_key_exists('gameId', $payload)
+            ? self::normalizeNullableInt($payload['gameId'])
+            : $ticket->gameId;
+        $serverCtime = array_key_exists('serverCtime', $payload)
+            ? self::normalizeNullableString($payload['serverCtime'])
+            : $ticket->serverCtime;
+        $serverCrand = array_key_exists('serverCrand', $payload)
+            ? self::normalizeNullableInt($payload['serverCrand'])
+            : $ticket->serverCrand;
         $assignees = array_key_exists('assignees', $payload) ? self::normalizeIntList($payload['assignees']) : null;
         $commentBody = isset($payload['comment']) ? trim((string) $payload['comment']) : null;
         $unsubscribeToken = isset($payload['unsubscribeToken']) ? trim((string) $payload['unsubscribeToken']) : null;
@@ -148,17 +207,53 @@ class TicketController
             ? self::normalizeAssignmentEmailMap($payload['assignmentEmailOptIn'])
             : [];
 
-        $validation = self::validateTicketFields($subject, $description, $priority, $status);
+        $priority = isset($payload['priority']) ? self::normalizePriority($priorityInput) : $ticket->priority;
+        if ($priority === null) {
+            return new Response(false, 'Priority is invalid.', null);
+        }
+
+        $severity = array_key_exists('severity', $payload) ? self::normalizeSeverity($severityInput) : $ticket->severity;
+        if (array_key_exists('severity', $payload) && $severityInput !== null && $severityInput !== '' && is_null($severity)) {
+            return new Response(false, 'Severity is invalid.', null);
+        }
+
+        $validation = self::validateTicketFields($subject, $description, $priority, $severity, $status);
         if (!$validation->success) {
             return $validation;
         }
 
         $now = (new RecordId())->ctime;
+        $firstResponseAt = $ticket->firstResponseAt;
+        $resolvedAt = $ticket->resolvedAt;
+        $closedAt = $ticket->closedAt;
+
+        if (in_array($status, ['in_progress', 'resolved', 'closed'], true) && $firstResponseAt === null) {
+            $firstResponseAt = $now;
+        }
+        if ($status === 'resolved' && $resolvedAt === null) {
+            $resolvedAt = $now;
+        }
+        if ($status === 'closed') {
+            if ($resolvedAt === null) {
+                $resolvedAt = $now;
+            }
+            if ($closedAt === null) {
+                $closedAt = $now;
+            }
+        }
+
+        if (!empty($commentBody) && $firstResponseAt === null) {
+            $firstResponseAt = $now;
+        }
+
+        $updatedBy = $account->crand;
         $conn = Database::getConnection();
 
         $stmt = $conn->prepare(
-            'UPDATE ' . self::TICKET_TABLE . ' SET subject = ?, description = ?, priority = ?, status = ?, tags_json = ?, updated_at = ?
-             WHERE ctime = ? AND crand = ?'
+            'UPDATE ' . self::TICKET_TABLE
+            . ' SET subject = ?, description = ?, priority = ?, severity = ?, status = ?, tags_json = ?, guild_id = ?, game_id = ?,'
+            . ' server_ctime = ?, server_crand = ?, updated_at = ?, updated_by_crand = ?, first_response_at = ?, resolved_at = ?,'
+            . ' closed_at = ? WHERE ctime = ? AND crand = ?'
         );
 
         if ($stmt === false) {
@@ -168,13 +263,22 @@ class TicketController
         $tagsJson = json_encode($tags, JSON_THROW_ON_ERROR);
 
         $stmt->bind_param(
-            'sssssssi',
+            'ssiissiisisissssi',
             $subject,
             $description,
             $priority,
+            $severity,
             $status,
             $tagsJson,
+            $guildId,
+            $gameId,
+            $serverCtime,
+            $serverCrand,
             $now,
+            $updatedBy,
+            $firstResponseAt,
+            $resolvedAt,
+            $closedAt,
             $ticketCtime,
             $ticketCrand
         );
@@ -220,9 +324,18 @@ class TicketController
             $description,
             $status,
             $priority,
+            $severity,
             $tags,
+            $guildId,
+            $gameId,
+            $serverCtime,
+            $serverCrand,
             $ticket->createdByCrand,
-            $now
+            $updatedBy,
+            $now,
+            $firstResponseAt,
+            $resolvedAt,
+            $closedAt
         );
 
         if (!empty($assignments)) {
@@ -246,7 +359,8 @@ class TicketController
         }
 
         $statusFilter = isset($payload['status']) ? strtolower(trim((string) $payload['status'])) : null;
-        $priorityFilter = isset($payload['priority']) ? strtolower(trim((string) $payload['priority'])) : null;
+        $priorityFilter = $payload['priority'] ?? null;
+        $severityFilter = $payload['severity'] ?? null;
         $fromFilter = isset($payload['updatedFrom']) ? trim((string) $payload['updatedFrom']) : null;
         $toFilter = isset($payload['updatedTo']) ? trim((string) $payload['updatedTo']) : null;
         $searchFilter = isset($payload['search']) ? trim((string) $payload['search']) : null;
@@ -264,9 +378,25 @@ class TicketController
         }
 
         if ($priorityFilter !== null) {
+            $priorityValue = self::normalizePriority($priorityFilter);
+            if ($priorityValue === null) {
+                return new Response(false, 'Priority filter is invalid.', null);
+            }
             $conditions[] = 't.priority = ?';
-            $params[] = $priorityFilter;
-            $types .= 's';
+            $params[] = $priorityValue;
+            $types .= 'i';
+        }
+
+        if ($severityFilter !== null) {
+            $severityValue = self::normalizeSeverity($severityFilter);
+            if ($severityFilter !== '' && $severityValue === null) {
+                return new Response(false, 'Severity filter is invalid.', null);
+            }
+            if ($severityValue !== null) {
+                $conditions[] = 't.severity = ?';
+                $params[] = $severityValue;
+                $types .= 'i';
+            }
         }
 
         if ($fromFilter !== null && $fromFilter !== '') {
@@ -414,8 +544,13 @@ class TicketController
         ]);
     }
 
-    private static function validateTicketFields(string $subject, string $description, string $priority, ?string $status = null): Response
-    {
+    private static function validateTicketFields(
+        string $subject,
+        string $description,
+        int $priority,
+        ?int $severity = null,
+        ?string $status = null
+    ): Response {
         if ($subject === '' || $description === '') {
             return new Response(false, 'Subject and description are required.', null);
         }
@@ -424,8 +559,12 @@ class TicketController
             return new Response(false, 'Subject must be 255 characters or less.', null);
         }
 
-        if (!in_array($priority, self::VALID_PRIORITIES, true)) {
+        if ($priority < 1 || $priority > 4) {
             return new Response(false, 'Priority is invalid.', null);
+        }
+
+        if ($severity !== null && ($severity < 1 || $severity > 4)) {
+            return new Response(false, 'Severity is invalid.', null);
         }
 
         if ($status !== null && !in_array($status, self::VALID_STATUSES, true)) {
@@ -433,6 +572,86 @@ class TicketController
         }
 
         return new Response(true, 'Validated', null);
+    }
+
+    private static function normalizePriority(mixed $input): ?int
+    {
+        if (is_null($input) || $input === '') {
+            return null;
+        }
+
+        if (is_int($input)) {
+            $value = $input;
+        } elseif (is_numeric($input)) {
+            $value = (int) $input;
+        } else {
+            $normalized = strtolower(trim((string) $input));
+            $value = self::PRIORITY_LABELS[$normalized] ?? null;
+        }
+
+        if (is_null($value) || $value < 1 || $value > 4) {
+            return null;
+        }
+
+        return $value;
+    }
+
+    private static function normalizeSeverity(mixed $input): ?int
+    {
+        if (is_null($input) || $input === '') {
+            return null;
+        }
+
+        if (is_int($input)) {
+            $value = $input;
+        } elseif (is_numeric($input)) {
+            $value = (int) $input;
+        } else {
+            $normalized = strtolower(trim((string) $input));
+            $value = self::SEVERITY_LABELS[$normalized] ?? null;
+        }
+
+        if (is_null($value) || $value < 1 || $value > 4) {
+            return null;
+        }
+
+        return $value;
+    }
+
+    private static function normalizeNullableInt(mixed $input): ?int
+    {
+        if (is_null($input)) {
+            return null;
+        }
+
+        $value = (int) $input;
+        return $value > 0 ? $value : null;
+    }
+
+    private static function normalizeNullableString(mixed $input): ?string
+    {
+        if (is_null($input)) {
+            return null;
+        }
+
+        $trimmed = trim((string) $input);
+        return $trimmed === '' ? null : $trimmed;
+    }
+
+    private static function priorityLabel(int $priority): string
+    {
+        $label = array_search($priority, self::PRIORITY_LABELS, true);
+        return $label === false ? (string) $priority : (string) $label;
+    }
+
+    private static function severityLabel(?int $severity): string
+    {
+        if (is_null($severity)) {
+            return 'unspecified';
+        }
+
+        $label = array_search($severity, self::SEVERITY_LABELS, true);
+        return $label === false ? (string) $severity : (string) $label;
     }
 
     /**
@@ -795,7 +1014,9 @@ class TicketController
                 $bodyLines = [
                     '<p>A ticket assigned to you was ' . htmlspecialchars($context) . '.</p>',
                     '<p><strong>Title:</strong> ' . htmlspecialchars($ticket->subject) . '</p>',
-                    '<p><strong>Status:</strong> ' . htmlspecialchars($ticket->status) . ' | <strong>Priority:</strong> ' . htmlspecialchars($ticket->priority) . '</p>',
+                    '<p><strong>Status:</strong> ' . htmlspecialchars($ticket->status) . ' | <strong>Priority:</strong> '
+                        . htmlspecialchars(self::priorityLabel($ticket->priority))
+                        . ' | <strong>Severity:</strong> ' . htmlspecialchars(self::severityLabel($ticket->severity)) . '</p>',
                     '<p><strong>Updated by:</strong> ' . htmlspecialchars($actorName) . '</p>',
                 ];
 
@@ -806,7 +1027,10 @@ class TicketController
                 $bodyLines[] = '<p>To stop receiving updates for this ticket, provide this token in your preferences: <code>' . htmlspecialchars($assignment->unsubscribeToken) . '</code></p>';
 
                 $mail->Body = implode('\n', $bodyLines);
-                $mail->AltBody = "A ticket assigned to you was {$context}. Title: {$ticket->subject}. Status: {$ticket->status}. Priority: {$ticket->priority}. Updated by: {$actorName}. Unsubscribe token: {$assignment->unsubscribeToken}";
+                $mail->AltBody = "A ticket assigned to you was {$context}. Title: {$ticket->subject}. Status: {$ticket->status}."
+                    . " Priority: " . self::priorityLabel($ticket->priority)
+                    . ". Severity: " . self::severityLabel($ticket->severity)
+                    . ". Updated by: {$actorName}. Unsubscribe token: {$assignment->unsubscribeToken}";
 
                 $mail->send();
             } catch (MailException $exception) {
@@ -866,7 +1090,8 @@ class TicketController
         }
 
         $category = strtolower(trim((string) ($post['category'] ?? '')));
-        $priority = strtolower(trim((string) ($post['priority'] ?? '')));
+        $priorityInput = $post['priority'] ?? '';
+        $severityInput = $post['severity'] ?? null;
         $subject = trim((string) ($post['subject'] ?? ''));
         $description = trim((string) ($post['description'] ?? ''));
         $guildContext = isset($post['guildContext']) ? trim((string) $post['guildContext']) : null;
@@ -874,7 +1099,25 @@ class TicketController
             ? trim((string) filter_var($account->email, FILTER_SANITIZE_EMAIL))
             : '';
 
-        $validation = self::validateTicketInputs($category, $priority, $subject, $description, $guildContext, $contactEmail);
+        $priority = self::normalizePriority($priorityInput);
+        if ($priority === null) {
+            return new Response(false, 'Please select a valid priority.', null);
+        }
+
+        $severity = self::normalizeSeverity($severityInput);
+        if ($severityInput !== null && $severityInput !== '' && is_null($severity)) {
+            return new Response(false, 'Please select a valid severity.', null);
+        }
+
+        $validation = self::validateTicketInputs(
+            $category,
+            $priority,
+            $subject,
+            $description,
+            $guildContext,
+            $contactEmail,
+            $severity
+        );
         if (!$validation->success) {
             return $validation;
         }
@@ -892,7 +1135,8 @@ class TicketController
             $guildContext === '' ? null : $guildContext,
             $contactEmail,
             $attachments->data ?? [],
-            $account->crand
+            $account->crand,
+            $severity
         );
     }
 
@@ -901,13 +1145,14 @@ class TicketController
      */
     public static function createTicketFromPublicForm(
         string $category,
-        string $priority,
+        int $priority,
         string $subject,
         string $description,
         ?string $guildContext,
         string $contactEmail,
         array $attachments = [],
-        ?int $accountCrand = null
+        ?int $accountCrand = null,
+        ?int $severity = null
     ): Response {
         $recordId = new RecordId();
         $accountCrand = is_null($accountCrand) && Session::readCurrentAccountInto($account)
@@ -917,8 +1162,9 @@ class TicketController
         $conn = Database::getConnection();
 
         $stmt = $conn->prepare(
-            'INSERT INTO ' . self::TICKET_TABLE . ' (ctime, crand, created_by_crand, category, priority, subject, description, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, "open")'
+            'INSERT INTO ' . self::TICKET_TABLE
+            . ' (ctime, crand, created_by_crand, category, priority, severity, subject, description, status, updated_at, updated_by_crand)'
+            . ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, "open", ?, ?)'
         );
 
         if ($stmt === false) {
@@ -926,17 +1172,19 @@ class TicketController
         }
 
         $safeSubject = mb_substr($subject, 0, 255);
-        $safeGuildContext = is_null($guildContext) ? null : mb_substr($guildContext, 0, 255);
 
         $stmt->bind_param(
-            'sisssss',
+            'siisiisssi',
             $recordId->ctime,
             $recordId->crand,
             $accountCrand,
             $category,
             $priority,
+            $severity,
             $safeSubject,
             $description,
+            $recordId->ctime,
+            $accountCrand
         );
 
         if (!$stmt->execute()) {
@@ -961,14 +1209,14 @@ class TicketController
 
     private static function validateTicketInputs(
         string $category,
-        string $priority,
+        int $priority,
         string $subject,
         string $description,
         ?string $guildContext,
-        string $contactEmail
+        string $contactEmail,
+        ?int $severity = null
     ): Response {
         $allowedCategories = self::getAllowedCategories();
-        $allowedPriorities = ['low', 'medium', 'high', 'urgent'];
 
         if ($subject === '' || $description === '' || $contactEmail === '') {
             return new Response(false, 'Subject, description, and an account email are required.', null);
@@ -982,8 +1230,12 @@ class TicketController
             return new Response(false, 'Please select a valid category.', null);
         }
 
-        if (!in_array($priority, $allowedPriorities, true)) {
+        if ($priority < 1 || $priority > 4) {
             return new Response(false, 'Please select a valid priority.', null);
+        }
+
+        if ($severity !== null && ($severity < 1 || $severity > 4)) {
+            return new Response(false, 'Please select a valid severity.', null);
         }
 
         if (strlen($subject) > 255 || strlen($contactEmail) > 255) {
