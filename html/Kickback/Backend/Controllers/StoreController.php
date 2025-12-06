@@ -1392,7 +1392,7 @@ class StoreController
                 quantity,
                 expiry_time,
                 close_time) 
-                VALUES ($valueClause)
+                VALUES $valueClause
             ";
 
             // Get the loot which matches needed items for price
@@ -1519,7 +1519,7 @@ class StoreController
 
         for($i = 0; $i < count($cartprice); $i++)
         {
-            $valueClause .= "?,?,?,?,?,?,?";
+            $valueClause .= "(?,?,?,?,?,?,?)";
 
             if($i != count($cartprice)-1) $valueClause .= ",";
         }
