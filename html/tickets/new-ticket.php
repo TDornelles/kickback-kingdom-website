@@ -89,7 +89,15 @@ if (Session::isLoggedIn()) {
                                 </div>
                                 <div class="col-12">
                                     <label for="ticketDescription" class="form-label">Description</label>
+                                    <div class="d-flex align-items-center mb-2 gap-2">
+                                        <div class="btn-group" role="group" aria-label="Description editor mode">
+                                            <button type="button" class="btn btn-outline-primary active" id="descriptionWriteTab">Write</button>
+                                            <button type="button" class="btn btn-outline-primary" id="descriptionPreviewTab">Preview</button>
+                                        </div>
+                                        <small class="text-muted">Markdown supported</small>
+                                    </div>
                                     <textarea class="form-control" id="ticketDescription" name="description" rows="6" maxlength="5000" placeholder="Share steps to reproduce, expected behavior, links, or extra context." required></textarea>
+                                    <div id="ticketDescriptionPreview" class="d-none form-control bg-light markdown-preview"></div>
                                 </div>
                                 <div class="col-md-6">
                                     <label for="ticketEmail" class="form-label">Contact Email</label>
@@ -119,6 +127,7 @@ if (Session::isLoggedIn()) {
     </main>
 
     <?php require("../php-components/base-page-javascript.php"); ?>
+    <?php require("../php-components/content-viewer-javascript.php"); ?>
     <script>
         (function() {
             const form = document.getElementById('ticketForm');
@@ -129,6 +138,10 @@ if (Session::isLoggedIn()) {
             const categoryStatus = document.getElementById('ticketCategoryStatus');
             const guildSelect = document.getElementById('ticketGuild');
             const guildStatus = document.getElementById('ticketGuildStatus');
+            const descriptionInput = document.getElementById('ticketDescription');
+            const descriptionPreview = document.getElementById('ticketDescriptionPreview');
+            const descriptionWriteTab = document.getElementById('descriptionWriteTab');
+            const descriptionPreviewTab = document.getElementById('descriptionPreviewTab');
             const defaultCategoryOptions = Array.from(categorySelect.options).map(option => ({
                 value: option.value,
                 name: option.textContent
@@ -236,6 +249,51 @@ if (Session::isLoggedIn()) {
             loadCategories();
             loadGuilds();
 
+            function updateDescriptionPreview() {
+                if (!descriptionPreview || !descriptionInput) {
+                    return;
+                }
+
+                const markdownText = descriptionInput.value;
+                if (typeof renderMarkdownToHtml === 'function') {
+                    descriptionPreview.innerHTML = renderMarkdownToHtml(markdownText);
+                } else {
+                    descriptionPreview.textContent = markdownText;
+                }
+            }
+
+            function setDescriptionMode(mode) {
+                const isPreview = mode === 'preview';
+
+                if (descriptionWriteTab && descriptionPreviewTab) {
+                    descriptionWriteTab.classList.toggle('active', !isPreview);
+                    descriptionPreviewTab.classList.toggle('active', isPreview);
+                }
+
+                if (descriptionInput && descriptionPreview) {
+                    descriptionInput.classList.toggle('d-none', isPreview);
+                    descriptionPreview.classList.toggle('d-none', !isPreview);
+                    if (isPreview) {
+                        updateDescriptionPreview();
+                    }
+                }
+            }
+
+            if (descriptionWriteTab && descriptionPreviewTab) {
+                descriptionWriteTab.addEventListener('click', () => setDescriptionMode('write'));
+                descriptionPreviewTab.addEventListener('click', () => setDescriptionMode('preview'));
+            }
+
+            if (descriptionInput) {
+                descriptionInput.addEventListener('input', () => {
+                    if (!descriptionPreview?.classList.contains('d-none')) {
+                        updateDescriptionPreview();
+                    }
+                });
+            }
+
+            setDescriptionMode('write');
+
             form.addEventListener('submit', async (event) => {
                 event.preventDefault();
                 statusEl.classList.remove('text-danger', 'text-success');
@@ -261,6 +319,7 @@ if (Session::isLoggedIn()) {
                         statusEl.textContent = 'Ticket submitted!';
                         confirmation.classList.remove('d-none');
                         form.reset();
+                        setDescriptionMode('write');
                     } else {
                         statusEl.classList.add('text-danger');
                         statusEl.textContent = result.message || 'Unable to submit ticket right now.';
@@ -288,6 +347,12 @@ if (Session::isLoggedIn()) {
 
         .ticket-form textarea {
             resize: vertical;
+        }
+
+        .markdown-preview {
+            min-height: 180px;
+            white-space: pre-wrap;
+            overflow-y: auto;
         }
     </style>
 </body>
