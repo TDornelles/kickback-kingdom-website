@@ -894,13 +894,17 @@ class TicketController
      */
     public static function createSupportTicketFromRequest(array $post, array $files): Response
     {
+        if (!Session::readCurrentAccountInto($account)) {
+            return new Response(false, 'You must be logged in to submit a support ticket.', null);
+        }
+
         $category = strtolower(trim((string) ($post['category'] ?? '')));
         $priority = strtolower(trim((string) ($post['priority'] ?? '')));
         $subject = trim((string) ($post['subject'] ?? ''));
         $description = trim((string) ($post['description'] ?? ''));
         $guildContext = isset($post['guildContext']) ? trim((string) $post['guildContext']) : null;
-        $contactEmail = isset($post['contactEmail'])
-            ? trim((string) filter_var($post['contactEmail'], FILTER_SANITIZE_EMAIL))
+        $contactEmail = isset($account->email)
+            ? trim((string) filter_var($account->email, FILTER_SANITIZE_EMAIL))
             : '';
 
         $validation = self::validateSupportTicketInputs($category, $priority, $subject, $description, $guildContext, $contactEmail);
@@ -920,7 +924,8 @@ class TicketController
             $description,
             $guildContext === '' ? null : $guildContext,
             $contactEmail,
-            $attachments->data ?? []
+            $attachments->data ?? [],
+            $account->crand
         );
     }
 
@@ -934,13 +939,13 @@ class TicketController
         string $description,
         ?string $guildContext,
         string $contactEmail,
-        array $attachments = []
+        array $attachments = [],
+        ?int $accountCrand = null
     ): Response {
         $recordId = new RecordId();
-        $accountCrand = null;
-        if (Session::readCurrentAccountInto($account)) {
-            $accountCrand = $account->crand;
-        }
+        $accountCrand = is_null($accountCrand) && Session::readCurrentAccountInto($account)
+            ? $account->crand
+            : $accountCrand;
 
         $conn = Database::getConnection();
 
@@ -1001,11 +1006,11 @@ class TicketController
         $allowedPriorities = ['low', 'medium', 'high', 'urgent'];
 
         if ($subject === '' || $description === '' || $contactEmail === '') {
-            return new Response(false, 'Subject, description, and contact email are required.', null);
+            return new Response(false, 'Subject, description, and an account email are required.', null);
         }
 
         if (!filter_var($contactEmail, FILTER_VALIDATE_EMAIL)) {
-            return new Response(false, 'Please provide a valid contact email.', null);
+            return new Response(false, 'Please ensure your account email is valid.', null);
         }
 
         if (!in_array($category, $allowedCategories, true)) {
