@@ -58,6 +58,7 @@ if (Session::isLoggedIn()) {
                                         <option value="feature">Feature</option>
                                         <option value="todo">To-do / Task</option>
                                     </select>
+                                    <div class="form-text" id="ticketCategoryStatus">Choose a category so we can route your ticket.</div>
                                 </div>
                                 <div class="col-md-6">
                                     <label for="ticketPriority" class="form-label">Priority</label>
@@ -122,6 +123,57 @@ if (Session::isLoggedIn()) {
             const statusEl = document.getElementById('ticketStatus');
             const confirmation = document.getElementById('ticketConfirmation');
             const submitBtn = document.getElementById('ticketSubmit');
+            const categorySelect = document.getElementById('ticketCategory');
+            const categoryStatus = document.getElementById('ticketCategoryStatus');
+            const defaultCategoryOptions = Array.from(categorySelect.options).map(option => ({
+                value: option.value,
+                name: option.textContent
+            }));
+
+            function renderCategoryOptions(options, state = { loading: false, error: '' }) {
+                categorySelect.innerHTML = '';
+                options.forEach(option => {
+                    const opt = document.createElement('option');
+                    opt.value = option.value;
+                    opt.textContent = option.name;
+                    categorySelect.appendChild(opt);
+                });
+
+                if (state.loading && categoryStatus) {
+                    categoryStatus.textContent = 'Loading categories...';
+                } else if (state.error && categoryStatus) {
+                    categoryStatus.textContent = `${state.error} Using defaults.`;
+                } else if (categoryStatus) {
+                    categoryStatus.textContent = 'Choose a category so we can route your ticket.';
+                }
+            }
+
+            async function loadCategories() {
+                renderCategoryOptions(defaultCategoryOptions, { loading: true, error: '' });
+
+                try {
+                    const response = await fetch('<?= Version::urlBetaPrefix(); ?>/api/v1/tickets/categories/list.php', {
+                        method: 'POST',
+                        credentials: 'same-origin'
+                    });
+
+                    const result = await response.json();
+                    if (result.success && Array.isArray(result.data) && result.data.length > 0) {
+                        const fetchedOptions = result.data.map(category => ({
+                            value: category.slug,
+                            name: category.name
+                        }));
+                        renderCategoryOptions(fetchedOptions, { loading: false, error: '' });
+                    } else {
+                        renderCategoryOptions(defaultCategoryOptions, { loading: false, error: result.message || 'No categories available.' });
+                    }
+                } catch (error) {
+                    console.error('Failed to load categories', error);
+                    renderCategoryOptions(defaultCategoryOptions, { loading: false, error: 'Unable to load categories.' });
+                }
+            }
+
+            loadCategories();
 
             form.addEventListener('submit', async (event) => {
                 event.preventDefault();
