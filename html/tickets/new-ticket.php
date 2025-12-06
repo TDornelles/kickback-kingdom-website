@@ -49,6 +49,13 @@ if (Session::isLoggedIn()) {
                             Thanks for reaching out! Your ticket is in our queue and we'll be in touch soon.
                         </div>
 
+                        <?php if ($prefilledEmail === ''): ?>
+                            <div class="alert alert-warning" role="alert">
+                                <i class="fa-solid fa-circle-info me-2"></i>
+                                Please sign in to submit a support ticket.
+                            </div>
+                        <?php endif; ?>
+
                         <form id="ticketForm" class="ticket-form" enctype="multipart/form-data">
                             <div class="row g-3">
                                 <div class="col-md-6">
@@ -86,8 +93,8 @@ if (Session::isLoggedIn()) {
                                 </div>
                                 <div class="col-md-6">
                                     <label for="ticketEmail" class="form-label">Contact Email</label>
-                                    <input type="email" class="form-control" id="ticketEmail" name="contactEmail" maxlength="255" value="<?= htmlspecialchars($prefilledEmail); ?>" required>
-                                    <div class="form-text">We'll use this email for updates on your request.</div>
+                                    <input type="email" class="form-control" id="ticketEmail" value="<?= htmlspecialchars($prefilledEmail); ?>" disabled readonly>
+                                    <div class="form-text">We'll use your account email for updates on your request.</div>
                                 </div>
                                 <div class="col-md-6">
                                     <label for="ticketAttachments" class="form-label">Attachments</label>
