@@ -1396,7 +1396,7 @@ class StoreController
             ";
 
             // Get the loot which matches needed items for price
-            $lootsForprice = static::getLootForpriceForCart($cart); 
+            $lootsForprice = static::getLootForPriceForCart($cart); 
 
             // Consolidate loot to only the amount needed for the totals
             $consolidatedLootForCartTotals = static::consolidateLootForCartTotals($cart->totals, $lootsForprice); 
@@ -1567,7 +1567,7 @@ class StoreController
 
             if(!$areCartItemsInStockResp->data)
             {
-                $resp->message = "Some items in cart are out-of-stock";
+                $resp->message = "Some items in cart are out-of-stock : $areCartItemsInStockResp->message";
                 $resp->data = $unavailableCartProducts;
                 return $resp;
             }
@@ -1899,7 +1899,7 @@ class StoreController
 
         try
         {
-            $allLootsForpriceInCart = static::getLootForpriceForCart($cart);
+            $allLootsForpriceInCart = static::getLootForPriceForCart($cart);
             $allLootsForCartItemsFromStoreOwner = static::getStoreOwnerCartItemsLoot($cart);
 
 
@@ -2111,7 +2111,7 @@ class StoreController
      * @param vCart $cart the cart to get the loot from
      * @return array the array populated with vLoot of the appropriate loot
      */
-    private static function getLootForpriceForCart(vCart $cart) : array
+    private static function getLootForPriceForCart(vCart $cart) : array
     {
         $whereArrayClause = static::getWhereArrayClauseForGetLootForpriceForCart($cart->totals);
 
