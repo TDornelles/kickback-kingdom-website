@@ -77,13 +77,8 @@ if (Session::isLoggedIn()) {
                                     <label for="ticketGuild" class="form-label">Guild Context</label>
                                     <select class="form-select" id="ticketGuild" name="guildContext">
                                         <option value="">General</option>
-                                        <option value="Adventurers Guild">Adventurers Guild</option>
-                                        <option value="Merchants Guild">Merchants Guild</option>
-                                        <option value="Craftsmen's Guild">Craftsmen's Guild</option>
-                                        <option value="Stewards Guild">Stewards Guild</option>
-                                        <option value="Lich Studies">Lich & Card Games</option>
-                                        <option value="Events & Community">Events & Community</option>
                                     </select>
+                                    <div class="form-text" id="ticketGuildStatus">Choose a guild for context (optional).</div>
                                 </div>
                                 <div class="col-12">
                                     <label for="ticketDescription" class="form-label">Description</label>
@@ -125,10 +120,13 @@ if (Session::isLoggedIn()) {
             const submitBtn = document.getElementById('ticketSubmit');
             const categorySelect = document.getElementById('ticketCategory');
             const categoryStatus = document.getElementById('ticketCategoryStatus');
+            const guildSelect = document.getElementById('ticketGuild');
+            const guildStatus = document.getElementById('ticketGuildStatus');
             const defaultCategoryOptions = Array.from(categorySelect.options).map(option => ({
                 value: option.value,
                 name: option.textContent
             }));
+            const defaultGuildOption = { value: '', name: 'General', context: '' };
 
             function renderCategoryOptions(options, state = { loading: false, error: '' }) {
                 categorySelect.innerHTML = '';
@@ -173,7 +171,63 @@ if (Session::isLoggedIn()) {
                 }
             }
 
+            function renderGuildOptions(options, state = { loading: false, error: '' }) {
+                guildSelect.innerHTML = '';
+                options.forEach(option => {
+                    const opt = document.createElement('option');
+                    opt.value = option.value;
+                    opt.textContent = option.name;
+                    opt.dataset.name = option.context ?? option.name ?? '';
+                    guildSelect.appendChild(opt);
+                });
+
+                guildSelect.disabled = !!state.loading;
+                if (state.loading && guildStatus) {
+                    guildStatus.textContent = 'Loading guilds...';
+                } else if (state.error && guildStatus) {
+                    guildStatus.textContent = `${state.error} Using defaults.`;
+                } else if (guildStatus) {
+                    guildStatus.textContent = 'Choose a guild for context (optional).';
+                }
+            }
+
+            async function loadGuilds() {
+                renderGuildOptions([defaultGuildOption], { loading: true, error: '' });
+
+                try {
+                    const response = await fetch('<?= Version::urlBetaPrefix(); ?>/api/v1/guild/list.php');
+                    const result = await response.json();
+
+                    if (result.success && Array.isArray(result.data)) {
+                        const guildOptions = result.data
+                            .map(guild => {
+                                const name = guild.name ?? guild.Name ?? '';
+                                const id = guild.id ?? guild.Id ?? '';
+                                if (!name) {
+                                    return null;
+                                }
+                                return {
+                                    value: id !== null ? String(id) : '',
+                                    name,
+                                    context: name
+                                };
+                            })
+                            .filter(Boolean);
+
+                        const optionsToRender = [defaultGuildOption, ...guildOptions];
+                        const errorMessage = guildOptions.length === 0 ? 'No guilds available.' : '';
+                        renderGuildOptions(optionsToRender, { loading: false, error: errorMessage });
+                    } else {
+                        renderGuildOptions([defaultGuildOption], { loading: false, error: result.message || 'Unable to load guilds.' });
+                    }
+                } catch (error) {
+                    console.error('Failed to load guilds', error);
+                    renderGuildOptions([defaultGuildOption], { loading: false, error: 'Unable to load guilds.' });
+                }
+            }
+
             loadCategories();
+            loadGuilds();
 
             form.addEventListener('submit', async (event) => {
                 event.preventDefault();
@@ -183,6 +237,10 @@ if (Session::isLoggedIn()) {
                 submitBtn.disabled = true;
 
                 const formData = new FormData(form);
+                const selectedGuildOption = guildSelect.options[guildSelect.selectedIndex];
+                if (selectedGuildOption) {
+                    formData.set('guildContext', selectedGuildOption.dataset.name ?? selectedGuildOption.textContent ?? '');
+                }
 
                 try {
                     const response = await fetch('<?= Version::urlBetaPrefix(); ?>/api/v1/support/createTicket.php', {
