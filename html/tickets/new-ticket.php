@@ -68,24 +68,60 @@ if (Session::isLoggedIn()) {
                                     <div class="form-text" id="ticketCategoryStatus">Choose a category so we can route your ticket.</div>
                                 </div>
                                 <div class="col-md-6">
-                                    <label for="ticketPriority" class="form-label">Priority</label>
-                                    <select class="form-select" id="ticketPriority" name="priority" required>
-                                        <option value="medium" selected>Medium</option>
-                                        <option value="low">Low</option>
-                                        <option value="high">High</option>
-                                        <option value="urgent">Urgent</option>
-                                    </select>
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <label for="ticketPriority" class="form-label mb-0">Priority</label>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="badge text-bg-secondary" id="ticketPriorityValue">2 (Medium)</span>
+                                            <i class="fa-regular fa-circle-question text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="1 = Low, 2 = Medium, 3 = High, 4 = Urgent"></i>
+                                        </div>
+                                    </div>
+                                    <input type="range" class="form-range" id="ticketPriority" name="priority" min="1" max="4" step="1" value="2" required>
+                                    <div class="d-flex justify-content-between small text-muted px-1">
+                                        <span>Low</span>
+                                        <span>Medium</span>
+                                        <span>High</span>
+                                        <span>Urgent</span>
+                                    </div>
                                 </div>
                                 <div class="col-md-6">
                                     <label for="ticketSubject" class="form-label">Subject</label>
                                     <input type="text" class="form-control" id="ticketSubject" name="subject" maxlength="255" placeholder="Short summary" required>
                                 </div>
                                 <div class="col-md-6">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <label for="ticketSeverity" class="form-label mb-0">Severity</label>
+                                        <i class="fa-regular fa-circle-question text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="1 = Cosmetic, 2 = Minor, 3 = Major, 4 = Critical"></i>
+                                    </div>
+                                    <select class="form-select" id="ticketSeverity" name="severity">
+                                        <option value="">Not sure</option>
+                                        <option value="1">Cosmetic</option>
+                                        <option value="2">Minor</option>
+                                        <option value="3">Major</option>
+                                        <option value="4">Critical</option>
+                                    </select>
+                                    <div class="form-text">Severity helps us triage impact. If unsure, leave as "Not sure."</div>
+                                </div>
+                                <div class="col-md-6">
                                     <label for="ticketGuild" class="form-label">Guild Context</label>
-                                    <select class="form-select" id="ticketGuild" name="guildContext">
+                                    <select class="form-select" id="ticketGuild" name="guildId">
                                         <option value="">General</option>
                                     </select>
-                                    <div class="form-text" id="ticketGuildStatus">Choose a guild for context (optional).</div>
+                                    <div class="form-text" id="ticketGuildStatus">Select a guild by ID for context (optional).</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="ticketGame" class="form-label">Game ID</label>
+                                    <input type="number" min="1" class="form-control" id="ticketGame" name="gameId" placeholder="Enter the game ID (optional)">
+                                    <div class="form-text">Provide the numeric Game ID if the issue is game-specific.</div>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="ticketServerCtime" class="form-label">Server ctime</label>
+                                    <input type="text" class="form-control" id="ticketServerCtime" name="serverCtime" placeholder="YYYYMMDDhhmmss" pattern="\d{14}">
+                                    <div class="form-text">Optional server creation timestamp (14 digits).</div>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="ticketServerCrand" class="form-label">Server crand</label>
+                                    <input type="number" min="1" class="form-control" id="ticketServerCrand" name="serverCrand" placeholder="Numeric ID">
+                                    <div class="form-text">Optional server ID if relevant.</div>
                                 </div>
                                 <div class="col-12">
                                     <label for="ticketDescription" class="form-label">Description</label>
@@ -138,6 +174,12 @@ if (Session::isLoggedIn()) {
             const categoryStatus = document.getElementById('ticketCategoryStatus');
             const guildSelect = document.getElementById('ticketGuild');
             const guildStatus = document.getElementById('ticketGuildStatus');
+            const severitySelect = document.getElementById('ticketSeverity');
+            const gameInput = document.getElementById('ticketGame');
+            const serverCtimeInput = document.getElementById('ticketServerCtime');
+            const serverCrandInput = document.getElementById('ticketServerCrand');
+            const priorityInput = document.getElementById('ticketPriority');
+            const priorityValueBadge = document.getElementById('ticketPriorityValue');
             const descriptionInput = document.getElementById('ticketDescription');
             const descriptionPreview = document.getElementById('ticketDescriptionPreview');
             const descriptionWriteTab = document.getElementById('descriptionWriteTab');
@@ -147,6 +189,26 @@ if (Session::isLoggedIn()) {
                 name: option.textContent
             }));
             const defaultGuildOption = { value: '', name: 'General', context: '' };
+            const priorityLabels = {
+                1: 'Low',
+                2: 'Medium',
+                3: 'High',
+                4: 'Urgent',
+            };
+
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.forEach(tooltipTriggerEl => {
+                new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+
+            function updatePriorityBadge(value) {
+                if (!priorityValueBadge) {
+                    return;
+                }
+                const numericValue = Math.min(4, Math.max(1, Number(value) || 2));
+                const label = priorityLabels[numericValue] ?? 'Medium';
+                priorityValueBadge.textContent = `${numericValue} (${label})`;
+            }
 
             function renderCategoryOptions(options, state = { loading: false, error: '' }) {
                 categorySelect.innerHTML = '';
@@ -207,7 +269,7 @@ if (Session::isLoggedIn()) {
                 } else if (state.error && guildStatus) {
                     guildStatus.textContent = `${state.error} Using defaults.`;
                 } else if (guildStatus) {
-                    guildStatus.textContent = 'Choose a guild for context (optional).';
+                    guildStatus.textContent = 'Select a guild ID for context (optional).';
                 }
             }
 
@@ -293,6 +355,12 @@ if (Session::isLoggedIn()) {
             }
 
             setDescriptionMode('write');
+            updatePriorityBadge(priorityInput?.value ?? 2);
+            if (priorityInput) {
+                priorityInput.addEventListener('input', (event) => {
+                    updatePriorityBadge(event.target.value);
+                });
+            }
 
             form.addEventListener('submit', async (event) => {
                 event.preventDefault();
@@ -302,13 +370,57 @@ if (Session::isLoggedIn()) {
                 submitBtn.disabled = true;
 
                 const formData = new FormData(form);
-                const selectedGuildOption = guildSelect.options[guildSelect.selectedIndex];
-                if (selectedGuildOption) {
-                    formData.set('guildContext', selectedGuildOption.dataset.name ?? selectedGuildOption.textContent ?? '');
+
+                const priorityValue = Math.min(4, Math.max(1, parseInt(formData.get('priority'), 10) || 2));
+                formData.set('priority', String(priorityValue));
+
+                const severityValue = formData.get('severity');
+                if (severityValue === '') {
+                    formData.delete('severity');
+                }
+
+                const guildId = formData.get('guildId');
+                if (!guildId || guildId === '') {
+                    formData.delete('guildId');
+                } else if (Number(guildId) <= 0) {
+                    statusEl.classList.add('text-danger');
+                    statusEl.textContent = 'Guild must be selected by a valid ID.';
+                    submitBtn.disabled = false;
+                    return;
+                }
+
+                const gameId = formData.get('gameId');
+                if (gameId === '' || gameId === null) {
+                    formData.delete('gameId');
+                } else if (Number(gameId) <= 0) {
+                    statusEl.classList.add('text-danger');
+                    statusEl.textContent = 'Game ID must be a positive number.';
+                    submitBtn.disabled = false;
+                    return;
+                }
+
+                const serverCtime = formData.get('serverCtime');
+                if (serverCtime === '' || serverCtime === null) {
+                    formData.delete('serverCtime');
+                } else if (!/^\d{14}$/.test(String(serverCtime))) {
+                    statusEl.classList.add('text-danger');
+                    statusEl.textContent = 'Server ctime must be a 14-digit timestamp if provided.';
+                    submitBtn.disabled = false;
+                    return;
+                }
+
+                const serverCrand = formData.get('serverCrand');
+                if (serverCrand === '' || serverCrand === null) {
+                    formData.delete('serverCrand');
+                } else if (Number(serverCrand) <= 0) {
+                    statusEl.classList.add('text-danger');
+                    statusEl.textContent = 'Server crand must be a positive number when provided.';
+                    submitBtn.disabled = false;
+                    return;
                 }
 
                 try {
-                    const response = await fetch('<?= Version::urlBetaPrefix(); ?>/api/v1/support/createTicket.php', {
+                    const response = await fetch('<?= Version::urlBetaPrefix(); ?>/api/v1/tickets/create.php', {
                         method: 'POST',
                         body: formData,
                     });
@@ -319,6 +431,7 @@ if (Session::isLoggedIn()) {
                         statusEl.textContent = 'Ticket submitted!';
                         confirmation.classList.remove('d-none');
                         form.reset();
+                        updatePriorityBadge(priorityInput?.value ?? 2);
                         setDescriptionMode('write');
                     } else {
                         statusEl.classList.add('text-danger');
