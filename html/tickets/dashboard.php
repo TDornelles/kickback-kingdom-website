@@ -140,6 +140,12 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                                 </select>
                             </div>
                             <div class="col-sm-6 col-lg-3">
+                                <label for="filterCategory" class="form-label">Category</label>
+                                <select class="form-select" id="filterCategory">
+                                    <option value="">Any</option>
+                                </select>
+                            </div>
+                            <div class="col-sm-6 col-lg-3">
                                 <label for="filterAssignee" class="form-label">Assignee</label>
                                 <select class="form-select" id="filterAssignee">
                                     <option value="">Any</option>
@@ -168,6 +174,22 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                                 <label for="filterSearch" class="form-label">Search</label>
                                 <input type="text" class="form-control" id="filterSearch" placeholder="Subject, requester, tags">
                             </div>
+                        </div>
+                        <div class="mt-4 border-top pt-3" id="categoryManagement">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                <div>
+                                    <div class="fw-semibold">Ticket Categories</div>
+                                    <div class="text-muted small">Manage reusable categories for filtering and ticket creation.</div>
+                                </div>
+                                <?php if ($canManageTickets) { ?>
+                                    <form class="d-flex gap-2" id="categoryCreateForm">
+                                        <input type="text" class="form-control" id="categoryNameInput" placeholder="New category name">
+                                        <button class="btn btn-outline-primary" type="submit"><i class="fa-solid fa-plus me-1"></i>Add</button>
+                                    </form>
+                                <?php } ?>
+                            </div>
+                            <div class="text-danger small mt-2" id="categoryError"></div>
+                            <div id="categoryList" class="d-flex flex-wrap gap-2 mt-2"></div>
                         </div>
                         <div class="d-flex justify-content-end gap-2 mt-3">
                             <button class="btn btn-outline-secondary" id="resetFilters"><i class="fa-solid fa-rotate-left me-1"></i>Reset</button>
@@ -204,6 +226,7 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                                         <th scope="col">Ticket</th>
                                         <th scope="col">Status</th>
                                         <th scope="col">Priority</th>
+                                        <th scope="col">Category</th>
                                         <th scope="col">Assignee</th>
                                         <th scope="col">Guild</th>
                                         <th scope="col">Updated</th>
@@ -232,6 +255,9 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
         let notificationCount = 0;
         let isLoading = false;
         let loadError = '';
+        let categories = [];
+        let isLoadingCategories = false;
+        let categoryError = '';
         let assigneeOptions = [];
         let isLoadingAssignees = false;
         let assigneeLoadError = '';
@@ -241,12 +267,46 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
             return {
                 status: document.getElementById('filterStatus').value,
                 priority: document.getElementById('filterPriority').value,
+                category: document.getElementById('filterCategory').value,
                 assignee: document.getElementById('filterAssignee').value.toLowerCase(),
                 guild: document.getElementById('filterGuild').value,
                 from: document.getElementById('filterFrom').value,
                 to: document.getElementById('filterTo').value,
                 search: document.getElementById('filterSearch').value,
             };
+        }
+
+        async function fetchCategories() {
+            isLoadingCategories = true;
+            categoryError = '';
+            renderCategoryOptions();
+
+            try {
+                const response = await fetch('<?= Version::urlBetaPrefix(); ?>/api/v1/tickets/categories/list.php', {
+                    method: 'POST',
+                    credentials: 'same-origin'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Request failed with status ${response.status}`);
+                }
+
+                const result = await response.json();
+                if (result.success && Array.isArray(result.data)) {
+                    categories = result.data;
+                } else {
+                    categories = [];
+                    categoryError = result.message || 'Unable to load categories.';
+                }
+            } catch (error) {
+                console.error('Failed to load categories', error);
+                categories = [];
+                categoryError = 'Failed to load categories. Please try again.';
+            }
+
+            isLoadingCategories = false;
+            renderCategoryOptions();
+            renderCategoryManagement();
         }
 
         async function fetchAssignees() {
@@ -279,6 +339,156 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
 
             isLoadingAssignees = false;
             renderAssigneeOptions();
+        }
+
+        function renderCategoryOptions() {
+            const select = document.getElementById('filterCategory');
+            if (!select) return;
+
+            const currentValue = select.value;
+            select.innerHTML = '';
+
+            const anyOption = document.createElement('option');
+            anyOption.value = '';
+            anyOption.textContent = 'Any';
+            select.appendChild(anyOption);
+
+            if (isLoadingCategories) {
+                select.disabled = true;
+                const loadingOption = document.createElement('option');
+                loadingOption.disabled = true;
+                loadingOption.textContent = 'Loading categories...';
+                select.appendChild(loadingOption);
+                return;
+            }
+
+            select.disabled = false;
+
+            if (categoryError) {
+                const errorOption = document.createElement('option');
+                errorOption.disabled = true;
+                errorOption.textContent = categoryError;
+                select.appendChild(errorOption);
+                select.value = '';
+                return;
+            }
+
+            if (categories.length === 0) {
+                const emptyOption = document.createElement('option');
+                emptyOption.disabled = true;
+                emptyOption.textContent = 'No categories found';
+                select.appendChild(emptyOption);
+                select.value = '';
+                return;
+            }
+
+            categories.forEach(category => {
+                const opt = document.createElement('option');
+                opt.value = category.slug;
+                opt.textContent = category.name;
+                select.appendChild(opt);
+            });
+
+            const desiredValue = currentValue;
+            const hasDesiredOption = Array.from(select.options).some(opt => opt.value === desiredValue);
+            select.value = hasDesiredOption ? desiredValue : '';
+        }
+
+        function renderCategoryManagement() {
+            const list = document.getElementById('categoryList');
+            const errorEl = document.getElementById('categoryError');
+            if (!list || !errorEl) return;
+
+            list.innerHTML = '';
+            errorEl.textContent = categoryError;
+
+            if (isLoadingCategories) {
+                list.innerHTML = '<span class="text-muted">Loading categories...</span>';
+                return;
+            }
+
+            if (!categoryError && categories.length === 0) {
+                list.innerHTML = '<span class="text-muted">No categories yet.</span>';
+                return;
+            }
+
+            categories.forEach(category => {
+                const badge = document.createElement('div');
+                badge.className = 'badge text-bg-light text-dark d-inline-flex align-items-center gap-2 py-2 px-3';
+                badge.innerHTML = `<span>${category.name}</span>`;
+
+                if (canManageTickets) {
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.type = 'button';
+                    deleteBtn.className = 'btn btn-sm btn-outline-danger';
+                    deleteBtn.setAttribute('data-category-ctime', category.ctime || '');
+                    deleteBtn.setAttribute('data-category-crand', category.crand || '');
+                    deleteBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+                    badge.appendChild(deleteBtn);
+                }
+
+                list.appendChild(badge);
+            });
+        }
+
+        async function createCategory(name) {
+            if (!canManageTickets || name.trim() === '') return;
+            categoryError = '';
+            renderCategoryManagement();
+
+            try {
+                const payload = new FormData();
+                payload.append('name', name.trim());
+
+                const response = await fetch('<?= Version::urlBetaPrefix(); ?>/api/v1/tickets/categories/create.php', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    body: payload
+                });
+
+                const result = await response.json();
+                if (!result.success) {
+                    categoryError = result.message || 'Unable to create category.';
+                }
+            } catch (error) {
+                console.error('Failed to create category', error);
+                categoryError = 'Failed to create category. Please try again.';
+            }
+
+            const input = document.getElementById('categoryNameInput');
+            if (input) {
+                input.value = '';
+            }
+
+            await fetchCategories();
+        }
+
+        async function deleteCategory(ctime, crand) {
+            if (!canManageTickets || !ctime || !crand) return;
+            categoryError = '';
+            renderCategoryManagement();
+
+            try {
+                const payload = new FormData();
+                payload.append('ctime', ctime);
+                payload.append('crand', String(crand));
+
+                const response = await fetch('<?= Version::urlBetaPrefix(); ?>/api/v1/tickets/categories/delete.php', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    body: payload
+                });
+
+                const result = await response.json();
+                if (!result.success) {
+                    categoryError = result.message || 'Unable to delete category.';
+                }
+            } catch (error) {
+                console.error('Failed to delete category', error);
+                categoryError = 'Failed to delete category. Please try again.';
+            }
+
+            await fetchCategories();
         }
 
         function renderAssigneeOptions() {
@@ -342,6 +552,7 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
             const normalizedStatus = (filters.status || '').replace('-', '_');
             if (normalizedStatus) payload.append('status', normalizedStatus);
             if (filters.priority) payload.append('priority', filters.priority);
+            if (filters.category) payload.append('category', filters.category);
             if (filters.from) payload.append('from', filters.from);
             if (filters.to) payload.append('to', filters.to);
             if (filters.search) payload.append('search', filters.search);
@@ -357,19 +568,20 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                     throw new Error(`Request failed with status ${response.status}`);
                 }
 
-                const result = await response.json();
-                if (result.success && Array.isArray(result.data)) {
-                    tickets = result.data.map((ticket) => ({
-                        ...ticket,
-                        id: `${ticket.ctime}-${ticket.crand}`,
-                        requester: ticket.createdByCrand ? `Account #${ticket.createdByCrand}` : 'Unknown',
-                        updated: ticket.updatedAt || '',
-                        assignee: ticket.assignee || '',
-                        guild: ticket.guild || '',
-                        status: ticket.status || '',
-                        priority: ticket.priority || '',
-                        comments: Array.isArray(ticket.comments) ? ticket.comments : [],
-                    }));
+                        const result = await response.json();
+                        if (result.success && Array.isArray(result.data)) {
+                            tickets = result.data.map((ticket) => ({
+                                ...ticket,
+                                id: `${ticket.ctime}-${ticket.crand}`,
+                                requester: ticket.createdByCrand ? `Account #${ticket.createdByCrand}` : 'Unknown',
+                                updated: ticket.updatedAt || '',
+                                assignee: ticket.assignee || '',
+                                category: ticket.category || '',
+                                guild: ticket.guild || '',
+                                status: ticket.status || '',
+                                priority: ticket.priority || '',
+                                comments: Array.isArray(ticket.comments) ? ticket.comments : [],
+                            }));
                 } else {
                     tickets = [];
                     loadError = result.message || 'Unable to load tickets.';
@@ -402,6 +614,7 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
         function applyPrefill() {
             document.getElementById('filterStatus').value = (prefillFilters.status || '').replace('-', '_');
             document.getElementById('filterPriority').value = prefillFilters.priority || '';
+            document.getElementById('filterCategory').value = prefillFilters.category || '';
             pendingAssigneeValue = prefillFilters.assignee || '';
             document.getElementById('filterGuild').value = prefillFilters.guild || '';
             document.getElementById('filterFrom').value = prefillFilters.dateFrom || '';
@@ -409,12 +622,13 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
         }
 
         function ticketMatchesFilters(ticket) {
-            const { status, priority, assignee, guild, search, from, to } = getFilterValues();
+            const { status, priority, assignee, category, guild, search, from, to } = getFilterValues();
             const normalizedStatus = status.replace('-', '_');
             const searchTerm = (search || '').toLowerCase();
 
             if (normalizedStatus && ticket.status !== normalizedStatus) return false;
             if (priority && ticket.priority !== priority) return false;
+            if (category && (ticket.category || '') !== category) return false;
             if (guild && (ticket.guild || '') !== guild) return false;
             if (assignee && (ticket.assignee || '').toLowerCase() !== assignee) return false;
             if (from && ticket.updated < from) return false;
@@ -432,21 +646,21 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
             tbody.innerHTML = '';
 
             if (isLoading) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4">Loading tickets...</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4">Loading tickets...</td></tr>';
                 document.getElementById('listSummary').textContent = 'Loading...';
                 renderStats();
                 return;
             }
 
             if (loadError) {
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-4">${loadError}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">${loadError}</td></tr>`;
                 document.getElementById('listSummary').textContent = '0 tickets';
                 renderStats();
                 return;
             }
 
             if (filteredTickets.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4">No tickets match your filters yet.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4">No tickets match your filters yet.</td></tr>';
                 document.getElementById('listSummary').textContent = '0 tickets';
                 renderStats();
                 return;
@@ -464,6 +678,7 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                     </td>
                     <td><span class="badge status-pill status-${ticket.status}">${ticket.status.replace(/[_-]/g, ' ')}</span></td>
                     <td><span class="badge priority-pill priority-${ticket.priority}">${ticket.priority}</span></td>
+                    <td>${ticket.category || 'Uncategorized'}</td>
                     <td>${ticket.assignee || 'Unassigned'}</td>
                     <td>${ticket.guild}</td>
                     <td>${ticket.updated}</td>
@@ -523,11 +738,38 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
 
         document.getElementById('applyFilters').addEventListener('click', () => applyFiltersAndRender(true));
         document.getElementById('resetFilters').addEventListener('click', () => {
-            ['filterStatus','filterPriority','filterAssignee','filterGuild','filterFrom','filterTo','filterSearch'].forEach(id => {
+            ['filterStatus','filterPriority','filterCategory','filterAssignee','filterGuild','filterFrom','filterTo','filterSearch'].forEach(id => {
                 document.getElementById(id).value = '';
             });
             applyFiltersAndRender(true);
         });
+
+        const categoryForm = document.getElementById('categoryCreateForm');
+        if (categoryForm) {
+            categoryForm.addEventListener('submit', (event) => {
+                event.preventDefault();
+                const nameInput = document.getElementById('categoryNameInput');
+                const name = nameInput ? nameInput.value : '';
+                if (name.trim() !== '') {
+                    createCategory(name);
+                }
+            });
+        }
+
+        const categoryListEl = document.getElementById('categoryList');
+        if (categoryListEl) {
+            categoryListEl.addEventListener('click', (event) => {
+                const button = event.target.closest('button[data-category-ctime][data-category-crand]');
+                if (!button) return;
+
+                event.preventDefault();
+                const ctime = button.getAttribute('data-category-ctime') || '';
+                const crand = parseInt(button.getAttribute('data-category-crand') || '0', 10);
+                if (!Number.isNaN(crand) && crand > 0 && ctime) {
+                    deleteCategory(ctime, crand);
+                }
+            });
+        }
 
         document.getElementById('selectAllTickets').addEventListener('change', (e) => {
             document.querySelectorAll('.ticket-checkbox').forEach(cb => cb.checked = e.target.checked);
@@ -563,6 +805,7 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
         });
 
         applyPrefill();
+        fetchCategories();
         fetchAssignees();
         fetchTickets(getFilterValues());
     </script>

@@ -57,3 +57,13 @@ CREATE TABLE IF NOT EXISTS ticket_tag (
     CONSTRAINT fk_ticket_tag_ticket FOREIGN KEY (ticket_ctime, ticket_crand)
         REFERENCES ticket (ctime, crand) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS ticket_category (
+    ctime DATETIME(6) NOT NULL,
+    crand BIGINT NOT NULL,
+    slug VARCHAR(100) NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    PRIMARY KEY (ctime, crand),
+    UNIQUE INDEX uq_ticket_category_slug (slug),
+    UNIQUE INDEX uq_ticket_category_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

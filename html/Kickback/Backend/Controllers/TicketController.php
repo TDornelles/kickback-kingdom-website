@@ -10,6 +10,7 @@ use Kickback\Backend\Models\Response;
 use Kickback\Backend\Models\Ticket;
 use Kickback\Backend\Models\TicketAssignment;
 use Kickback\Backend\Models\TicketComment;
+use Kickback\Backend\Models\TicketCategory;
 use Kickback\Services\Database;
 use Kickback\Services\Session;
 use PHPMailer\PHPMailer\PHPMailer;
@@ -22,6 +23,7 @@ class TicketController
     private const ASSIGNMENT_TABLE = 'ticket_assignment';
     private const GUILD_LINK_TABLE = 'ticket_guild_link';
     private const TAG_TABLE = 'ticket_tag';
+    private const CATEGORY_TABLE = 'ticket_category';
     private const SUPPORT_TICKET_TABLE = 'support_tickets';
     private const SUPPORT_ATTACHMENT_TABLE = 'support_ticket_attachments';
 
@@ -995,7 +997,7 @@ class TicketController
         ?string $guildContext,
         string $contactEmail
     ): Response {
-        $allowedCategories = ['bug', 'feature', 'todo'];
+        $allowedCategories = self::getAllowedCategories();
         $allowedPriorities = ['low', 'medium', 'high', 'urgent'];
 
         if ($subject === '' || $description === '' || $contactEmail === '') {
@@ -1027,6 +1029,152 @@ class TicketController
         }
 
         return new Response(true, 'Validated', null);
+    }
+
+    /**
+     * @return string[]
+     */
+    private static function getAllowedCategories(): array
+    {
+        $categoryResp = self::listCategories();
+        if ($categoryResp->success && is_array($categoryResp->data)) {
+            $categories = [];
+            foreach ($categoryResp->data as $category) {
+                if ($category instanceof TicketCategory) {
+                    $categories[] = $category->slug;
+                } elseif (is_array($category) && isset($category['slug'])) {
+                    $categories[] = (string) $category['slug'];
+                }
+            }
+            if (!empty($categories)) {
+                return $categories;
+            }
+        }
+
+        return ['bug', 'feature', 'todo'];
+    }
+
+    public static function listCategories(): Response
+    {
+        $conn = Database::getConnection();
+        $query = 'SELECT ctime, crand, slug, name FROM ' . self::CATEGORY_TABLE . ' ORDER BY name ASC';
+        $result = $conn->query($query);
+
+        if ($result === false) {
+            return new Response(false, 'Unable to load categories.', null);
+        }
+
+        $categories = [];
+        while ($row = $result->fetch_assoc()) {
+            $categories[] = TicketCategory::fromRow($row);
+        }
+
+        return new Response(true, 'Categories loaded.', $categories);
+    }
+
+    /**
+     * @param array<string,mixed> $payload
+     */
+    public static function createCategory(array $payload): Response
+    {
+        if (!self::canManageCategories()) {
+            return new Response(false, 'You do not have permission to create categories.', null);
+        }
+
+        $name = trim((string) ($payload['name'] ?? ''));
+        $slug = trim((string) ($payload['slug'] ?? ''));
+
+        if ($name === '') {
+            return new Response(false, 'Category name is required.', null);
+        }
+
+        if (strlen($name) > 100) {
+            return new Response(false, 'Category name must be 100 characters or less.', null);
+        }
+
+        $slug = self::normalizeSlug($slug === '' ? $name : $slug);
+        if ($slug === '') {
+            return new Response(false, 'Category slug is invalid.', null);
+        }
+
+        if (strlen($slug) > 100) {
+            return new Response(false, 'Category slug must be 100 characters or less.', null);
+        }
+
+        $recordId = new RecordId();
+
+        $conn = Database::getConnection();
+        $stmt = $conn->prepare('INSERT INTO ' . self::CATEGORY_TABLE . ' (ctime, crand, slug, name) VALUES (?, ?, ?, ?)');
+        if ($stmt === false) {
+            return new Response(false, 'Unable to prepare category insert.', null);
+        }
+
+        $stmt->bind_param('siss', $recordId->ctime, $recordId->crand, $slug, $name);
+
+        if (!$stmt->execute()) {
+            $message = 'Failed to create category.';
+            if ($stmt->errno === 1062) {
+                $constraint = (string) $stmt->error;
+                if (str_contains($constraint, 'slug')) {
+                    $message = 'A category with that slug already exists.';
+                } else {
+                    $message = 'A category with that name already exists.';
+                }
+            }
+            $stmt->close();
+            return new Response(false, $message, null);
+        }
+
+        $stmt->close();
+
+        return new Response(true, 'Category created.', new TicketCategory($recordId->ctime, $recordId->crand, $slug, $name));
+    }
+
+    /**
+     * @param array<string,mixed> $payload
+     */
+    public static function deleteCategory(array $payload): Response
+    {
+        if (!self::canManageCategories()) {
+            return new Response(false, 'You do not have permission to delete categories.', null);
+        }
+
+        $ctime = trim((string) ($payload['ctime'] ?? ''));
+        $crand = (int) ($payload['crand'] ?? 0);
+
+        if ($ctime === '' || $crand <= 0) {
+            return new Response(false, 'A category identifier is required.', null);
+        }
+
+        $conn = Database::getConnection();
+        $stmt = $conn->prepare('DELETE FROM ' . self::CATEGORY_TABLE . ' WHERE ctime = ? AND crand = ?');
+        if ($stmt === false) {
+            return new Response(false, 'Unable to prepare category deletion.', null);
+        }
+
+        $stmt->bind_param('si', $ctime, $crand);
+        if (!$stmt->execute()) {
+            $stmt->close();
+            return new Response(false, 'Failed to delete category.', null);
+        }
+
+        $stmt->close();
+        return new Response(true, 'Category deleted.', ['ctime' => $ctime, 'crand' => $crand]);
+    }
+
+    private static function canManageCategories(): bool
+    {
+        return Session::isAdmin()
+            || Session::isMagisterOfTheAdventurersGuild()
+            || Session::isServantOfTheLich();
+    }
+
+    private static function normalizeSlug(string $input): string
+    {
+        $slug = strtolower($input);
+        $slug = preg_replace('/[^a-z0-9]+/i', '-', $slug) ?? '';
+        $slug = trim($slug, '-');
+        return $slug;
     }
 
     /**
