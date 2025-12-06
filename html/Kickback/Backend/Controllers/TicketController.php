@@ -21,11 +21,9 @@ class TicketController
     private const TICKET_TABLE = 'ticket';
     private const COMMENT_TABLE = 'ticket_comment';
     private const ASSIGNMENT_TABLE = 'ticket_assignment';
-    private const GUILD_LINK_TABLE = 'ticket_guild_link';
     private const TAG_TABLE = 'ticket_tag';
     private const CATEGORY_TABLE = 'ticket_category';
-    private const SUPPORT_TICKET_TABLE = 'support_tickets';
-    private const SUPPORT_ATTACHMENT_TABLE = 'support_ticket_attachments';
+    private const ATTACHMENT_TABLE = 'ticket_attachment';
 
     /** @var string[] */
     private const VALID_STATUSES = ['open', 'in_progress', 'resolved', 'closed'];
@@ -88,7 +86,6 @@ class TicketController
         $stmt->close();
 
         self::replaceTags($recordId->ctime, $recordId->crand, $tags);
-        self::replaceGuildLinks($recordId->ctime, $recordId->crand, $guildIds);
         $assignments = self::replaceAssignments($recordId->ctime, $recordId->crand, $assignees, $account->crand);
 
         $ticket = new Ticket(
@@ -192,10 +189,6 @@ class TicketController
             self::replaceTags($ticketCtime, $ticketCrand, $tags);
         }
 
-        if (!is_null($guildIds)) {
-            self::replaceGuildLinks($ticketCtime, $ticketCrand, $guildIds);
-        }
-
         $assignments = self::getAssignments($ticketCtime, $ticketCrand);
         if (!is_null($assignees)) {
             $assignments = self::replaceAssignments($ticketCtime, $ticketCrand, $assignees, $account->crand);
@@ -296,7 +289,7 @@ class TicketController
         }
 
         if (!$account->isAdmin) {
-            $conditions[] = '(t.created_by_crand = ? OR EXISTS (SELECT 1 FROM ' . self::ASSIGNMENT_TABLE . ' a WHERE a.ticket_ctime = t.ctime AND a.ticket_crand = t.crand AND a.account_crand = ?))';
+            $conditions[] = '(t.created_by_crand = ? OR EXISTS (SELECT 1 FROM ' . self::ASSIGNMENT_TABLE . ' a WHERE a.ticket_ctime = t.ctime AND a.ticket_crand = t.crand AND a.created_by_crand = ?))';
             $params[] = $account->crand;
             $params[] = $account->crand;
             $types .= 'ii';
@@ -338,10 +331,10 @@ class TicketController
         $conn = Database::getConnection();
 
         $baseQuery =
-            'SELECT DISTINCT ta.account_crand AS id, COALESCE(acc.Username, CONCAT("Account #", ta.account_crand)) AS username '
+            'SELECT DISTINCT ta.created_by_crand AS id, COALESCE(acc.Username, CONCAT("Account #", ta.created_by_crand)) AS username '
             . 'FROM ' . self::ASSIGNMENT_TABLE . ' ta '
             . 'JOIN ' . self::TICKET_TABLE . ' t ON t.ctime = ta.ticket_ctime AND t.crand = ta.ticket_crand '
-            . 'LEFT JOIN account acc ON acc.Id = ta.account_crand';
+            . 'LEFT JOIN account acc ON acc.Id = ta.created_by_crand';
 
         $conditions = [];
         $params = [];
@@ -350,7 +343,7 @@ class TicketController
         if (!$account->isAdmin) {
             $conditions[] =
                 '(t.created_by_crand = ? OR EXISTS (SELECT 1 FROM ' . self::ASSIGNMENT_TABLE . ' ta2 '
-                . 'WHERE ta2.ticket_ctime = t.ctime AND ta2.ticket_crand = t.crand AND ta2.account_crand = ?))';
+                . 'WHERE ta2.ticket_ctime = t.ctime AND ta2.ticket_crand = t.crand AND ta2.created_by_crand = ?))';
             $params[] = $account->crand;
             $params[] = $account->crand;
             $types .= 'ii';
@@ -531,32 +524,6 @@ class TicketController
         $insert->close();
     }
 
-    private static function replaceGuildLinks(string $ticketCtime, int $ticketCrand, array $guildIds): void
-    {
-        $conn = Database::getConnection();
-        $delete = $conn->prepare('DELETE FROM ' . self::GUILD_LINK_TABLE . ' WHERE ticket_ctime = ? AND ticket_crand = ?');
-        if ($delete) {
-            $delete->bind_param('si', $ticketCtime, $ticketCrand);
-            $delete->execute();
-            $delete->close();
-        }
-
-        if (empty($guildIds)) {
-            return;
-        }
-
-        $insert = $conn->prepare('INSERT INTO ' . self::GUILD_LINK_TABLE . ' (ticket_ctime, ticket_crand, guild_id) VALUES (?, ?, ?)');
-        if ($insert === false) {
-            return;
-        }
-
-        foreach ($guildIds as $guildId) {
-            $insert->bind_param('sii', $ticketCtime, $ticketCrand, $guildId);
-            $insert->execute();
-        }
-        $insert->close();
-    }
-
     /**
      * @return TicketAssignment[]
      */
@@ -576,7 +543,7 @@ class TicketController
         }
 
         $insert = $conn->prepare(
-            'INSERT INTO ' . self::ASSIGNMENT_TABLE . ' (ticket_ctime, ticket_crand, account_crand, assigned_by_crand, assigned_at, email_opt_in, unsubscribe_token)
+            'INSERT INTO ' . self::ASSIGNMENT_TABLE . ' (ticket_ctime, ticket_crand, created_by_crand, assigned_by_crand, assigned_at, email_opt_in, unsubscribe_token)
              VALUES (?, ?, ?, ?, ?, 1, ?)' 
         );
         if ($insert === false) {
@@ -629,7 +596,7 @@ class TicketController
         }
 
         $conn = Database::getConnection();
-        $stmt = $conn->prepare('UPDATE ' . self::ASSIGNMENT_TABLE . ' SET email_opt_in = ? WHERE ticket_ctime = ? AND ticket_crand = ? AND account_crand = ?');
+        $stmt = $conn->prepare('UPDATE ' . self::ASSIGNMENT_TABLE . ' SET email_opt_in = ? WHERE ticket_ctime = ? AND ticket_crand = ? AND created_by_crand = ?');
         if ($stmt === false) {
             return;
         }
@@ -761,7 +728,7 @@ class TicketController
     private static function isAssigned(string $ticketCtime, int $ticketCrand, int $accountCrand): bool
     {
         $conn = Database::getConnection();
-        $stmt = $conn->prepare('SELECT 1 FROM ' . self::ASSIGNMENT_TABLE . ' WHERE ticket_ctime = ? AND ticket_crand = ? AND account_crand = ? LIMIT 1');
+        $stmt = $conn->prepare('SELECT 1 FROM ' . self::ASSIGNMENT_TABLE . ' WHERE ticket_ctime = ? AND ticket_crand = ? AND created_by_crand = ? LIMIT 1');
         if ($stmt === false) {
             return false;
         }
@@ -892,7 +859,7 @@ class TicketController
      * @param array<string,mixed> $post
      * @param array<string,mixed> $files
      */
-    public static function createSupportTicketFromRequest(array $post, array $files): Response
+    public static function createTicketFromRequest(array $post, array $files): Response
     {
         if (!Session::readCurrentAccountInto($account)) {
             return new Response(false, 'You must be logged in to submit a support ticket.', null);
@@ -907,17 +874,17 @@ class TicketController
             ? trim((string) filter_var($account->email, FILTER_SANITIZE_EMAIL))
             : '';
 
-        $validation = self::validateSupportTicketInputs($category, $priority, $subject, $description, $guildContext, $contactEmail);
+        $validation = self::validateTicketInputs($category, $priority, $subject, $description, $guildContext, $contactEmail);
         if (!$validation->success) {
             return $validation;
         }
 
-        $attachments = self::prepareSupportAttachments($files['attachments'] ?? null);
+        $attachments = self::prepareAttachments($files['attachments'] ?? null);
         if (!$attachments->success) {
             return $attachments;
         }
 
-        return self::createSupportTicket(
+        return self::createTicketFromPublicForm(
             $category,
             $priority,
             $subject,
@@ -932,7 +899,7 @@ class TicketController
     /**
      * @param array<int,array<string,mixed>> $attachments
      */
-    public static function createSupportTicket(
+    public static function createTicketFromPublicForm(
         string $category,
         string $priority,
         string $subject,
@@ -950,8 +917,8 @@ class TicketController
         $conn = Database::getConnection();
 
         $stmt = $conn->prepare(
-            'INSERT INTO ' . self::SUPPORT_TICKET_TABLE . ' (ctime, crand, account_crand, category, priority, subject, description, guild_context, contact_email, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "open")'
+            'INSERT INTO ' . self::TICKET_TABLE . ' (ctime, crand, created_by_crand, category, priority, subject, description, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, "open")'
         );
 
         if ($stmt === false) {
@@ -962,7 +929,7 @@ class TicketController
         $safeGuildContext = is_null($guildContext) ? null : mb_substr($guildContext, 0, 255);
 
         $stmt->bind_param(
-            'sisssssss',
+            'sisssss',
             $recordId->ctime,
             $recordId->crand,
             $accountCrand,
@@ -970,8 +937,6 @@ class TicketController
             $priority,
             $safeSubject,
             $description,
-            $safeGuildContext,
-            $contactEmail
         );
 
         if (!$stmt->execute()) {
@@ -982,7 +947,7 @@ class TicketController
         $stmt->close();
 
         if (!empty($attachments)) {
-            $attachmentResp = self::storeSupportAttachments($recordId, $attachments);
+            $attachmentResp = self::storeAttachments($recordId, $attachments);
             if (!$attachmentResp->success) {
                 return $attachmentResp;
             }
@@ -994,7 +959,7 @@ class TicketController
         ]);
     }
 
-    private static function validateSupportTicketInputs(
+    private static function validateTicketInputs(
         string $category,
         string $priority,
         string $subject,
@@ -1186,7 +1151,7 @@ class TicketController
      * @param array<string,mixed>|null $uploadedFiles
      * @return Response<array<int,array<string,mixed>>>
      */
-    private static function prepareSupportAttachments($uploadedFiles): Response
+    private static function prepareAttachments($uploadedFiles): Response
     {
         if (!isset($uploadedFiles) || !is_array($uploadedFiles['name'] ?? null)) {
             return new Response(true, 'No attachments provided.', []);
@@ -1237,17 +1202,25 @@ class TicketController
     /**
      * @param array<int,array<string,mixed>> $attachments
      */
-    private static function storeSupportAttachments(RecordId $ticketId, array $attachments): Response
+    private static function storeAttachments(RecordId $ticketId, array $attachments): Response
     {
-        $uploadDir = rtrim(\Kickback\SCRIPT_ROOT, '/') . '/assets/support-tickets';
+        $uploadDir = rtrim(\Kickback\SCRIPT_ROOT, '/') . '/assets/tickets';
         if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
             return new Response(false, 'Unable to create attachment directory.', null);
         }
 
         $conn = Database::getConnection();
         $stmt = $conn->prepare(
-            'INSERT INTO ' . self::SUPPORT_ATTACHMENT_TABLE . ' (ticket_ctime, ticket_crand, stored_name, original_name, mime_type, size_bytes)
-             VALUES (?, ?, ?, ?, ?, ?)'
+            'INSERT INTO ' . self::ATTACHMENT_TABLE . ' (
+                ctime,
+                crand,
+                ticket_ctime,
+                ticket_crand,
+                stored_name,
+                original_name,
+                mime_type,
+                size_bytes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
         );
 
         if ($stmt === false) {
@@ -1255,6 +1228,9 @@ class TicketController
         }
 
         foreach ($attachments as $attachment) {
+            // attachment's own ID (ctime + crand)
+            $attachmentId = new RecordId();
+
             $storedName = $attachment['stored_name'];
             $targetPath = $uploadDir . '/' . $storedName;
 
@@ -1264,13 +1240,15 @@ class TicketController
             }
 
             $stmt->bind_param(
-                'sisssi',
-                $ticketId->ctime,
-                $ticketId->crand,
-                $storedName,
-                $attachment['original_name'],
-                $attachment['mime_type'],
-                $attachment['size']
+                'sisssssi',
+                $attachmentId->ctime,          // ctime (attachment)
+                $attachmentId->crand,          // crand (attachment)
+                $ticketId->ctime,              // ticket_ctime
+                $ticketId->crand,              // ticket_crand
+                $storedName,                   // stored_name
+                $attachment['original_name'],  // original_name
+                $attachment['mime_type'],      // mime_type
+                $attachment['size']            // size_bytes
             );
 
             if (!$stmt->execute()) {
@@ -1282,4 +1260,5 @@ class TicketController
         $stmt->close();
         return new Response(true, 'Attachments saved.', null);
     }
+
 }

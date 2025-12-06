@@ -5,5 +5,5 @@ use Kickback\Backend\Controllers\TicketController;
 
 OnlyPOST();
 
-return TicketController::createSupportTicketFromRequest($_POST, $_FILES);
+return TicketController::createTicketFromRequest($_POST, $_FILES);
 ?>
