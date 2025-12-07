@@ -72,9 +72,7 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
                                 <div class="col-md-6">
                                     <label for="ticketCategory" class="form-label">Category</label>
                                     <select class="form-select" id="ticketCategory" name="category" required>
-                                        <option value="bug">Bug</option>
-                                        <option value="feature">Feature</option>
-                                        <option value="todo">To-do / Task</option>
+                                        <option value="" selected disabled>Loading categories...</option>
                                     </select>
                                     <div class="form-text" id="ticketCategoryStatus">Choose a category so we can route your ticket.</div>
                                 </div>
@@ -122,7 +120,44 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
                                 </div>
                                 <div class="col-12">
                                     <label for="ticketDescription" class="form-label">Description</label>
+                                    <div class="d-flex align-items-center mb-2 gap-2 flex-wrap">
+                                        <div class="btn-group" role="group" aria-label="Description editor mode">
+                                            <button type="button" class="btn btn-outline-primary active" id="descriptionWriteTab">Write</button>
+                                            <button type="button" class="btn btn-outline-primary" id="descriptionPreviewTab">Preview</button>
+                                        </div>
+                                        <small class="text-muted">Markdown supported</small>
+                                    </div>
+                                    <div class="btn-toolbar flex-wrap mb-2" id="ticketMarkdownToolbar" role="toolbar" aria-label="Markdown toolbar">
+                                        <div class="btn-group btn-group-sm me-2 mb-2" role="group" aria-label="Text formatting">
+                                            <button type="button" class="btn btn-outline-secondary" title="Bold" onclick="window.ticketMarkdownEditor && window.ticketMarkdownEditor.applyWrap('**','**','bold text')"><i class="fa-solid fa-bold"></i></button>
+                                            <button type="button" class="btn btn-outline-secondary" title="Italic" onclick="window.ticketMarkdownEditor && window.ticketMarkdownEditor.applyWrap('*','*','italic text')"><i class="fa-solid fa-italic"></i></button>
+                                            <button type="button" class="btn btn-outline-secondary" title="Strikethrough" onclick="window.ticketMarkdownEditor && window.ticketMarkdownEditor.applyWrap('~~','~~','strikethrough')"><i class="fa-solid fa-strikethrough"></i></button>
+                                            <button type="button" class="btn btn-outline-secondary" title="Inline code" onclick="window.ticketMarkdownEditor && window.ticketMarkdownEditor.applyWrap('`','`','code')"><i class="fa-solid fa-terminal"></i></button>
+                                        </div>
+                                        <div class="btn-group btn-group-sm me-2 mb-2" role="group" aria-label="Headings">
+                                            <button type="button" class="btn btn-outline-secondary" title="Heading 1" onclick="window.ticketMarkdownEditor && window.ticketMarkdownEditor.applyHeading(1)">H1</button>
+                                            <button type="button" class="btn btn-outline-secondary" title="Heading 2" onclick="window.ticketMarkdownEditor && window.ticketMarkdownEditor.applyHeading(2)">H2</button>
+                                            <button type="button" class="btn btn-outline-secondary" title="Heading 3" onclick="window.ticketMarkdownEditor && window.ticketMarkdownEditor.applyHeading(3)">H3</button>
+                                        </div>
+        
+                                        <div class="btn-group btn-group-sm me-2 mb-2" role="group" aria-label="Blocks">
+                                            <button type="button" class="btn btn-outline-secondary" title="Blockquote" onclick="window.ticketMarkdownEditor && window.ticketMarkdownEditor.applyPrefix('> ')"><i class="fa-solid fa-quote-left"></i></button>
+                                            <button type="button" class="btn btn-outline-secondary" title="Code block" onclick="window.ticketMarkdownEditor && window.ticketMarkdownEditor.applyBlock('```\n','\n```','code block')"><i class="fa-solid fa-code"></i></button>
+                                            <button type="button" class="btn btn-outline-secondary" title="Horizontal rule" onclick="window.ticketMarkdownEditor && window.ticketMarkdownEditor.insertHorizontalRule()"><i class="fa-solid fa-grip-lines"></i></button>
+                                        </div>
+                                        <div class="btn-group btn-group-sm me-2 mb-2" role="group" aria-label="Lists">
+                                            <button type="button" class="btn btn-outline-secondary" title="Bulleted list" onclick="window.ticketMarkdownEditor && window.ticketMarkdownEditor.applyList('unordered')"><i class="fa-solid fa-list-ul"></i></button>
+                                            <button type="button" class="btn btn-outline-secondary" title="Numbered list" onclick="window.ticketMarkdownEditor && window.ticketMarkdownEditor.applyList('ordered')"><i class="fa-solid fa-list-ol"></i></button>
+                                            <button type="button" class="btn btn-outline-secondary" title="Task list" onclick="window.ticketMarkdownEditor && window.ticketMarkdownEditor.applyList('task')"><i class="fa-regular fa-square-check"></i></button>
+                                        </div>
+                                        <div class="btn-group btn-group-sm mb-2" role="group" aria-label="Links and media">
+                                            <button type="button" class="btn btn-outline-secondary" title="Link" onclick="window.ticketMarkdownEditor && window.ticketMarkdownEditor.insertLink()"><i class="fa-solid fa-link"></i></button>
+                                            <button type="button" class="btn btn-outline-secondary" title="Image" onclick="window.ticketMarkdownEditor && window.ticketMarkdownEditor.insertImage()"><i class="fa-regular fa-image"></i></button>
+                                            <button type="button" class="btn btn-outline-secondary" title="Table" onclick="window.ticketMarkdownEditor && window.ticketMarkdownEditor.insertTable()"><i class="fa-solid fa-table"></i></button>
+                                        </div>
+                                    </div>
                                     <textarea class="form-control" id="ticketDescription" name="description" rows="6" maxlength="5000" placeholder="Share details about the issue." required></textarea>
+                                    <div id="ticketDescriptionPreview" class="d-none form-control bg-light markdown-preview"></div>
                                 </div>
                                 <div class="col-md-6">
                                     <label for="ticketEmail" class="form-label">Contact Email</label>
@@ -152,6 +187,15 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
     </main>
 
     <?php require("../php-components/base-page-javascript.php"); ?>
+    <?php
+    if (!isset($_vPageContent)) {
+        $_vPageContent = (object) ['data' => []];
+    }
+    if (!isset($_vPageContentEditMode)) {
+        $_vPageContentEditMode = false;
+    }
+    ?>
+    <?php require("../php-components/content-viewer-javascript.php"); ?>
     <script>
         (function() {
             const form = document.getElementById('ticketForm');
@@ -169,11 +213,32 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
             const serverCtimeHidden = document.getElementById('ticketServerCtimeHidden');
             const serverCrandHidden = document.getElementById('ticketServerCrandHidden');
             const priorityHidden = document.getElementById('ticketPriorityHidden');
-            const defaultCategoryOptions = Array.from(categorySelect.options).map(option => ({
-                value: option.value,
-                name: option.textContent
-            }));
+            const descriptionInput = document.getElementById('ticketDescription');
+            const descriptionPreview = document.getElementById('ticketDescriptionPreview');
+            const descriptionWriteTab = document.getElementById('descriptionWriteTab');
+            const descriptionPreviewTab = document.getElementById('descriptionPreviewTab');
+            const ticketSubject = document.getElementById('ticketSubject');
+            const defaultCategoryOptions = [{
+                value: '',
+                name: 'Select a category',
+                disabled: true,
+                selected: true,
+            }];
             const defaultGuildOption = { value: '', name: 'General', context: '' };
+            const urlParams = new URLSearchParams(window.location.search || '');
+            const templateParam = urlParams.get('template') || '';
+            const requestedCategorySlug = urlParams.get('category') || (templateParam === 'request-new-game' ? 'game_request' : '');
+            const requestedSubject = urlParams.get('subject') || (templateParam === 'request-new-game' ? 'New game request' : '');
+            const requestedDescription = urlParams.get('description') || (templateParam === 'request-new-game'
+                ? "## New game request\n\n**Game name:**\n**Platform(s):**\n**Why should we add it?**\n**Links or references:**\n"
+                : '');
+            const ticketMarkdownEditor = window.MarkdownEditor ? window.MarkdownEditor.create({
+                textareaId: 'ticketDescription',
+                previewId: 'ticketDescriptionPreview',
+                writeToggleId: 'descriptionWriteTab',
+                previewToggleId: 'descriptionPreviewTab',
+            }) : null;
+            window.ticketMarkdownEditor = ticketMarkdownEditor;
             const availableServers = <?php
                 $serverOptions = array_map(static function ($server) {
                     return [
@@ -192,19 +257,49 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
                 new bootstrap.Tooltip(tooltipTriggerEl);
             });
 
+            function applyRequestedCategorySelection() {
+                if (!requestedCategorySlug) {
+                    return false;
+                }
+
+                const matchingOption = Array.from(categorySelect.options).find(option => option.value === requestedCategorySlug);
+                if (matchingOption) {
+                    categorySelect.value = requestedCategorySlug;
+                    return true;
+                }
+
+                return false;
+            }
+
             function renderCategoryOptions(options, state = { loading: false, error: '' }) {
                 categorySelect.innerHTML = '';
-                options.forEach(option => {
+                const optionsToRender = options.length > 0 ? options : defaultCategoryOptions;
+
+                optionsToRender.forEach(option => {
                     const opt = document.createElement('option');
                     opt.value = option.value;
                     opt.textContent = option.name;
+                    if (option.disabled) {
+                        opt.disabled = true;
+                    }
+                    if (option.selected) {
+                        opt.selected = true;
+                    }
                     categorySelect.appendChild(opt);
                 });
+
+                const appliedRequested = applyRequestedCategorySelection();
+                if (!appliedRequested && categorySelect.options.length > 0 && !categorySelect.value) {
+                    const firstEnabledIndex = Array.from(categorySelect.options).findIndex(opt => !opt.disabled);
+                    if (firstEnabledIndex >= 0) {
+                        categorySelect.selectedIndex = firstEnabledIndex;
+                    }
+                }
 
                 if (state.loading && categoryStatus) {
                     categoryStatus.textContent = 'Loading categories...';
                 } else if (state.error && categoryStatus) {
-                    categoryStatus.textContent = `${state.error} Using defaults.`;
+                    categoryStatus.textContent = state.error;
                 } else if (categoryStatus) {
                     categoryStatus.textContent = 'Choose a category so we can route your ticket.';
                 }
@@ -231,7 +326,7 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
                     }
                 } catch (error) {
                     console.error('Failed to load categories', error);
-                    renderCategoryOptions(defaultCategoryOptions, { loading: false, error: 'Unable to load categories.' });
+                    renderCategoryOptions([{ value: '', name: 'Unable to load categories.', disabled: true, selected: true }], { loading: false, error: 'Unable to load categories.' });
                 }
             }
 
@@ -354,6 +449,25 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
             loadGuilds();
             renderServersForGame('');
 
+            if (ticketSubject && requestedSubject) {
+                ticketSubject.value = requestedSubject;
+            }
+
+            if (descriptionInput && requestedDescription) {
+                descriptionInput.value = requestedDescription;
+                ticketMarkdownEditor?.updatePreview();
+            }
+
+            if (ticketMarkdownEditor) {
+                ticketMarkdownEditor.setMode('write');
+            }
+
+            if (descriptionInput) {
+                descriptionInput.addEventListener('input', () => {
+                    ticketMarkdownEditor?.handleInput();
+                });
+            }
+
             form.addEventListener('submit', async (event) => {
                 event.preventDefault();
                 statusEl.classList.remove('text-danger', 'text-success');
@@ -373,9 +487,9 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
                 const guildId = formData.get('guildId');
                 if (!guildId || guildId === '') {
                     formData.delete('guildId');
-                } else if (Number(guildId) <= 0) {
+                } else if (Number.isNaN(Number(guildId))) {
                     statusEl.classList.add('text-danger');
-                    statusEl.textContent = 'Guild must be selected by a valid ID.';
+                    statusEl.textContent = 'Guild selection must be valid or left blank.';
                     submitBtn.disabled = false;
                     return;
                 }
@@ -413,6 +527,8 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
                         form.reset();
                         clearServerSelection();
                         renderServersForGame('');
+                        ticketMarkdownEditor?.setMode('write');
+                        ticketMarkdownEditor?.updatePreview();
                     } else {
                         statusEl.classList.add('text-danger');
                         statusEl.textContent = result.message || 'Unable to submit ticket right now.';
@@ -440,6 +556,12 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
 
         .ticket-form textarea {
             resize: vertical;
+        }
+
+        .markdown-preview {
+            min-height: 180px;
+            white-space: pre-wrap;
+            overflow-y: auto;
         }
     </style>
 </body>
