@@ -21,6 +21,7 @@ use Kickback\Backend\Views\vTransaction;
 use Kickback\Common\Primitives\Obj;
 use Kickback\Services\ApiV2\Endpoint;
 use LogicException;
+use stdClass;
 
 class StoreService
 {
@@ -944,9 +945,19 @@ class StoreService
         $vItem->name = $item->name;
         $vItem->description = $item->description;
 
-        $vItem->iconSmall = static::vMediaFromJson_FullURL($item->iconSmall->url);
-        $vItem->iconBig = static::vMediaFromJson_FullURL($item->iconBig->url);
-        $vItem->iconBack = static::vMediaFromJson_FullURL($item->iconBack->url);
+        if($item->iconSmall instanceof stdClass)
+        {
+            $vItem->iconSmall = static::vMediaFromJson_FullURL($item->iconSmall->url);
+            $vItem->iconBig = static::vMediaFromJson_FullURL($item->iconBig->url);
+            $vItem->iconBack = static::vMediaFromJson_FullURL($item->iconBack->url);
+        }
+        else
+        {
+            $vItem->iconSmall = static::vMediaFromJson_FullURL($item->iconSmall["url"]);
+            $vItem->iconBig = static::vMediaFromJson_FullURL($item->iconBig["url"]);
+            $vItem->iconBack = static::vMediaFromJson_FullURL($item->iconBack["url"]);
+        }
+        
         $vItem->fungible = $item->fungible;
 
         return $vItem;
