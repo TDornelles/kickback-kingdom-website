@@ -151,42 +151,69 @@ class StoreController
                 return $resp;
             }
 
-            if($lovelacePriceComponentOfCart > 0)
-            {
-                //HAVE STRIPE CONTROLLER MAKE CALL TO STRIPE TO COMPLETE TRANSACTION AND HIT ENDPOINT TO THEN TRANSACT ITEMS IF SUCCESSFUL
-                //$stripeResp = StripeController::IsTransactionComplete($stripeTransactionId);
-            }
-            else
-            {
-                $transactCartResp = static::transactProductReservations($cart, $reserveProductsResp->data, $reserveLootResp->data); //Transact the successfully made reservations immediately
 
-                if($transactCartResp->success)
+            try
+            {
+                if($lovelacePriceComponentOfCart > 0)
                 {
-                    $resp->success = true;
-                    $resp->message = "Checked Out Cart";
-                    $resp->data = false; //do we still need to wait for stripe events?
+                    //HAVE STRIPE CONTROLLER MAKE CALL TO STRIPE TO COMPLETE TRANSACTION AND HIT ENDPOINT TO THEN TRANSACT ITEMS IF SUCCESSFUL
+                    //$stripeResp = StripeController::IsTransactionComplete($stripeTransactionId);
                 }
                 else
                 {
-                    $removeLootReservations = static::removeLootReservations($reserveLootResp->data);
+                    $transactCartResp = static::transactProductReservations($cart, $reserveProductsResp->data, $reserveLootResp->data); //Transact the successfully made reservations immediately
 
-                    if(!$removeLootReservations->success)
+                    if($transactCartResp->success)
                     {
-                        $cartId = new vRecordId($cart->ctime, $cart->crand);
-                        throw new Exception("Failed to remove loot reservations after transacting reservations failed in checkout. CartId : ".json_encode($cartId));
+                        $resp->success = true;
+                        $resp->message = "Checked Out Cart";
+                        $resp->data = false; //do we still need to wait for stripe events?
                     }
-
-                    $removeProductReservations = static::removeProductReservations($reserveProductsResp->data);
-
-                    if(!$removeProductReservations->success)
+                    else
                     {
-                        $cartId = new vRecordId($cart->ctime, $cart->crand);
-                        throw new Exception("Failed to remove product reservations after transacting reservations failed in checkout. CartId : ".json_encode($cartId));
-                    }
+                        $removeLootReservations = static::removeLootReservations($reserveLootResp->data);
 
-                    $resp->message = "Failed to transact reservations during checkout. Reservations have been removed.";
+                        if(!$removeLootReservations->success)
+                        {
+                            $cartId = new vRecordId($cart->ctime, $cart->crand);
+                            throw new Exception("Failed to remove loot reservations after transacting reservations failed in checkout. CartId : ".json_encode($cartId));
+                        }
+
+                        $removeProductReservations = static::removeProductReservations($reserveProductsResp->data);
+
+                        if(!$removeProductReservations->success)
+                        {
+                            $cartId = new vRecordId($cart->ctime, $cart->crand);
+                            throw new Exception("Failed to remove product reservations after transacting reservations failed in checkout. CartId : ".json_encode($cartId));
+                        }
+
+                        $resp->message = "Failed to transact reservations during checkout. Reservations have been removed.";
+                    }
                 }
             }
+            catch(Exception $e)
+            {
+                $removeLootReservations = static::removeLootReservations($reserveLootResp->data);
+
+                if(!$removeLootReservations->success)
+                {
+                    $cartId = new vRecordId($cart->ctime, $cart->crand);
+                    throw new Exception("Failed to remove loot reservations after transacting reservations failed in checkout. CartId : ".json_encode($cartId));
+                }
+
+                $removeProductReservations = static::removeProductReservations($reserveProductsResp->data);
+
+                if(!$removeProductReservations->success)
+                {
+                    $cartId = new vRecordId($cart->ctime, $cart->crand);
+                    throw new Exception("Failed to remove product reservations after transacting reservations failed in checkout. CartId : ".json_encode($cartId));
+                }
+
+                $resp->message = "Failed to transact reservations during checkout. Reservations have been removed.";
+
+                throw new Exception ("Exception caught while transacting reservations. Reservations have been canceled : $e");
+            }
+            
         }
         catch(Exception $e)
         {
@@ -923,7 +950,7 @@ class StoreController
         {
             $reservation = $reservations[$i];
 
-            if($i !== count($reservations)-1) $whereClause .= " OR ";
+            if($i != 0) $whereClause .= " OR ";
 
             $whereClause .= "(vlr.ctime = ? AND vlr.crand = ?)";
 
