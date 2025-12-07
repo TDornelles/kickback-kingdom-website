@@ -658,8 +658,12 @@ class TicketController
      * @param array<string|int>|string $input
      * @return string[]
      */
-    private static function normalizeTags(array|string $input): array
+    private static function normalizeTags(array|string|null $input): array
     {
+        if ($input === null || $input === '') {
+            return [];
+        }
+        
         if (is_string($input)) {
             $parts = array_map('trim', explode(',', $input));
             return array_values(array_filter($parts, fn ($tag) => $tag !== ''));
@@ -679,8 +683,13 @@ class TicketController
      * @param array<int|string>|string $input
      * @return int[]
      */
-    private static function normalizeIntList(array|string $input): array
+    private static function normalizeIntList(array|string|null $input): array
     {
+        
+        if ($input === null || $input === '') {
+            return [];
+        }
+        
         if (is_string($input)) {
             $input = $input === '' ? [] : explode(',', $input);
         }
