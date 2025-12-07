@@ -9,13 +9,10 @@ use Kickback\Services\Session;
 use Kickback\Backend\Controllers\GameController;
 use Kickback\Backend\Controllers\ServerController;
 
-$prefilledEmail = '';
-if (Session::isLoggedIn()) {
-    $account = Session::getCurrentAccount();
-    if (!is_null($account) && isset($account->email)) {
-        $prefilledEmail = $account->email;
-    }
-}
+$currentAccount = Session::getCurrentAccount();
+$isSteward = $currentAccount?->isSteward ?? false;
+
+$isLoggedIn = Session::isLoggedIn();
 
 $gamesResp = GameController::getGames();
 $games = $gamesResp->success && is_array($gamesResp->data) ? $gamesResp->data : [];
@@ -57,7 +54,7 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
                             Thanks for reaching out! Your ticket is in our queue and we'll be in touch soon.
                         </div>
 
-                        <?php if ($prefilledEmail === ''): ?>
+                        <?php if (!$isLoggedIn): ?>
                             <div class="alert alert-warning" role="alert">
                                 <i class="fa-solid fa-circle-info me-2"></i>
                                 Please sign in to submit a support ticket.
@@ -75,22 +72,32 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
                                     </select>
                                     <div class="form-text" id="ticketCategoryStatus">Choose a category so we can route your ticket.</div>
                                 </div>
-                                <div class="col-md-6">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <label for="ticketPriority" class="form-label mb-0">Priority</label>
-                                        <div class="d-flex align-items-center gap-2">
-                                            <span class="badge text-bg-secondary" id="ticketPriorityValue">2 (Medium)</span>
-                                            <i class="fa-regular fa-circle-question text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="1 = Low, 2 = Medium, 3 = High, 4 = Urgent"></i>
+                                <?php if ($isSteward): ?>
+                                    <div class="col-md-6">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <label for="ticketPriority" class="form-label mb-0">Priority</label>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span class="badge text-bg-secondary" id="ticketPriorityValue">2 (Medium)</span>
+                                                <i class="fa-regular fa-circle-question text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="1 = Low, 2 = Medium, 3 = High, 4 = Urgent"></i>
+                                            </div>
+                                        </div>
+                                        <input type="range" class="form-range" id="ticketPriority" name="priority" min="1" max="4" step="1" value="2" required>
+                                        <div class="d-flex justify-content-between small text-muted px-1">
+                                            <span>Low</span>
+                                            <span>Medium</span>
+                                            <span>High</span>
+                                            <span>Urgent</span>
                                         </div>
                                     </div>
-                                    <input type="range" class="form-range" id="ticketPriority" name="priority" min="1" max="4" step="1" value="2" required>
-                                    <div class="d-flex justify-content-between small text-muted px-1">
-                                        <span>Low</span>
-                                        <span>Medium</span>
-                                        <span>High</span>
-                                        <span>Urgent</span>
+                                <?php else: ?>
+                                    <input type="hidden" name="priority" id="ticketPriorityHidden" value="2">
+                                    <div class="col-md-6">
+                                    <label class="form-label">Priority</label>
+                                        <div class="form-control bg-light">
+                                            <span class="text-muted">Default priority: Medium (set by Stewards)</span>
+                                        </div>
                                     </div>
-                                </div>
+                                <?php endif; ?>
                                 <div class="col-md-6">
                                     <label for="ticketSubject" class="form-label">Subject</label>
                                     <input type="text" class="form-control" id="ticketSubject" name="subject" maxlength="255" placeholder="Short summary" required>
@@ -174,11 +181,7 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
                                     </div>
                                     <textarea class="form-control" id="ticketDescription" name="description" rows="6" maxlength="5000" placeholder="Share steps to reproduce, expected behavior, links, or extra context." required></textarea>
                                     <div id="ticketDescriptionPreview" class="d-none form-control bg-light markdown-preview"></div>
-                                </div>
-                                <div class="col-md-6">
-                                    <label for="ticketEmail" class="form-label">Contact Email</label>
-                                    <input type="email" class="form-control" id="ticketEmail" value="<?= htmlspecialchars($prefilledEmail); ?>" disabled readonly>
-                                    <div class="form-text">We'll use your account email for updates on your request.</div>
+                                    <div class="form-text">We'll notify you at your account email.</div>
                                 </div>
                                 <div class="col-md-6">
                                     <label for="ticketAttachments" class="form-label">Attachments</label>
@@ -214,6 +217,7 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
     <?php require("../php-components/content-viewer-javascript.php"); ?>
     <script>
         (function() {
+            const isSteward = <?= json_encode($isSteward); ?>;
             const form = document.getElementById('ticketForm');
             const statusEl = document.getElementById('ticketStatus');
             const confirmation = document.getElementById('ticketConfirmation');
@@ -229,6 +233,7 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
             const serverCtimeHidden = document.getElementById('ticketServerCtimeHidden');
             const serverCrandHidden = document.getElementById('ticketServerCrandHidden');
             const priorityInput = document.getElementById('ticketPriority');
+            const priorityHidden = document.getElementById('ticketPriorityHidden');
             const priorityValueBadge = document.getElementById('ticketPriorityValue');
             const descriptionInput = document.getElementById('ticketDescription');
             const descriptionPreview = document.getElementById('ticketDescriptionPreview');
@@ -500,11 +505,14 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
                     ticketMarkdownEditor?.handleInput();
                 });
             }
-            updatePriorityBadge(priorityInput?.value ?? 2);
+            const priorityDefault = priorityInput?.value ?? priorityHidden?.value ?? 2;
+            updatePriorityBadge(priorityDefault);
             if (priorityInput) {
                 priorityInput.addEventListener('input', (event) => {
                     updatePriorityBadge(event.target.value);
                 });
+            } else if (priorityHidden) {
+                priorityHidden.value = priorityDefault;
             }
 
             form.addEventListener('submit', async (event) => {
@@ -515,6 +523,10 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
                 submitBtn.disabled = true;
 
                 const formData = new FormData(form);
+
+                if (!isSteward) {
+                    formData.set('priority', '2');
+                }
 
                 const priorityValue = Math.min(4, Math.max(1, parseInt(formData.get('priority'), 10) || 2));
                 formData.set('priority', String(priorityValue));
