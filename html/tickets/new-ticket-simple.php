@@ -87,8 +87,8 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
                                     <select class="form-select" id="ticketGame" name="gameId">
                                         <option value="">Select a game (optional)</option>
                                         <?php foreach ($games as $game): ?>
-                                            <option value="<?= htmlspecialchars($game->Id); ?>">
-                                                <?= htmlspecialchars($game->Name); ?>
+                                            <option value="<?= htmlspecialchars($game->crand); ?>">
+                                                <?= htmlspecialchars($game->name); ?>
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
