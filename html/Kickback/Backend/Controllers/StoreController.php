@@ -1796,9 +1796,10 @@ class StoreController
             {
                 $matchingCartProductAvailability = null;
 
+                $amountToBeBought = 0;
+
                 foreach($cart->cartProducts as $cartProduct)
                 {
-                    $amountToBeBought = 0;
 
                     if($cartProduct->product->ctime === $product["ctime"] &&
                         $cartProduct->product->crand === $product["crand"]
@@ -1825,7 +1826,7 @@ class StoreController
             else
             {
                 $resp->success = true;
-                $resp->message = "One or more products are currently out of availability";
+                $resp->message = "One or more products are currently out of availability. ".json_encode($nonAvailableProducts);
                 $resp->data = false;
             }
         }
