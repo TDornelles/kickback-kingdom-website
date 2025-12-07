@@ -20,7 +20,7 @@ class Transaction extends RecordId
      * Access $transactionComponents through functions in order to allow type-checking when adding components.
      * Only TransactionComponents should be in the array
      */
-    private ?array $transactionComponents;
+    private array $transactionComponents = [];
 
     
     public function getComponents() : array
@@ -30,8 +30,6 @@ class Transaction extends RecordId
 
     public function addComponent(TransactionComponent $component) : void
     {
-        if(is_null($this->transactionComponents)) $this->transactionComponents = [];
-
         array_push($this->transactionComponents, $component);
     }
 }
