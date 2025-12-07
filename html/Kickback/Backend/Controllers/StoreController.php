@@ -328,9 +328,16 @@ class StoreController
 
             $priceComponentLootsResp = static::materializePriceComponentReservations($priceComponentReservations);
             $priceComponentLoots = $priceComponentLootsResp->data;
+        }
+        catch(Exception $e)
+        {
+            throw new Exception("Exception caught while materializing price components and product reservations : $e");
+        }
 
-            $transaction = static::createTransactionForCart($cart, $productLoots, $priceComponentLoots);
- 
+        $transaction = static::createTransactionForCart($cart, $productLoots, $priceComponentLoots);
+
+        try
+        {
             $conn->begin_transaction();
 
             //Product loot
