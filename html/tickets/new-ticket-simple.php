@@ -45,16 +45,16 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
                 <div class="card shadow-sm mb-3">
                     <div class="card-body p-4">
                         <div class="d-flex align-items-center mb-3">
-                            <div class="me-3 text-primary"><i class="fa-solid fa-life-ring fa-2x"></i></div>
+                            <div class="me-3 text-primary"><i class="fa-solid fa-ticket fa-2x"></i></div>
                             <div>
-                                <h2 class="h4 mb-1">Submit a Ticket</h2>
-                                <p class="mb-0 text-muted">Tell us what you need help with and we'll follow up by email.</p>
+                                <h2 class="h4 mb-1">Quick Ticket</h2>
+                                <p class="mb-0 text-muted">Submit a simple request with the essentials.</p>
                             </div>
                         </div>
 
                         <div class="alert alert-success d-none" id="ticketConfirmation" role="alert">
                             <i class="fa-solid fa-circle-check me-2"></i>
-                            Thanks for reaching out! Your ticket is in our queue and we'll be in touch soon.
+                            Thanks! Your ticket has been submitted.
                         </div>
 
                         <?php if ($prefilledEmail === ''): ?>
@@ -65,6 +65,7 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
                         <?php endif; ?>
 
                         <form id="ticketForm" class="ticket-form" enctype="multipart/form-data">
+                            <input type="hidden" name="priority" id="ticketPriorityHidden" value="2">
                             <input type="hidden" name="serverCtime" id="ticketServerCtimeHidden" value="">
                             <input type="hidden" name="serverCrand" id="ticketServerCrandHidden" value="">
                             <div class="row g-3">
@@ -78,24 +79,26 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
                                     <div class="form-text" id="ticketCategoryStatus">Choose a category so we can route your ticket.</div>
                                 </div>
                                 <div class="col-md-6">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <label for="ticketPriority" class="form-label mb-0">Priority</label>
-                                        <div class="d-flex align-items-center gap-2">
-                                            <span class="badge text-bg-secondary" id="ticketPriorityValue">2 (Medium)</span>
-                                            <i class="fa-regular fa-circle-question text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="1 = Low, 2 = Medium, 3 = High, 4 = Urgent"></i>
-                                        </div>
-                                    </div>
-                                    <input type="range" class="form-range" id="ticketPriority" name="priority" min="1" max="4" step="1" value="2" required>
-                                    <div class="d-flex justify-content-between small text-muted px-1">
-                                        <span>Low</span>
-                                        <span>Medium</span>
-                                        <span>High</span>
-                                        <span>Urgent</span>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
                                     <label for="ticketSubject" class="form-label">Subject</label>
                                     <input type="text" class="form-control" id="ticketSubject" name="subject" maxlength="255" placeholder="Short summary" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="ticketGame" class="form-label">Game</label>
+                                    <select class="form-select" id="ticketGame" name="gameId">
+                                        <option value="">Select a game (optional)</option>
+                                        <?php foreach ($games as $game): ?>
+                                            <option value="<?= htmlspecialchars($game->Id); ?>">
+                                                <?= htmlspecialchars($game->Name); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="ticketServer" class="form-label">Server</label>
+                                    <select class="form-select" id="ticketServer">
+                                        <option value="">Select a server (optional)</option>
+                                    </select>
+                                    <div class="form-text" id="ticketServerStatus">Pick a server after choosing a game.</div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="d-flex align-items-center justify-content-between">
@@ -109,7 +112,6 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
                                         <option value="3">Major</option>
                                         <option value="4">Critical</option>
                                     </select>
-                                    <div class="form-text">Severity helps us triage impact. If unsure, leave as "Not sure."</div>
                                 </div>
                                 <div class="col-md-6">
                                     <label for="ticketGuild" class="form-label">Guild Context</label>
@@ -118,41 +120,14 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
                                     </select>
                                     <div class="form-text" id="ticketGuildStatus">Select a guild by ID for context (optional).</div>
                                 </div>
-                                <div class="col-md-6">
-                                    <label for="ticketGame" class="form-label">Game</label>
-                                    <select class="form-select" id="ticketGame" name="gameId">
-                                        <option value="">Select a game (optional)</option>
-                                        <?php foreach ($games as $game): ?>
-                                            <option value="<?= htmlspecialchars($game->Id); ?>">
-                                                <?= htmlspecialchars($game->Name); ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                    <div class="form-text">Choose the game for context or leave blank if unsure.</div>
-                                </div>
-                                <div class="col-md-6">
-                                    <label for="ticketServer" class="form-label">Server</label>
-                                    <select class="form-select" id="ticketServer">
-                                        <option value="">Select a server (optional)</option>
-                                    </select>
-                                    <div class="form-text" id="ticketServerStatus">Pick a server after selecting a game.</div>
-                                </div>
                                 <div class="col-12">
                                     <label for="ticketDescription" class="form-label">Description</label>
-                                    <div class="d-flex align-items-center mb-2 gap-2">
-                                        <div class="btn-group" role="group" aria-label="Description editor mode">
-                                            <button type="button" class="btn btn-outline-primary active" id="descriptionWriteTab">Write</button>
-                                            <button type="button" class="btn btn-outline-primary" id="descriptionPreviewTab">Preview</button>
-                                        </div>
-                                        <small class="text-muted">Markdown supported</small>
-                                    </div>
-                                    <textarea class="form-control" id="ticketDescription" name="description" rows="6" maxlength="5000" placeholder="Share steps to reproduce, expected behavior, links, or extra context." required></textarea>
-                                    <div id="ticketDescriptionPreview" class="d-none form-control bg-light markdown-preview"></div>
+                                    <textarea class="form-control" id="ticketDescription" name="description" rows="6" maxlength="5000" placeholder="Share details about the issue." required></textarea>
                                 </div>
                                 <div class="col-md-6">
                                     <label for="ticketEmail" class="form-label">Contact Email</label>
                                     <input type="email" class="form-control" id="ticketEmail" value="<?= htmlspecialchars($prefilledEmail); ?>" disabled readonly>
-                                    <div class="form-text">We'll use your account email for updates on your request.</div>
+                                    <div class="form-text">We'll use your account email for updates.</div>
                                 </div>
                                 <div class="col-md-6">
                                     <label for="ticketAttachments" class="form-label">Attachments</label>
@@ -177,7 +152,6 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
     </main>
 
     <?php require("../php-components/base-page-javascript.php"); ?>
-    <?php require("../php-components/content-viewer-javascript.php"); ?>
     <script>
         (function() {
             const form = document.getElementById('ticketForm');
@@ -194,23 +168,12 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
             const serverStatus = document.getElementById('ticketServerStatus');
             const serverCtimeHidden = document.getElementById('ticketServerCtimeHidden');
             const serverCrandHidden = document.getElementById('ticketServerCrandHidden');
-            const priorityInput = document.getElementById('ticketPriority');
-            const priorityValueBadge = document.getElementById('ticketPriorityValue');
-            const descriptionInput = document.getElementById('ticketDescription');
-            const descriptionPreview = document.getElementById('ticketDescriptionPreview');
-            const descriptionWriteTab = document.getElementById('descriptionWriteTab');
-            const descriptionPreviewTab = document.getElementById('descriptionPreviewTab');
+            const priorityHidden = document.getElementById('ticketPriorityHidden');
             const defaultCategoryOptions = Array.from(categorySelect.options).map(option => ({
                 value: option.value,
                 name: option.textContent
             }));
             const defaultGuildOption = { value: '', name: 'General', context: '' };
-            const priorityLabels = {
-                1: 'Low',
-                2: 'Medium',
-                3: 'High',
-                4: 'Urgent',
-            };
             const availableServers = <?php
                 $serverOptions = array_map(static function ($server) {
                     return [
@@ -228,15 +191,6 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
             tooltipTriggerList.forEach(tooltipTriggerEl => {
                 new bootstrap.Tooltip(tooltipTriggerEl);
             });
-
-            function updatePriorityBadge(value) {
-                if (!priorityValueBadge) {
-                    return;
-                }
-                const numericValue = Math.min(4, Math.max(1, Number(value) || 2));
-                const label = priorityLabels[numericValue] ?? 'Medium';
-                priorityValueBadge.textContent = `${numericValue} (${label})`;
-            }
 
             function renderCategoryOptions(options, state = { loading: false, error: '' }) {
                 categorySelect.innerHTML = '';
@@ -336,9 +290,6 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
                 }
             }
 
-            loadCategories();
-            loadGuilds();
-
             function buildServerLabel(server) {
                 const region = server.region ? ` (${server.region})` : '';
                 return `${server.name}${region}`;
@@ -372,7 +323,7 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
                 if (serverStatus) {
                     serverStatus.textContent = filtered.length === 0
                         ? 'No servers available for this game.'
-                        : 'Pick a server after selecting a game.';
+                        : 'Pick a server after choosing a game.';
                 }
             }
 
@@ -399,58 +350,9 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
                 serverCrandHidden.value = crand || '';
             });
 
+            loadCategories();
+            loadGuilds();
             renderServersForGame('');
-
-            function updateDescriptionPreview() {
-                if (!descriptionPreview || !descriptionInput) {
-                    return;
-                }
-
-                const markdownText = descriptionInput.value;
-                if (typeof renderMarkdownToHtml === 'function') {
-                    descriptionPreview.innerHTML = renderMarkdownToHtml(markdownText);
-                } else {
-                    descriptionPreview.textContent = markdownText;
-                }
-            }
-
-            function setDescriptionMode(mode) {
-                const isPreview = mode === 'preview';
-
-                if (descriptionWriteTab && descriptionPreviewTab) {
-                    descriptionWriteTab.classList.toggle('active', !isPreview);
-                    descriptionPreviewTab.classList.toggle('active', isPreview);
-                }
-
-                if (descriptionInput && descriptionPreview) {
-                    descriptionInput.classList.toggle('d-none', isPreview);
-                    descriptionPreview.classList.toggle('d-none', !isPreview);
-                    if (isPreview) {
-                        updateDescriptionPreview();
-                    }
-                }
-            }
-
-            if (descriptionWriteTab && descriptionPreviewTab) {
-                descriptionWriteTab.addEventListener('click', () => setDescriptionMode('write'));
-                descriptionPreviewTab.addEventListener('click', () => setDescriptionMode('preview'));
-            }
-
-            if (descriptionInput) {
-                descriptionInput.addEventListener('input', () => {
-                    if (!descriptionPreview?.classList.contains('d-none')) {
-                        updateDescriptionPreview();
-                    }
-                });
-            }
-
-            setDescriptionMode('write');
-            updatePriorityBadge(priorityInput?.value ?? 2);
-            if (priorityInput) {
-                priorityInput.addEventListener('input', (event) => {
-                    updatePriorityBadge(event.target.value);
-                });
-            }
 
             form.addEventListener('submit', async (event) => {
                 event.preventDefault();
@@ -460,8 +362,7 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
                 submitBtn.disabled = true;
 
                 const formData = new FormData(form);
-
-                const priorityValue = Math.min(4, Math.max(1, parseInt(formData.get('priority'), 10) || 2));
+                const priorityValue = Math.min(4, Math.max(1, parseInt(priorityHidden.value, 10) || 2));
                 formData.set('priority', String(priorityValue));
 
                 const severityValue = formData.get('severity');
@@ -512,8 +413,6 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
                         form.reset();
                         clearServerSelection();
                         renderServersForGame('');
-                        updatePriorityBadge(priorityInput?.value ?? 2);
-                        setDescriptionMode('write');
                     } else {
                         statusEl.classList.add('text-danger');
                         statusEl.textContent = result.message || 'Unable to submit ticket right now.';
@@ -541,12 +440,6 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
 
         .ticket-form textarea {
             resize: vertical;
-        }
-
-        .markdown-preview {
-            min-height: 180px;
-            white-space: pre-wrap;
-            overflow-y: auto;
         }
     </style>
 </body>
