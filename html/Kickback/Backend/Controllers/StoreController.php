@@ -171,21 +171,7 @@ class StoreController
                     }
                     else
                     {
-                        $removeLootReservations = static::removeLootReservations($reserveLootResp->data);
-
-                        if(!$removeLootReservations->success)
-                        {
-                            $cartId = new vRecordId($cart->ctime, $cart->crand);
-                            throw new Exception("Failed to remove loot reservations after transacting reservations failed in checkout. CartId : ".json_encode($cartId));
-                        }
-
-                        $removeProductReservations = static::removeProductReservations($reserveProductsResp->data);
-
-                        if(!$removeProductReservations->success)
-                        {
-                            $cartId = new vRecordId($cart->ctime, $cart->crand);
-                            throw new Exception("Failed to remove product reservations after transacting reservations failed in checkout. CartId : ".json_encode($cartId));
-                        }
+                        static::undoReservations($cart, $reserveLootResp, $reserveProductsResp);
 
                         $resp->message = "Failed to transact reservations during checkout. Reservations have been removed.";
                     }
@@ -193,21 +179,7 @@ class StoreController
             }
             catch(Exception $e)
             {
-                $removeLootReservations = static::removeLootReservations($reserveLootResp->data);
-
-                if(!$removeLootReservations->success)
-                {
-                    $cartId = new vRecordId($cart->ctime, $cart->crand);
-                    throw new Exception("Failed to remove loot reservations after transacting reservations failed in checkout. CartId : ".json_encode($cartId));
-                }
-
-                $removeProductReservations = static::removeProductReservations($reserveProductsResp->data);
-
-                if(!$removeProductReservations->success)
-                {
-                    $cartId = new vRecordId($cart->ctime, $cart->crand);
-                    throw new Exception("Failed to remove product reservations after transacting reservations failed in checkout. CartId : ".json_encode($cartId));
-                }
+                static::undoReservations($cart, $reserveLootResp, $reserveProductsResp);
 
                 $resp->message = "Failed to transact reservations during checkout. Reservations have been removed.";
 
@@ -221,6 +193,25 @@ class StoreController
         }
 
         return $resp;
+    }
+
+    private static function undoReservations(vCart $cart, Response $reserveLootResp, Response $reserveProductsResp) : void
+    {
+        $removeLootReservations = static::removeLootReservations($reserveLootResp->data);
+
+        if(!$removeLootReservations->success)
+        {
+            $cartId = new vRecordId($cart->ctime, $cart->crand);
+            throw new Exception("Failed to remove loot reservations after transacting reservations failed in checkout. CartId : ".json_encode($cartId));
+        }
+
+        $removeProductReservations = static::removeProductReservations($reserveProductsResp->data);
+
+        if(!$removeProductReservations->success)
+        {
+            $cartId = new vRecordId($cart->ctime, $cart->crand);
+            throw new Exception("Failed to remove product reservations after transacting reservations failed in checkout. CartId : ".json_encode($cartId));
+        }
     }
 
     private static function removeLootReservations(array $reservations) : Response
