@@ -1383,8 +1383,14 @@ class StoreController
 
         try
         {   
+            // Get the loot which matches needed items for price
+            $lootsForprice = static::getLootForPriceForCart($cart); 
 
-            $valueClause = static::returnValueClauseForReserveLootForprice($cart->totals);
+            // Consolidate loot to only the amount needed for the totals
+            $consolidatedLootForCartTotals = static::consolidateLootForCartTotals($cart->totals, $lootsForprice); 
+
+            $valueClause = "";
+            $params = static::returnParamsForReserveLootForprice($cart->totals, $consolidatedLootForCartTotals, $valueClause); 
             $sql = "INSERT INTO loot_reservation (ctime,
                 crand,
                 ref_loot_ctime,
@@ -1394,14 +1400,6 @@ class StoreController
                 close_time) 
                 VALUES $valueClause
             ";
-
-            // Get the loot which matches needed items for price
-            $lootsForprice = static::getLootForPriceForCart($cart); 
-
-            // Consolidate loot to only the amount needed for the totals
-            $consolidatedLootForCartTotals = static::consolidateLootForCartTotals($cart->totals, $lootsForprice); 
-
-            $params = static::returnParamsForReserveLootForprice($cart->totals, $consolidatedLootForCartTotals); 
 
             $result = Database::executeSqlQuery($sql, $params);
 
@@ -1455,8 +1453,10 @@ class StoreController
         return $reservations;
     }
 
-    private static function returnParamsForReserveLootForprice(array $cartTotals, array $cartOwnerCartLoot) : array
+    private static function returnParamsForReserveLootForprice(array $cartTotals, array $cartOwnerCartLoot, string &$valueClause) : array
     {
+        $valueClause = "";
+
         $params = [];
 
         for($i = 0; $i < count($cartTotals); $i++)
@@ -1490,6 +1490,9 @@ class StoreController
                 $expiryTime->modify("+" . static::$productReservationTimeInSeconds . " seconds");
                 $formattedExpiryTime = $expiryTime->format("Y-m-d H:i:s.u");
 
+                if($i != 0) $valueClause .= ", ";
+                $valueClause .= "(?,?,?,?,?,?,?)";
+
                 array_push($params,
                     $reservation->ctime,
                     $reservation->crand,
@@ -1511,7 +1514,7 @@ class StoreController
         return $params;
     }
 
-    private static function returnValueClauseForReserveLootForprice(array $cartprice) : string
+    private static function returnValueClauseForReserveLootForPrice(array $cartprice) : string
     {
         if(count($cartprice) === 0) throw new InvalidArgumentException("\$cartprice array must contain at least one element");
 
@@ -1530,14 +1533,14 @@ class StoreController
     private static function unittest_returnValueClauseForReserveLootForprice() : void
     {
         $cartProducts = [0];
-        assert("?,?,?,?,?,?,?" === static::returnValueClauseForReserveLootForprice($cartProducts), 
-        new Exception("UNIT TEST FAILED : Expected '?,?,?,?,?,?,?' | Actual : '".static::returnValueClauseForReserveLootForprice($cartProducts))."'");
+        assert("?,?,?,?,?,?,?" === static::returnValueClauseForReserveLootForPrice($cartProducts), 
+        new Exception("UNIT TEST FAILED : Expected '?,?,?,?,?,?,?' | Actual : '".static::returnValueClauseForReserveLootForPrice($cartProducts))."'");
         $cartProducts = [0,0];
-        assert("?,?,?,?,?,?,?,?,?,?,?,?,?,?" === static::returnValueClauseForReserveLootForprice($cartProducts), 
-        new Exception("UNIT TEST FAILED : Expected '?,?,?,?,?,?,?,?,?,?,?,?,?,?' | Actual : '".static::returnValueClauseForReserveLootForprice($cartProducts))."'");
+        assert("?,?,?,?,?,?,?,?,?,?,?,?,?,?" === static::returnValueClauseForReserveLootForPrice($cartProducts), 
+        new Exception("UNIT TEST FAILED : Expected '?,?,?,?,?,?,?,?,?,?,?,?,?,?' | Actual : '".static::returnValueClauseForReserveLootForPrice($cartProducts))."'");
         $cartProducts = [0,0,0];
-        assert("?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?" === static::returnValueClauseForReserveLootForprice($cartProducts), 
-        new Exception("UNIT TEST FAILED : Expected '?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?' | Actual : '".static::returnValueClauseForReserveLootForprice($cartProducts))."'");
+        assert("?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?" === static::returnValueClauseForReserveLootForPrice($cartProducts), 
+        new Exception("UNIT TEST FAILED : Expected '?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?' | Actual : '".static::returnValueClauseForReserveLootForPrice($cartProducts))."'");
     }
 
 
