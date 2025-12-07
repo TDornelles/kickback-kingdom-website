@@ -944,9 +944,9 @@ class StoreService
         $vItem->name = $item->name;
         $vItem->description = $item->description;
 
-        $vItem->iconSmall = static::vMediaFromJson_FullURL($item->iconSmall["url"]);
-        $vItem->iconBig = static::vMediaFromJson_FullURL($item->iconBig["url"]);
-        $vItem->iconBack = static::vMediaFromJson_FullURL($item->iconBack["url"]);
+        $vItem->iconSmall = static::vMediaFromJson_FullURL($item->iconSmall->url);
+        $vItem->iconBig = static::vMediaFromJson_FullURL($item->iconBig->url);
+        $vItem->iconBack = static::vMediaFromJson_FullURL($item->iconBack->url);
         $vItem->fungible = $item->fungible;
 
         return $vItem;
