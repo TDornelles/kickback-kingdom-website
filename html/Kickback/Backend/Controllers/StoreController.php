@@ -967,14 +967,14 @@ class StoreController
             $expiryTime->modify("+" . static::$productReservationTimeInSeconds . " seconds");
             $lootReservation->expiryTime = $expiryTime;
 
-            $valueClause .= "(SELECT ? as 'ctime', ? as 'crand', '0000-00-00 00:00:00' as 'ref_loot_ctime', 
+            $valueClause .= "SELECT ? as 'ctime', ? as 'crand', '0000-00-00 00:00:00' as 'ref_loot_ctime', 
             (SELECT l.Id FROM loot l 
             JOIN product_loot_link pll ON pll.ref_loot_crand = l.Id 
             LEFT JOIN v_loot_reservation_total rlt ON rlt.loot_crand = l.Id 
             WHERE (COALESCE(rlt.quantity_available, l.quantity) >= ?  OR rlt.quantity_available IS NULL) AND pll.ref_product_ctime = ? AND pll.ref_product_crand = ? LIMIT 1) as 'ref_loot_crand',
             ? as 'quantity',
             ? as 'expiry_time',
-            null as 'close_time')";
+            null as 'close_time'";
 
             $formattedExpiryTime = $expiryTime->format("Y-m-d H:i:s.u");
             array_push($params,
