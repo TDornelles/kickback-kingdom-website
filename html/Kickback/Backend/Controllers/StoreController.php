@@ -882,7 +882,7 @@ class StoreController
         }
         catch(Exception $e)
         {
-            throw new Exception("exception caught while materializing product reseravations : $e");
+            throw new Exception("exception caught while materializing product reseravations | sql : $sql | params : ".json_encode($params)." : $e");
         }
 
         return $resp;
