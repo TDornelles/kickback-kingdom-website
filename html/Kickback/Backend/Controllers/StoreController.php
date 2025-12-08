@@ -40,6 +40,7 @@ use Kickback\Backend\Views\vCartProductLink;
 use Kickback\Backend\Views\vCartProductPriceComponentLink;
 use Kickback\Backend\Views\vCoupon;
 use Kickback\Backend\Views\vCouponAccountUse;
+use Kickback\Backend\Views\vDateTime;
 use Kickback\Backend\Views\vItem;
 use Kickback\Backend\Views\vLoot;
 use Kickback\Backend\Views\vLootReservation;
@@ -151,42 +152,41 @@ class StoreController
                 return $resp;
             }
 
-            if($lovelacePriceComponentOfCart > 0)
-            {
-                //HAVE STRIPE CONTROLLER MAKE CALL TO STRIPE TO COMPLETE TRANSACTION AND HIT ENDPOINT TO THEN TRANSACT ITEMS IF SUCCESSFUL
-                //$stripeResp = StripeController::IsTransactionComplete($stripeTransactionId);
-            }
-            else
-            {
-                $transactCartResp = static::transactProductReservations($cart, $reserveProductsResp->data, $reserveLootResp->data); //Transact the successfully made reservations immediately
 
-                if($transactCartResp->success)
+            try
+            {
+                if($lovelacePriceComponentOfCart > 0)
                 {
-                    $resp->success = true;
-                    $resp->message = "Checked Out Cart";
-                    $resp->data = false; //do we still need to wait for stripe events?
+                    //HAVE STRIPE CONTROLLER MAKE CALL TO STRIPE TO COMPLETE TRANSACTION AND HIT ENDPOINT TO THEN TRANSACT ITEMS IF SUCCESSFUL
+                    //$stripeResp = StripeController::IsTransactionComplete($stripeTransactionId);
                 }
                 else
                 {
-                    $removeLootReservations = static::removeLootReservations($reserveLootResp->data);
+                    $transactCartResp = static::transactProductReservations($cart, $reserveProductsResp->data, $reserveLootResp->data); //Transact the successfully made reservations immediately
 
-                    if(!$removeLootReservations->success)
+                    if($transactCartResp->success)
                     {
-                        $cartId = new vRecordId($cart->ctime, $cart->crand);
-                        throw new Exception("Failed to remove loot reservations after transacting reservations failed in checkout. CartId : ".json_encode($cartId));
+                        $resp->success = true;
+                        $resp->message = "Checked Out Cart";
+                        $resp->data = false; //do we still need to wait for stripe events?
                     }
-
-                    $removeProductReservations = static::removeProductReservations($reserveProductsResp->data);
-
-                    if(!$removeProductReservations->success)
+                    else
                     {
-                        $cartId = new vRecordId($cart->ctime, $cart->crand);
-                        throw new Exception("Failed to remove product reservations after transacting reservations failed in checkout. CartId : ".json_encode($cartId));
-                    }
+                        static::undoReservations($cart, $reserveProductsResp->data, $reserveLootResp->data);
 
-                    $resp->message = "Failed to transact reservations during checkout. Reservations have been removed.";
+                        $resp->message = "Failed to transact reservations during checkout. Reservations have been removed.";
+                    }
                 }
             }
+            catch(Exception $e)
+            {
+                static::undoReservations($cart, $reserveProductsResp->data, $reserveLootResp->data);
+
+                $resp->message = "Failed to transact reservations during checkout. Reservations have been removed.";
+
+                throw new Exception ("Exception caught while transacting reservations. Reservations have been canceled : $e");
+            }
+            
         }
         catch(Exception $e)
         {
@@ -194,6 +194,36 @@ class StoreController
         }
 
         return $resp;
+    }
+
+    private static function undoReservations(vCart $cart, array $productReservations, array $lootReservations, ?array $productLootReservations = null) : void
+    {
+        $removeLootReservations = static::removeLootReservations($lootReservations);
+
+        if(!$removeLootReservations->success)
+        {
+            $cartId = new vRecordId($cart->ctime, $cart->crand);
+            throw new Exception("Failed to remove loot reservations after transacting reservations failed in checkout. CartId : ".json_encode($cartId));
+        }
+
+        $removeProductReservations = static::removeProductReservations($productReservations);
+
+        if(!$removeProductReservations->success)
+        {
+            $cartId = new vRecordId($cart->ctime, $cart->crand);
+            throw new Exception("Failed to remove product reservations after transacting reservations failed in checkout. CartId : ".json_encode($cartId));
+        }
+
+        if(!is_null($productLootReservations) && count($productLootReservations) != 0)
+        {
+            $removeLootReservations = static::removeLootReservations($productLootReservations);
+
+            if(!$removeLootReservations->success)
+            {
+                $cartId = new vRecordId($cart->ctime, $cart->crand);
+                throw new Exception("Failed to remove product loot reservations after transacting reservations failed in checkout. CartId : ".json_encode($cartId));
+            }
+        }
     }
 
     private static function removeLootReservations(array $reservations) : Response
@@ -319,18 +349,36 @@ class StoreController
 
         $conn = Database::getConnection();
 
+        $productLootReservations = [];
+
         try
         {
             //Get the actual loot records that will be transacted and reserve them
-            $productLootReservations = [];
+            
             $productLootsResp = static::materializeProductReservations($productReservations, $productLootReservations);
             $productLoots = $productLootsResp->data;
 
             $priceComponentLootsResp = static::materializePriceComponentReservations($priceComponentReservations);
             $priceComponentLoots = $priceComponentLootsResp->data;
+        }
+        catch(Exception $e)
+        {
+            static::undoReservations($cart, $productReservations, $priceComponentReservations, $productLootReservations);
+            throw new Exception("Exception caught while materializing price components and product reservations : $e");
+        }
 
+        try
+        {
             $transaction = static::createTransactionForCart($cart, $productLoots, $priceComponentLoots);
- 
+        }
+        catch(Exception $e)
+        {
+            static::undoReservations($cart, $productReservations, $priceComponentReservations, $productLootReservations);
+            throw new Exception("Exception caught while creating transaction for cart during checkout. Reservations have been canceled : $e");
+        }
+        
+        try
+        {
             $conn->begin_transaction();
 
             //Product loot
@@ -367,6 +415,7 @@ class StoreController
         catch(Exception $e)
         {
             $conn->rollback();
+            static::undoReservations($cart, $productReservations, $priceComponentReservations, $productLootReservations);
             TransactionController::markTransactionAsVoid($transaction);
             
             throw new Exception("Exception caught while attempting to transact product reservations : $e");
@@ -708,6 +757,7 @@ class StoreController
         $selectTable = static::createSelectTableForMarkCartProductsAsCheckedOut($cart->cartProducts, $params);
         $sql = "UPDATE cart_product_link cpl JOIN ($selectTable) cp ON cp.ctime = cpl.ctime AND cp.crand = cpl.crand SET checked_out = 1;";
 
+
         $result = database::executeSqlQuery($sql, $params);
 
         if(!$result) throw new Exception("result returned false while attempting to mark cart products as checked out");
@@ -721,14 +771,14 @@ class StoreController
         {
             $cartProduct = $cartProducts[$i];
 
-            if($i === 0)
+            if($i == 0)
             {
-                $selectTable = "(SELECT ? as ctime, ? as crand)";
+                $selectTable .= "(SELECT ? as ctime, ? as crand)";
                 array_push($params, $cartProduct->ctime, $cartProduct->crand);
                 continue;
             }
 
-            $selectTable = "UNION ALL (SELECT ?, ?)";
+            $selectTable .= "UNION ALL (SELECT ?, ?)";
             array_push($params, $cartProduct->ctime, $cartProduct->crand);
         }
 
@@ -857,11 +907,45 @@ class StoreController
         }
         catch(Exception $e)
         {
-            throw new Exception("exception caught while materializing product reseravations : $e");
+            throw new Exception(static::interpolateSql($sql, $params)." | $e");
+
+            throw new Exception("exception caught while materializing product reseravations | sql : $sql | params : ".json_encode($params)." : $e");
         }
 
         return $resp;
     }
+
+    /**
+ * Reconstructs the SQL by replacing each ? with the quoted parameter value.
+ * This shows exactly what mysqli_execute_query() is sending to MySQL.
+ */
+private static function interpolateSql(string $sql, array $params): string
+{
+    $i = 0;
+
+    return preg_replace_callback('/\?/', function() use (&$i, $params) {
+        if (!array_key_exists($i, $params)) {
+            return '?'; // shouldn't happen
+        }
+
+        $value = $params[$i++];
+        
+        // NULL
+        if ($value === null) {
+            return "NULL";
+        }
+
+        // Numeric (but mysqli binds as string, so must quote)
+        if (is_int($value) || is_float($value)) {
+            // For debug, mysqli sends numeric as string, so quote it.
+            return "'" . addslashes((string)$value) . "'";
+        }
+
+        // Everything else → treat as string
+        return "'" . addslashes((string)$value) . "'";
+    }, $sql);
+}
+
 
     private static function getLootFromMaterializedLootReservations(array $lootReservations) : array
     {
@@ -916,7 +1000,7 @@ class StoreController
         {
             $reservation = $reservations[$i];
 
-            if($i !== count($reservations)-1) $whereClause .= " OR ";
+            if($i != 0) $whereClause .= " OR ";
 
             $whereClause .= "(vlr.ctime = ? AND vlr.crand = ?)";
 
@@ -942,14 +1026,7 @@ class StoreController
             $expiryTime->modify("+" . static::$productReservationTimeInSeconds . " seconds");
             $lootReservation->expiryTime = $expiryTime;
 
-            $valueClause .= "(SELECT ? as 'ctime', ? as 'crand', '0000-00-00 00:00:00' as 'ref_loot_ctime', 
-            (SELECT l.Id FROM loot l 
-            JOIN product_loot_link pll ON pll.ref_loot_crand = l.Id 
-            LEFT JOIN v_loot_reservation_total rlt ON rlt.loot_crand = l.Id 
-            WHERE (COALESCE(rlt.quantity_available, l.quantity) >= ?  OR rlt.quantity_available IS NULL) AND pll.ref_product_ctime = ? AND pll.ref_product_crand = ? LIMIT 1) as 'ref_loot_crand',
-            ? as 'quantity',
-            ? as 'expiry_time',
-            null as 'close_time')";
+            $valueClause .= "SELECT ? as 'ctime', ? as 'crand', '0000-00-00 00:00:00' as 'ref_loot_ctime', (SELECT l.Id FROM loot l JOIN product_loot_link pll ON pll.ref_loot_crand = l.Id LEFT JOIN v_loot_reservation_total rlt ON rlt.loot_crand = l.Id WHERE (COALESCE(rlt.quantity_available, l.quantity) >= ?  OR rlt.quantity_available IS NULL) AND pll.ref_product_ctime = ? AND pll.ref_product_crand = CAST(? AS UNSIGNED) LIMIT 1) as 'ref_loot_crand', ? as 'quantity', ? as 'expiry_time', null as 'close_time'";
 
             $formattedExpiryTime = $expiryTime->format("Y-m-d H:i:s.u");
             array_push($params,
@@ -1164,6 +1241,8 @@ class StoreController
 
         $sql = "INSERT INTO trade (id, from_account_id, to_account_id, loot_id, from_account_obtain_date, quantity) $valueClause";
 
+        
+
         $result = database::executeSqlQuery($sql, $params);
 
         if(!$result) throw new Exception("result returned false attempting to create trade enteries for product reservations");
@@ -1186,8 +1265,8 @@ class StoreController
                 continue;
             }
 
-            $valueClause .= "(SELECT ?,?,?,?,?,?)";
-            array_push($params, $trade->crand, $trade->fromAccountId->crand, $trade->toAccountId->crand, $loot->crand, $loot->dateObtained->format("Y-m-d H:i:s.u"), $loot->quantity);
+            $valueClause .= "UNION ALL (SELECT ?,?,?,?,?,?)";
+            array_push($params, $trade->crand, $trade->fromAccountId->crand, $trade->toAccountId->crand, $loot->crand, $loot->dateObtained->value->format("Y-m-d H:i:s.u"), $loot->quantity);
         }
 
         return $valueClause;
@@ -1256,7 +1335,7 @@ class StoreController
                 continue;
             }
 
-            $valueClause .= "SELECT ?";
+            $valueClause .= " UNION ALL SELECT ?";
             array_push($params, $loot->crand);
         }
 
@@ -1383,8 +1462,14 @@ class StoreController
 
         try
         {   
+            // Get the loot which matches needed items for price
+            $lootsForprice = static::getLootForPriceForCart($cart); 
 
-            $valueClause = static::returnValueClauseForReserveLootForprice($cart->totals);
+            // Consolidate loot to only the amount needed for the totals
+            $consolidatedLootForCartTotals = static::consolidateLootForCartTotals($cart->totals, $lootsForprice); 
+
+            $valueClause = "";
+            $params = static::returnParamsForReserveLootForprice($cart->totals, $consolidatedLootForCartTotals, $valueClause); 
             $sql = "INSERT INTO loot_reservation (ctime,
                 crand,
                 ref_loot_ctime,
@@ -1392,16 +1477,8 @@ class StoreController
                 quantity,
                 expiry_time,
                 close_time) 
-                VALUES ($valueClause)
+                VALUES $valueClause
             ";
-
-            // Get the loot which matches needed items for price
-            $lootsForprice = static::getLootForpriceForCart($cart); 
-
-            // Consolidate loot to only the amount needed for the totals
-            $consolidatedLootForCartTotals = static::consolidateLootForCartTotals($cart->totals, $lootsForprice); 
-
-            $params = static::returnParamsForReserveLootForprice($cart->totals, $consolidatedLootForCartTotals); 
 
             $result = Database::executeSqlQuery($sql, $params);
 
@@ -1455,8 +1532,10 @@ class StoreController
         return $reservations;
     }
 
-    private static function returnParamsForReserveLootForprice(array $cartTotals, array $cartOwnerCartLoot) : array
+    private static function returnParamsForReserveLootForprice(array $cartTotals, array $cartOwnerCartLoot, string &$valueClause) : array
     {
+        $valueClause = "";
+
         $params = [];
 
         for($i = 0; $i < count($cartTotals); $i++)
@@ -1490,6 +1569,9 @@ class StoreController
                 $expiryTime->modify("+" . static::$productReservationTimeInSeconds . " seconds");
                 $formattedExpiryTime = $expiryTime->format("Y-m-d H:i:s.u");
 
+                if($i != 0) $valueClause .= ", ";
+                $valueClause .= "(?,?,?,?,?,?,?)";
+
                 array_push($params,
                     $reservation->ctime,
                     $reservation->crand,
@@ -1511,7 +1593,7 @@ class StoreController
         return $params;
     }
 
-    private static function returnValueClauseForReserveLootForprice(array $cartprice) : string
+    private static function returnValueClauseForReserveLootForPrice(array $cartprice) : string
     {
         if(count($cartprice) === 0) throw new InvalidArgumentException("\$cartprice array must contain at least one element");
 
@@ -1519,7 +1601,7 @@ class StoreController
 
         for($i = 0; $i < count($cartprice); $i++)
         {
-            $valueClause .= "?,?,?,?,?,?,?";
+            $valueClause .= "(?,?,?,?,?,?,?)";
 
             if($i != count($cartprice)-1) $valueClause .= ",";
         }
@@ -1530,14 +1612,14 @@ class StoreController
     private static function unittest_returnValueClauseForReserveLootForprice() : void
     {
         $cartProducts = [0];
-        assert("?,?,?,?,?,?,?" === static::returnValueClauseForReserveLootForprice($cartProducts), 
-        new Exception("UNIT TEST FAILED : Expected '?,?,?,?,?,?,?' | Actual : '".static::returnValueClauseForReserveLootForprice($cartProducts))."'");
+        assert("?,?,?,?,?,?,?" === static::returnValueClauseForReserveLootForPrice($cartProducts), 
+        new Exception("UNIT TEST FAILED : Expected '?,?,?,?,?,?,?' | Actual : '".static::returnValueClauseForReserveLootForPrice($cartProducts))."'");
         $cartProducts = [0,0];
-        assert("?,?,?,?,?,?,?,?,?,?,?,?,?,?" === static::returnValueClauseForReserveLootForprice($cartProducts), 
-        new Exception("UNIT TEST FAILED : Expected '?,?,?,?,?,?,?,?,?,?,?,?,?,?' | Actual : '".static::returnValueClauseForReserveLootForprice($cartProducts))."'");
+        assert("?,?,?,?,?,?,?,?,?,?,?,?,?,?" === static::returnValueClauseForReserveLootForPrice($cartProducts), 
+        new Exception("UNIT TEST FAILED : Expected '?,?,?,?,?,?,?,?,?,?,?,?,?,?' | Actual : '".static::returnValueClauseForReserveLootForPrice($cartProducts))."'");
         $cartProducts = [0,0,0];
-        assert("?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?" === static::returnValueClauseForReserveLootForprice($cartProducts), 
-        new Exception("UNIT TEST FAILED : Expected '?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?' | Actual : '".static::returnValueClauseForReserveLootForprice($cartProducts))."'");
+        assert("?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?" === static::returnValueClauseForReserveLootForPrice($cartProducts), 
+        new Exception("UNIT TEST FAILED : Expected '?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?' | Actual : '".static::returnValueClauseForReserveLootForPrice($cartProducts))."'");
     }
 
 
@@ -1567,7 +1649,7 @@ class StoreController
 
             if(!$areCartItemsInStockResp->data)
             {
-                $resp->message = "Some items in cart are out-of-stock";
+                $resp->message = "Some items in cart are out-of-stock : $areCartItemsInStockResp->message";
                 $resp->data = $unavailableCartProducts;
                 return $resp;
             }
@@ -1796,9 +1878,10 @@ class StoreController
             {
                 $matchingCartProductAvailability = null;
 
+                $amountToBeBought = 0;
+
                 foreach($cart->cartProducts as $cartProduct)
                 {
-                    $amountToBeBought = 0;
 
                     if($cartProduct->product->ctime === $product["ctime"] &&
                         $cartProduct->product->crand === $product["crand"]
@@ -1825,7 +1908,7 @@ class StoreController
             else
             {
                 $resp->success = true;
-                $resp->message = "One or more products are currently out of availability";
+                $resp->message = "One or more products are currently out of availability. ".json_encode($nonAvailableProducts);
                 $resp->data = false;
             }
         }
@@ -1899,7 +1982,7 @@ class StoreController
 
         try
         {
-            $allLootsForpriceInCart = static::getLootForpriceForCart($cart);
+            $allLootsForpriceInCart = static::getLootForPriceForCart($cart);
             $allLootsForCartItemsFromStoreOwner = static::getStoreOwnerCartItemsLoot($cart);
 
 
@@ -2111,7 +2194,7 @@ class StoreController
      * @param vCart $cart the cart to get the loot from
      * @return array the array populated with vLoot of the appropriate loot
      */
-    private static function getLootForpriceForCart(vCart $cart) : array
+    private static function getLootForPriceForCart(vCart $cart) : array
     {
         $whereArrayClause = static::getWhereArrayClauseForGetLootForpriceForCart($cart->totals);
 
@@ -2483,7 +2566,7 @@ class StoreController
         $whereClause = static::returnWhereClauseForcanAccountAffordItemPriceInCart($cart->cartProducts);
         $params = static::returnParamsForCanAccountAffordItemPriceForCart($cart);
 
-        $sql = "SELECT item_id, SUM(Quantity) AS `amount` FROM loot WHERE account_id = ? AND opened = 1 AND redeemed = 1$whereClause GROUP BY item_id;";
+        $sql = "SELECT l.item_id, SUM(l.Quantity) AS `amount` FROM loot l LEFT JOIN raffle_submissions rs ON l.Id = rs.loot_id WHERE rs.loot_id IS NULL AND l.account_id = ? $whereClause GROUP BY l.item_id;";
 
         $result = Database::executeSqlQuery($sql, $params);
 
@@ -2546,7 +2629,7 @@ class StoreController
             {
                 if(is_null($priceComponent->item)) continue;
 
-                $priceComponentWhereClause .= "item_id = ? OR ";
+                $priceComponentWhereClause .= "l.item_id = ? OR ";
             }
 
             //trim the last "OR" off
@@ -6292,7 +6375,7 @@ class StoreController
 
         $transactionResp = TransactionController::getTransactionById($transaction);
 
-        if(!$transactionResp->success) throw new Exception("Failed to retreive transaction after insertion");
+        if(!$transactionResp->success) throw new Exception("Failed to retreive transaction after insertion : $transactionResp->message");
 
         return $transactionResp->data;
     }

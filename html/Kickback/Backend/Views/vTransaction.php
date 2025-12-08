@@ -17,7 +17,7 @@ class vTransaction extends vRecordId
      * Access $transactionComponets through functions in order to allow type-checking when adding components.
      * Only vTransactionComponents should be in the array
      */
-    private array $transactionComponents;
+    private array $transactionComponents = [];
 
     
     public function getComponents() : array

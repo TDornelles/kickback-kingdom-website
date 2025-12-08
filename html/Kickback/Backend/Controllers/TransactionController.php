@@ -172,7 +172,6 @@ class TransactionController
             t.ref_first_account_crand,
             t.ref_second_account_ctime,
             t.ref_second_account_crand,
-            t.comp.ref_transferred,
             comp.ctime as comp_ctime,
             comp.crand as comp_crand,
             comp.ref_transferred_from_ctime,
@@ -187,7 +186,7 @@ class TransactionController
         WHERE t.ctime = ? OR t.crand = ?
         ORDER BY t.ctime, t.crand;";
 
-        $params = [$transactionId->crand, $transactionId->crand];
+        $params = [$transactionId->ctime, $transactionId->crand];
 
         try
         {
@@ -199,7 +198,7 @@ class TransactionController
 
             if(count($transactions) == 0)
             {
-                $resp->message = "Failed to find transaction with provided Id";
+                $resp->message = "Failed to find transaction with provided Id : sql : $sql | params : ".json_encode($params);
                 return $resp;
             }
 
@@ -245,7 +244,7 @@ class TransactionController
 
         $compnentParams = [];
         $valueClause = static::createValueClauseForInsertTransactionForComponents($transaction, $compnentParams);
-        $insertComponentsSql = "INSERT INTO transaction_compnents (
+        $insertComponentsSql = "INSERT INTO transaction_component (
         ctime,
         crand,
         ref_transaction_ctime,
@@ -334,12 +333,14 @@ class TransactionController
             if(is_null($currentTransaction))
             {
                 $currentTransaction = new vTransaction($row["ctime"], $row["crand"]);
-                $currentTransaction->complete = $row["complete"];
-                $currentTransaction->void = $row["void"];
+                $currentTransaction->complete = (bool)$row["complete"];
+                $currentTransaction->void = (bool)$row["void"];
                 $currentTransaction->description = $row["description"];
-                $currentTransaction->type = $row["type"];
+                $currentTransaction->type = $row["transaction_type"];
                 $currentTransaction->firstAccount = new vAccount($row["ref_first_account_ctime"], $row["ref_first_account_crand"]);
                 $currentTransaction->secondAccount = new vAccount($row["ref_second_account_ctime"], $row["ref_second_account_crand"]);
+
+                array_push($transactions, $currentTransaction);
             }
 
             //Check if the current transaction matches the transaction Id for the current row. If it doesn't, reassign the current transaction
@@ -348,10 +349,10 @@ class TransactionController
                 array_push($transactions, $currentTransaction);
 
                 $currentTransaction = new vTransaction($row["ctime"], $row["crand"]);
-                $currentTransaction->complete = $row["complete"];
-                $currentTransaction->void = $row["void"];
+                $currentTransaction->complete = (bool)$row["complete"];
+                $currentTransaction->void = (bool)$row["void"];
                 $currentTransaction->description = $row["description"];
-                $currentTransaction->type = $row["type"];
+                $currentTransaction->type = $row["transaction_type"];
                 $currentTransaction->firstAccount = new vAccount($row["ref_first_account_ctime"], $row["ref_first_account_crand"]);
                 $currentTransaction->secondAccount = new vAccount($row["ref_second_account_ctime"], $row["ref_second_account_crand"]);
             }
@@ -363,7 +364,7 @@ class TransactionController
             $component->toAccount = new vAccount($row["ref_transferred_to_ctime"],$row["ref_transferred_to_crand"]);
             $component->amount = $row["amount"];
             $component->loot = is_null($row["loot_id"]) ? null : new vLoot('', $row["loot_id"]);
-            $component->currencyCode = is_null($row["currency_code"]) ? null : CurrencyCode::from($row["currency_code"]);
+            $component->currencyCode = empty($row["currency_code"]) ? null : CurrencyCode::from($row["currency_code"]);
 
             $currentTransaction->addComponent($component);
         }

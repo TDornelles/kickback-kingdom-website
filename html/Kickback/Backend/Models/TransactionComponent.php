@@ -16,9 +16,9 @@ class TransactionComponent extends RecordId
     public Transaction $transaction;
     public vAccount $fromAccount;
     public vAccount $toAccount;
-    public int $amount;
-    public ?vLoot $loot;
-    public ?CurrencyCode $currencyCode;
+    public int $amount = 0;
+    public ?vLoot $loot = null;
+    public ?CurrencyCode $currencyCode = null;
 }
 
 ?>
