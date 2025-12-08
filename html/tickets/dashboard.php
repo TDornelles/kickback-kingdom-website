@@ -105,17 +105,6 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                     </div>
                 </div>
 
-                <div class="alert alert-info mb-3">
-                    <div class="d-flex align-items-center">
-                        <i class="fa-solid fa-bell me-3"></i>
-                        <div class="flex-grow-1">
-                            <div class="fw-semibold">Notifications are on</div>
-                            <div class="small text-muted">Email updates will be sent to <strong><?= htmlspecialchars($notificationEmail); ?></strong> and in-app badges will update as you work.</div>
-                        </div>
-                        <button class="btn btn-outline-primary" id="notificationTest">Send test alert</button>
-                    </div>
-                </div>
-
                 <div class="card shadow-sm mb-4">
                     <div class="card-body">
                         <div class="row g-3 align-items-end">
