@@ -40,6 +40,7 @@ use Kickback\Backend\Views\vCartProductLink;
 use Kickback\Backend\Views\vCartProductPriceComponentLink;
 use Kickback\Backend\Views\vCoupon;
 use Kickback\Backend\Views\vCouponAccountUse;
+use Kickback\Backend\Views\vDateTime;
 use Kickback\Backend\Views\vItem;
 use Kickback\Backend\Views\vLoot;
 use Kickback\Backend\Views\vLootReservation;
@@ -414,7 +415,7 @@ class StoreController
         catch(Exception $e)
         {
             $conn->rollback();
-            static::undoReservations($cart, $productReservations, $priceComponentReservations);
+            static::undoReservations($cart, $productReservations, $priceComponentReservations, $productLootReservations);
             TransactionController::markTransactionAsVoid($transaction);
             
             throw new Exception("Exception caught while attempting to transact product reservations : $e");
@@ -756,6 +757,7 @@ class StoreController
         $selectTable = static::createSelectTableForMarkCartProductsAsCheckedOut($cart->cartProducts, $params);
         $sql = "UPDATE cart_product_link cpl JOIN ($selectTable) cp ON cp.ctime = cpl.ctime AND cp.crand = cpl.crand SET checked_out = 1;";
 
+
         $result = database::executeSqlQuery($sql, $params);
 
         if(!$result) throw new Exception("result returned false while attempting to mark cart products as checked out");
@@ -769,14 +771,14 @@ class StoreController
         {
             $cartProduct = $cartProducts[$i];
 
-            if($i === 0)
+            if($i == 0)
             {
-                $selectTable = "(SELECT ? as ctime, ? as crand)";
+                $selectTable .= "(SELECT ? as ctime, ? as crand)";
                 array_push($params, $cartProduct->ctime, $cartProduct->crand);
                 continue;
             }
 
-            $selectTable = "UNION ALL (SELECT ?, ?)";
+            $selectTable .= "UNION ALL (SELECT ?, ?)";
             array_push($params, $cartProduct->ctime, $cartProduct->crand);
         }
 
@@ -905,7 +907,7 @@ class StoreController
         }
         catch(Exception $e)
         {
-            throw new Exception(static::interpolateSql($sql, $params));
+            throw new Exception(static::interpolateSql($sql, $params)." | $e");
 
             throw new Exception("exception caught while materializing product reseravations | sql : $sql | params : ".json_encode($params)." : $e");
         }
@@ -1239,6 +1241,8 @@ private static function interpolateSql(string $sql, array $params): string
 
         $sql = "INSERT INTO trade (id, from_account_id, to_account_id, loot_id, from_account_obtain_date, quantity) $valueClause";
 
+        
+
         $result = database::executeSqlQuery($sql, $params);
 
         if(!$result) throw new Exception("result returned false attempting to create trade enteries for product reservations");
@@ -1261,8 +1265,8 @@ private static function interpolateSql(string $sql, array $params): string
                 continue;
             }
 
-            $valueClause .= "(SELECT ?,?,?,?,?,?)";
-            array_push($params, $trade->crand, $trade->fromAccountId->crand, $trade->toAccountId->crand, $loot->crand, $loot->dateObtained->format("Y-m-d H:i:s.u"), $loot->quantity);
+            $valueClause .= "UNION ALL (SELECT ?,?,?,?,?,?)";
+            array_push($params, $trade->crand, $trade->fromAccountId->crand, $trade->toAccountId->crand, $loot->crand, $loot->dateObtained->value->format("Y-m-d H:i:s.u"), $loot->quantity);
         }
 
         return $valueClause;
@@ -1331,7 +1335,7 @@ private static function interpolateSql(string $sql, array $params): string
                 continue;
             }
 
-            $valueClause .= "SELECT ?";
+            $valueClause .= " UNION ALL SELECT ?";
             array_push($params, $loot->crand);
         }
 
