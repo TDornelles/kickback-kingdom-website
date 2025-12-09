@@ -786,12 +786,6 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
             });
         });
 
-        document.getElementById('notificationTest').addEventListener('click', () => {
-            const ticket = filteredTickets[0] || tickets[0];
-            if (ticket) {
-                queueNotification(ticket, 'Test notification from dashboard');
-            }
-        });
 
         applyPrefill();
         fetchCategories();

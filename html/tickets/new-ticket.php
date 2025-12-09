@@ -13,6 +13,10 @@ $currentAccount = Session::getCurrentAccount();
 $isSteward = $currentAccount?->isSteward ?? false;
 
 $isLoggedIn = Session::isLoggedIn();
+if (!$isLoggedIn)
+{
+    Session::redirect("login.php?redirect=/tickets/new-ticket.php");
+}
 
 $gamesResp = GameController::getGames();
 $games = $gamesResp->success && is_array($gamesResp->data) ? $gamesResp->data : [];
@@ -173,11 +177,13 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
                                     <div id="ticketDescriptionPreview" class="d-none form-control bg-light markdown-preview"></div>
                                     <div class="form-text">We'll notify you at your account email.</div>
                                 </div>
+                                <?php if (false == true) { ?>
                                 <div class="col-md-6">
                                     <label for="ticketAttachments" class="form-label">Attachments</label>
                                     <input class="form-control" type="file" id="ticketAttachments" name="attachments[]" multiple>
                                     <div class="form-text">Up to 5 files, 8MB each. Screenshots encouraged!</div>
                                 </div>
+                                <?php } ?>
                             </div>
 
                             <div class="d-flex align-items-center justify-content-between mt-4">
