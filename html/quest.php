@@ -1050,7 +1050,7 @@ $rankedOptionsEditable = !($thisQuest->reviewStatus->isPublished() && $questHasB
                                                                                 ?>
                                                                             </select>
                                                                         </div>
-                                                                        <div class="form-text" id="basic-addon4">Want to recommend a new game for Kickback Kingdom? Click <a href="<?php echo Version::urlBetaPrefix(); ?>/games.php?request-new-game=1">HERE</a></div>
+                                                                        <div class="form-text" id="basic-addon4">Want to recommend a new game for Kickback Kingdom? Click <a href="<?php echo Version::urlBetaPrefix(); ?>/tickets/new-ticket.php?template=request-new-game&category=game_request">HERE</a></div>
                                                                     </div>
                                                                 </div>
                                                             </div>

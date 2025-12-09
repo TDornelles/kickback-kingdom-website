@@ -174,7 +174,7 @@ use Kickback\Common\Version;
                             <div class="col-md-4 text-center">
                                 <blockquote class="blockquote">
                                     <p>"Lich's creative card game mechanics combined with an active board state scratched an itch for me I didn't even know was there!"</p>
-                                    <footer class="blockquote-footer"><a href="/u/devon%20:)" class="username" data-account-id="" data-username="devon :)">devon :)</a></footer>
+                                    <footer class="blockquote-footer"><a href="/u/devon" class="username" data-account-id="" data-username="devon">devon</a></footer>
                                 </blockquote>
                             </div>
                             <div class="col-md-4 text-center">

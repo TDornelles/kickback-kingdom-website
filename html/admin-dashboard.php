@@ -7,6 +7,7 @@ require("php-components/base-page-pull-active-account-info.php");
 use Kickback\Backend\Controllers\FeedController;
 use Kickback\Backend\Controllers\FeedCardController;
 use Kickback\Backend\Controllers\MerchantGuildController;
+use Kickback\Common\Version;
 
 if (!Kickback\Services\Session::isAdmin())
 {
@@ -203,12 +204,23 @@ $reviewFeed = $reviewFeedResp->data;
             <div class="col-12 col-xl-9">
                 
                 
-                <?php 
-                
-                
+                <?php
+
+
                 $activePageName = "Admin Dashboard";
-                require("php-components/base-page-breadcrumbs.php"); 
+                require("php-components/base-page-breadcrumbs.php");
                 ?>
+
+                <div class="alert alert-primary d-flex align-items-center mb-3 shadow-sm">
+                    <div class="me-3"><i class="fa-solid fa-ticket fa-2x"></i></div>
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold">Ticket dashboard ready</div>
+                        <div class="small text-muted">Jump into the unified ticket workspace to triage support requests, dispatch guild owners, and send notifications.</div>
+                    </div>
+                    <a class="btn btn-primary" href="<?= Version::urlBetaPrefix(); ?>/tickets/dashboard.php">
+                        Open Ticket Dashboard
+                    </a>
+                </div>
                 <div class="row">
                     <div class="col-12">
                         

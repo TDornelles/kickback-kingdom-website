@@ -958,6 +958,101 @@ CREATE TABLE `secret_santa_pairs` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `ticket`
+--
+
+DROP TABLE IF EXISTS `ticket`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `ticket` (
+  `ctime` datetime(6) NOT NULL,
+  `crand` bigint(20) NOT NULL,
+  `created_by_crand` int(11) DEFAULT NULL,
+  `status` varchar(32) NOT NULL DEFAULT 'open',
+  `priority` varchar(32) NOT NULL DEFAULT 'medium',
+  `subject` varchar(255) NOT NULL,
+  `description` text NOT NULL,
+  `tags_json` json DEFAULT NULL,
+  `updated_at` datetime(6) NOT NULL,
+  PRIMARY KEY (`ctime`,`crand`),
+  KEY `idx_ticket_creator` (`created_by_crand`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `ticket_assignment`
+--
+
+DROP TABLE IF EXISTS `ticket_assignment`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `ticket_assignment` (
+  `ticket_ctime` datetime(6) NOT NULL,
+  `ticket_crand` bigint(20) NOT NULL,
+  `account_crand` int(11) NOT NULL,
+  `assigned_by_crand` int(11) DEFAULT NULL,
+  `assigned_at` datetime(6) NOT NULL,
+  `email_opt_in` tinyint(1) NOT NULL DEFAULT 1,
+  `unsubscribe_token` varchar(128) NOT NULL,
+  PRIMARY KEY (`ticket_ctime`,`ticket_crand`,`account_crand`),
+  KEY `idx_ticket_assignment_account` (`account_crand`),
+  CONSTRAINT `fk_ticket_assignment_ticket` FOREIGN KEY (`ticket_ctime`, `ticket_crand`) REFERENCES `ticket` (`ctime`, `crand`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `ticket_comment`
+--
+
+DROP TABLE IF EXISTS `ticket_comment`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `ticket_comment` (
+  `ctime` datetime(6) NOT NULL,
+  `crand` bigint(20) NOT NULL,
+  `ticket_ctime` datetime(6) NOT NULL,
+  `ticket_crand` bigint(20) NOT NULL,
+  `author_crand` int(11) DEFAULT NULL,
+  `body` text NOT NULL,
+  PRIMARY KEY (`ctime`,`crand`),
+  KEY `idx_ticket_comment_ticket` (`ticket_ctime`,`ticket_crand`),
+  CONSTRAINT `fk_ticket_comment_ticket` FOREIGN KEY (`ticket_ctime`, `ticket_crand`) REFERENCES `ticket` (`ctime`, `crand`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `ticket_guild_link`
+--
+
+DROP TABLE IF EXISTS `ticket_guild_link`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `ticket_guild_link` (
+  `ticket_ctime` datetime(6) NOT NULL,
+  `ticket_crand` bigint(20) NOT NULL,
+  `guild_id` int(11) NOT NULL,
+  PRIMARY KEY (`ticket_ctime`,`ticket_crand`,`guild_id`),
+  CONSTRAINT `fk_ticket_guild_link_ticket` FOREIGN KEY (`ticket_ctime`, `ticket_crand`) REFERENCES `ticket` (`ctime`, `crand`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `ticket_tag`
+--
+
+DROP TABLE IF EXISTS `ticket_tag`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `ticket_tag` (
+  `ticket_ctime` datetime(6) NOT NULL,
+  `ticket_crand` bigint(20) NOT NULL,
+  `tag` varchar(64) NOT NULL,
+  PRIMARY KEY (`ticket_ctime`,`ticket_crand`,`tag`),
+  CONSTRAINT `fk_ticket_tag_ticket` FOREIGN KEY (`ticket_ctime`, `ticket_crand`) REFERENCES `ticket` (`ctime`, `crand`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Temporary table structure for view `v_account_badge_count`
 --
 

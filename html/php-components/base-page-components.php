@@ -55,6 +55,12 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
     $redirectUri = substr($redirectUri, strlen($betaPrefix) + 1);
 }
 
+$supportPath = 'tickets/new-ticket.php';
+$supportNavHref = Version::urlBetaPrefix() . '/' . $supportPath;
+if (!Session::isLoggedIn()) {
+    $supportNavHref = Version::urlBetaPrefix() . '/login.php?redirect=' . urlencode($supportPath);
+}
+
 ?>
 
 <!--CONFETTI-->
@@ -1359,11 +1365,17 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
             <li class="nav-item">
                 <a class="nav-link mobile-menu-item" href="<?php echo Version::urlBetaPrefix(); ?>/business-plan.php"><i class="nav-icon fa-regular fa-file-lines"></i> Business Plan <i class="fa-solid fa-chevron-right mobile-menu-item-arrow"></i></a>
             </li>
+            <!--<li class="nav-item">
+                <a class="nav-link mobile-menu-item" href="<?php echo Version::urlBetaPrefix(); ?>/strategy-viewer.php"><i class="nav-icon fa-solid fa-diagram-project"></i> Strategy Viewer <i class="fa-solid fa-chevron-right mobile-menu-item-arrow"></i></a>
+            </li>-->
             <li class="nav-item">
                 <a class="nav-link mobile-menu-item" href="<?php echo Version::urlBetaPrefix(); ?>/analytics.php"><i class="nav-icon fa-solid fa-chart-line"></i> Analytics <i class="fa-solid fa-chevron-right mobile-menu-item-arrow"></i></a>
             </li>
             <li class="nav-item">
                 <a class="nav-link mobile-menu-item" href="<?php echo Version::urlBetaPrefix(); ?>/guild-halls.php"><i class="nav-icon fa-solid fa-signs-post"></i> Guild Halls <i class="fa-solid fa-chevron-right mobile-menu-item-arrow"></i></a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link mobile-menu-item" href="<?php echo $supportNavHref; ?>"><i class="nav-icon fa-solid fa-headset"></i> Submit a Ticket <i class="fa-solid fa-chevron-right mobile-menu-item-arrow"></i></a>
             </li>
             <?php
 
@@ -1528,6 +1540,9 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
                         <li>
                             <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/business-plan.php"><i class="nav-icon fa-regular fa-file-lines"></i> Business Plan</a>
                         </li>
+                        <!--<li>
+                            <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/strategy-viewer.php"><i class="nav-icon fa-solid fa-diagram-project"></i> Strategy Viewer</a>
+                        </li>-->
                         <li>
                             <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/analytics.php"><i class="nav-icon fa-solid fa-chart-line"></i> Analytics</a>
                         </li>
@@ -1634,6 +1649,21 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
                                 <i class="nav-icon fa-solid fa-gear"></i> Account Settings
                             </a>
                         </li>
+                        <li>
+                            <a class="dropdown-item" href="<?= $supportNavHref; ?>">
+                                <i class="nav-icon fa-solid fa-headset"></i> Submit a Ticket
+                            </a>
+                        </li>
+                        <?php if (Kickback\Services\Session::isSteward()) { ?>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/tickets/dashboard.php">
+                                <i class="nav-icon fa-solid fa-list"></i> Support Dashboard
+                            </a>
+                        </li>
+                        <?php } ?>
                         <?php if (Kickback\Services\Session::isQuestGiver()) { ?>
                         <li>
                             <hr class="dropdown-divider">
@@ -1696,6 +1726,11 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
                             {
                         ?>
 
+                        <li>
+                            <a class="dropdown-item" href="<?= $supportNavHref; ?>">
+                                <i class="nav-icon fa-solid fa-headset"></i> Submit a Ticket
+                            </a>
+                        </li>
                         <li>
                             <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/login.php?redirect=<?php echo urlencode($redirectUri); ?>">
                                 <i class="nav-icon fa-solid fa-right-from-bracket"></i> Login
