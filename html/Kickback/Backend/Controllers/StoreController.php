@@ -895,7 +895,7 @@ class StoreController
             $valueClause = static::createValueClauseForMaterializeProductReservations($productReservations, $productLootReservations, $params);
             $sql = "INSERT INTO loot_reservation (ctime, crand, ref_loot_ctime, ref_loot_crand, quantity, expiry_time, close_time) $valueClause";
 
-            throw new Exception(static::interpolateSql($sql, $params));
+            //throw new Exception(static::interpolateSql($sql, $params));
 
             $result = Database::executeSqlQuery($sql, $params);
 
@@ -1010,41 +1010,101 @@ private static function interpolateSql(string $sql, array $params): string
         return $whereClause;
     }
 
-    private static function createValueClauseForMaterializeProductReservations(array $productReservations, array &$lootReservations, array &$params) : string
+    private static function createValueClauseForMaterializeProductReservations(array $productReservations,array &$lootReservations,array &$params) : string
     {
-        $valueClause = "";
+        $reservationTable = static::createReservationTableForCreateValueClauseForMaterializeProductReservations($productReservations, $lootReservations, $params);    
 
-        for($i = 0; $i < count($productReservations); $i++)
-        {
-            $productReservation = $productReservations[$i];
-
-            if($i !== 0) $valueClause .= " UNION ALL ";
-
-            $lootReservation = new lootReservation();
-
-            $expiryTime = new DateTime($lootReservation->ctime);
-            $expiryTime->modify("+" . static::$productReservationTimeInSeconds . " seconds");
-            $lootReservation->expiryTime = $expiryTime;
-
-            $valueClause .= "SELECT ? as 'ctime', ? as 'crand', '0000-00-00 00:00:00' as 'ref_loot_ctime', (SELECT l.Id FROM loot l JOIN product_loot_link pll ON pll.ref_loot_crand = l.Id LEFT JOIN v_loot_reservation_total rlt ON rlt.loot_crand = l.Id WHERE (COALESCE(rlt.quantity_available, l.quantity) >= ?  OR rlt.quantity_available IS NULL) AND pll.ref_product_ctime = ? AND pll.ref_product_crand = CAST(? AS UNSIGNED) LIMIT 1) as 'ref_loot_crand', ? as 'quantity', ? as 'expiry_time', null as 'close_time'";
-
-            $formattedExpiryTime = $expiryTime->format("Y-m-d H:i:s.u");
-            array_push($params,
-                $lootReservation->ctime,
-                $lootReservation->crand,
-                $productReservation->quantity,
-                $productReservation->productId->ctime,
-                $productReservation->productId->crand,
-                $productReservation->quantity,
-                $formattedExpiryTime
-            );
-
-            array_push($lootReservations, $lootReservation);
-        }
+        $valueClause = "
+            SELECT
+                r.ctime,
+                r.crand,
+                '0000-00-00 00:00:00' AS ref_loot_ctime,
+                l.Id AS ref_loot_crand,
+                1 AS quantity,
+                r.expiry_time,
+                NULL AS close_time
+            FROM (
+                SELECT
+                    t.*,
+                    @rn_r := IF(@last_prod_ctime = t.product_ctime 
+                                AND @last_prod_crand = t.product_crand,
+                                @rn_r + 1,
+                                1) AS rn_res,
+                    @last_prod_ctime := t.product_ctime,
+                    @last_prod_crand := t.product_crand
+                FROM (
+                    $reservationTable
+                ) AS t
+                CROSS JOIN (SELECT @rn_r := 0, @last_prod_ctime := NULL, @last_prod_crand := NULL) AS vars_r
+                ORDER BY t.product_ctime, t.product_crand, t.ctime, t.crand
+            ) AS r
+            JOIN (
+                SELECT
+                    x.*,
+                    @rn_l := IF(@last_l_prod_ctime = x.ref_product_ctime 
+                                AND @last_l_prod_crand = x.ref_product_crand,
+                                @rn_l + 1,
+                                1) AS rn_loot,
+                    @last_l_prod_ctime := x.ref_product_ctime,
+                    @last_l_prod_crand := x.ref_product_crand
+                FROM (
+                    SELECT 
+                        l.Id,
+                        pll.ref_product_ctime,
+                        pll.ref_product_crand
+                    FROM loot l
+                    JOIN product_loot_link pll ON pll.ref_loot_crand = l.Id
+                    LEFT JOIN v_loot_reservation_total rlt ON rlt.loot_crand = l.Id
+                    WHERE COALESCE(rlt.quantity_available, l.quantity) >= 1
+                    ORDER BY pll.ref_product_ctime, pll.ref_product_crand, l.Id
+                ) AS x
+                CROSS JOIN (SELECT @rn_l := 0, @last_l_prod_ctime := NULL, @last_l_prod_crand := NULL) AS vars_l
+            ) AS l
+                ON r.product_ctime = l.ref_product_ctime
+            AND r.product_crand = l.ref_product_crand
+            AND r.rn_res = l.rn_loot
+        ";
 
         return $valueClause;
     }
 
+    private static function createReservationTableForCreateValueClauseForMaterializeProductReservations(array $productReservations, array &$lootReservations, array &$params) : string
+    {
+        $reservationRows = [];
+        $params = [];
+
+        foreach ($productReservations as $reservation) 
+        {
+            for ($i = 0; $i < $reservation->quantity; $i++) 
+            {
+                $lootReservation = new lootReservation();
+
+                $expiryTime = new DateTime($lootReservation->ctime);
+                $expiryTime->modify('+' . static::$productReservationTimeInSeconds . ' seconds');
+                $formattedExpiry = $expiryTime->format("Y-m-d H:i:s.u");
+
+                $lootReservation->expiryTime = $expiryTime;
+                $lootReservations[] = $lootReservation;
+
+                $reservationRows[] = "SELECT ? as 'ctime', ? as 'crand', 1 as 'quantity', ? as 'expiry_time', ? as 'product_ctime', ? as 'product_crand'";
+
+                $params[] = $lootReservation->ctime;
+                $params[] = $lootReservation->crand;
+                $params[] = $formattedExpiry;
+                $params[] = $reservation->productId->ctime;
+                $params[] = $reservation->productId->crand;
+            }
+        }
+
+        if (empty($reservationRows)) 
+        {
+            return "SELECT 1 WHERE 0";
+        }
+
+        $reservationTable = implode(" UNION ALL ", $reservationRows);
+
+        return $reservationTable;
+    }
     
     private static function executeQueriesToTransactMaterializedLootsForProducts(vCart $cart, array $loots) : void
     {
@@ -1314,8 +1374,6 @@ private static function interpolateSql(string $sql, array $params): string
         $params = [];
         $valueClause = static::createValueCreateForExecuteQueriesToRemoveProductLootLinkForReservations($productLoots, $params);
         $sql = "UPDATE product_loot_link ppl JOIN ($valueClause) pl ON pl.loot_id = ppl.ref_loot_crand SET removed = 1";
-
-        throw new Exception("sql : $sql | params : ".json_encode($params));
 
         $result = Database::executeSqlQuery($sql, $params);
 
@@ -6365,8 +6423,8 @@ private static function interpolateSql(string $sql, array $params): string
 
             $productTransactionComponent = new TransactionComponent();
             $productTransactionComponent->transaction = $transaction;
-            $productTransactionComponent->fromAccount = $cart->store->owner;
-            $productTransactionComponent->toAccount = $cart->account;
+            $productTransactionComponent->fromAccount = $cart->account;
+            $productTransactionComponent->toAccount = $cart->store->owner;
             $productTransactionComponent->amount = $loot->quantity;
             $productTransactionComponent->loot = $loot;
 
