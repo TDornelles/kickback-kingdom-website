@@ -699,16 +699,6 @@ $activeTabPage = 'active show';
                 require("php-components/base-page-breadcrumbs.php");
 
                 ?>
-                <?php if ($isMyProfile) { ?>
-                <div class="alert alert-info d-flex align-items-center mb-3 shadow-sm">
-                    <div class="me-3"><i class="fa-solid fa-life-ring"></i></div>
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold">Track your support tickets</div>
-                        <div class="small text-muted">Review your conversations, assignment, and status history from the ticket dashboard.</div>
-                    </div>
-                    <a class="btn btn-primary" href="<?= Version::urlBetaPrefix(); ?>/tickets/dashboard.php?my=1&assignee=<?= urlencode($profile->username); ?>">My Tickets</a>
-                </div>
-                <?php } ?>
                 <div class="row">
                     <div class="col-12">
                         <nav>
