@@ -90,23 +90,13 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
                                         </div>
                                     </div>
                                 <?php else: ?>
-                                    <input type="hidden" name="priority" id="ticketPriorityHidden" value="2">
-                                    <div class="col-md-6">
-                                    <label class="form-label">Priority</label>
-                                        <div class="form-control bg-light">
-                                            <span class="text-muted">Default priority: Medium (set by Stewards)</span>
-                                        </div>
-                                    </div>
                                 <?php endif; ?>
                                 <div class="col-md-6">
                                     <label for="ticketSubject" class="form-label">Subject</label>
                                     <input type="text" class="form-control" id="ticketSubject" name="subject" maxlength="255" placeholder="Short summary" required>
                                 </div>
                                 <div class="col-md-6">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <label for="ticketSeverity" class="form-label mb-0">Severity</label>
-                                        <i class="fa-regular fa-circle-question text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="1 = Cosmetic, 2 = Minor, 3 = Major, 4 = Critical"></i>
-                                    </div>
+                                    <label for="ticketSeverity" class="form-label">Severity</label>
                                     <select class="form-select" id="ticketSeverity" name="severity">
                                         <option value="">Not sure</option>
                                         <option value="1">Cosmetic</option>
@@ -117,11 +107,11 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
                                     <div class="form-text">Severity helps us triage impact. If unsure, leave as "Not sure."</div>
                                 </div>
                                 <div class="col-md-6">
-                                    <label for="ticketGuild" class="form-label">Guild Context</label>
+                                    <label for="ticketGuild" class="form-label">Guild</label>
                                     <select class="form-select" id="ticketGuild" name="guildId">
-                                        <option value="">General</option>
+                                        <option value="">Not Sure</option>
                                     </select>
-                                    <div class="form-text" id="ticketGuildStatus">Select a guild by ID for context (optional).</div>
+                                    <div class="form-text" id="ticketGuildStatus">Select a guild for context (optional).</div>
                                 </div>
                                 <div class="col-md-6">
                                     <label for="ticketGame" class="form-label">Game</label>
@@ -246,7 +236,7 @@ $servers = $serversResp->success && is_array($serversResp->data) ? $serversResp-
                 disabled: true,
                 selected: true,
             }];
-            const defaultGuildOption = { value: '', name: 'General', context: '' };
+            const defaultGuildOption = { value: '', name: 'Not Sure', context: '' };
             const priorityLabels = {
                 1: 'Low',
                 2: 'Medium',
