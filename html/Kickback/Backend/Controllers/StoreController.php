@@ -895,6 +895,8 @@ class StoreController
             $valueClause = static::createValueClauseForMaterializeProductReservations($productReservations, $productLootReservations, $params);
             $sql = "INSERT INTO loot_reservation (ctime, crand, ref_loot_ctime, ref_loot_crand, quantity, expiry_time, close_time) $valueClause";
 
+            throw new Exception(static::interpolateSql($sql, $params));
+
             $result = Database::executeSqlQuery($sql, $params);
 
             if(!$result) throw new Exception("result returned false while attempting to insert loot reservations from materialized product reservations");
@@ -907,8 +909,6 @@ class StoreController
         }
         catch(Exception $e)
         {
-            throw new Exception(static::interpolateSql($sql, $params)." | $e");
-
             throw new Exception("exception caught while materializing product reseravations | sql : $sql | params : ".json_encode($params)." : $e");
         }
 
@@ -1315,6 +1315,8 @@ private static function interpolateSql(string $sql, array $params): string
         $valueClause = static::createValueCreateForExecuteQueriesToRemoveProductLootLinkForReservations($productLoots, $params);
         $sql = "UPDATE product_loot_link ppl JOIN ($valueClause) pl ON pl.loot_id = ppl.ref_loot_crand SET removed = 1";
 
+        throw new Exception("sql : $sql | params : ".json_encode($params));
+
         $result = Database::executeSqlQuery($sql, $params);
 
         if(!$result) throw new Exception("result returned false while executing queries to remove product loot link for reserverations");
@@ -1330,12 +1332,12 @@ private static function interpolateSql(string $sql, array $params): string
             $loot = $productLoots[$i];
             if($i === 0)
             {
-                $valueClause .= "SELECT ? as loot_id";
+                $valueClause .= "(SELECT ? as loot_id)";
                 array_push($params, $loot->crand);
                 continue;
             }
 
-            $valueClause .= " UNION ALL SELECT ?";
+            $valueClause .= " UNION ALL (SELECT ?)";
             array_push($params, $loot->crand);
         }
 
