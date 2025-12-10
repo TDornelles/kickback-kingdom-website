@@ -149,7 +149,7 @@ function enumLabel(string $value): string
     <!--MAIN CONTENT-->
     <main class="container pt-3 bg-body" style="margin-bottom: 56px;">
         <div class="row">
-            <div class="col-12 col-xl-9">
+            <div class="col-12">
 
 
                 <?php
@@ -161,13 +161,6 @@ function enumLabel(string $value): string
 
                 ?>
 
-            </div>
-
-            <?php require("php-components/base-page-discord.php"); ?>
-        </div>
-
-        <div class="row">
-            <div class="col-12">
                 <div class="card shadow-sm mb-3">
                     <div class="card-body d-flex flex-column flex-md-row gap-2 align-items-md-center justify-content-between">
                         <div>
