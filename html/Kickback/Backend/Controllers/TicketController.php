@@ -873,10 +873,12 @@ class TicketController
             return [];
         }
 
-        $insert = $conn->prepare(
-            'INSERT INTO ' . self::ASSIGNMENT_TABLE . ' (ticket_ctime, ticket_crand, account_crand, assigned_by_crand, assigned_at, email_opt_in, unsubscribe_token)
-             VALUES (?, ?, ?, ?, ?, 1, ?)' 
+        $insertSql = sprintf(
+            'INSERT INTO %s (ticket_ctime, ticket_crand, account_crand, assigned_by_crand, assigned_at, email_opt_in, unsubscribe_token)'
+            . ' VALUES (?, ?, ?, ?, ?, 1, ?)',
+            self::ASSIGNMENT_TABLE
         );
+        $insert = $conn->prepare($insertSql);
         if ($insert === false) {
             return [];
         }
@@ -885,7 +887,7 @@ class TicketController
         $assignments = [];
         foreach ($assignees as $assignee) {
             $token = bin2hex(random_bytes(16));
-            $insert->bind_param('siisss', $ticketCtime, $ticketCrand, $assignee, $actorCrand, $now, $token);
+            $insert->bind_param('siiiss', $ticketCtime, $ticketCrand, $assignee, $actorCrand, $now, $token);
             $insert->execute();
             $assignments[] = new TicketAssignment($ticketCtime, $ticketCrand, $assignee, $actorCrand, $now, true, $token, null, null);
         }
