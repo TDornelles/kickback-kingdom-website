@@ -815,7 +815,7 @@ class StoreService
         $vCart->store->ctime = $store->ctime;
         $vCart->store->crand = $store->crand;
             $owner = (object)$store->owner;
-            $storeOwner = new vAccount($owner->ctime, $owner->crand);
+            $storeOwner = new vAccount("", $owner->crand);
         $vCart->store->owner = $storeOwner;
 
         $vCart->checkedOut = $cart->checkedOut;
