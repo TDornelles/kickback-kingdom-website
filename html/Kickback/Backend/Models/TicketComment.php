@@ -9,6 +9,7 @@ use Kickback\Backend\Views\vRecordId;
 class TicketComment extends vRecordId
 {
     public ?int $authorCrand;
+    public ?string $authorUsername;
     public string $body;
     public string $ticketCtime;
     public int $ticketCrand;
@@ -19,12 +20,14 @@ class TicketComment extends vRecordId
         string $ticketCtime,
         int $ticketCrand,
         ?int $authorCrand,
-        string $body
+        string $body,
+        ?string $authorUsername = null
     ) {
         parent::__construct($ctime, $crand);
         $this->ticketCtime = $ticketCtime;
         $this->ticketCrand = $ticketCrand;
         $this->authorCrand = $authorCrand;
+        $this->authorUsername = $authorUsername;
         $this->body = $body;
     }
 
@@ -39,7 +42,8 @@ class TicketComment extends vRecordId
             (string) $row['ticket_ctime'],
             (int) $row['ticket_crand'],
             isset($row['author_crand']) ? (int) $row['author_crand'] : null,
-            (string) $row['body']
+            (string) $row['body'],
+            array_key_exists('author_username', $row) ? (string) $row['author_username'] : null
         );
     }
 }

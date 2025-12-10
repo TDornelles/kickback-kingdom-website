@@ -13,6 +13,8 @@ class TicketAssignment
     public string $assignedAt;
     public bool $emailOptIn;
     public string $unsubscribeToken;
+    public ?string $accountUsername;
+    public ?string $assignedByUsername;
 
     public function __construct(
         string $ticketCtime,
@@ -21,7 +23,9 @@ class TicketAssignment
         ?int $assignedByCrand,
         string $assignedAt,
         bool $emailOptIn,
-        string $unsubscribeToken
+        string $unsubscribeToken,
+        ?string $accountUsername = null,
+        ?string $assignedByUsername = null
     ) {
         $this->ticketCtime = $ticketCtime;
         $this->ticketCrand = $ticketCrand;
@@ -30,6 +34,8 @@ class TicketAssignment
         $this->assignedAt = $assignedAt;
         $this->emailOptIn = $emailOptIn;
         $this->unsubscribeToken = $unsubscribeToken;
+        $this->accountUsername = $accountUsername;
+        $this->assignedByUsername = $assignedByUsername;
     }
 
     /**
@@ -44,7 +50,9 @@ class TicketAssignment
             isset($row['assigned_by_crand']) ? (int) $row['assigned_by_crand'] : null,
             (string) $row['assigned_at'],
             (bool) $row['email_opt_in'],
-            (string) $row['unsubscribe_token']
+            (string) $row['unsubscribe_token'],
+            array_key_exists('account_username', $row) ? (string) $row['account_username'] : null,
+            array_key_exists('assigned_by_username', $row) ? (string) $row['assigned_by_username'] : null
         );
     }
 }
