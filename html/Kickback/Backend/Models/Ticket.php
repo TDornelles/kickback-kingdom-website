@@ -21,6 +21,7 @@ class Ticket extends vRecordId
     public ?string $serverCtime;
     public ?int $serverCrand;
     public ?int $createdByCrand;
+    public ?string $createdByUsername;
     public ?int $updatedByCrand;
     public string $updatedAt;
     public ?string $firstResponseAt;
@@ -47,6 +48,7 @@ class Ticket extends vRecordId
         ?string $serverCtime,
         ?int $serverCrand,
         ?int $createdByCrand,
+        ?string $createdByUsername,
         ?int $updatedByCrand,
         string $updatedAt,
         ?string $firstResponseAt,
@@ -68,6 +70,7 @@ class Ticket extends vRecordId
         $this->serverCtime = $serverCtime;
         $this->serverCrand = $serverCrand;
         $this->createdByCrand = $createdByCrand;
+        $this->createdByUsername = $createdByUsername;
         $this->updatedByCrand = $updatedByCrand;
         $this->updatedAt = $updatedAt;
         $this->firstResponseAt = $firstResponseAt;
@@ -105,6 +108,7 @@ class Ticket extends vRecordId
             isset($row['server_ctime']) ? (string) $row['server_ctime'] : null,
             isset($row['server_crand']) ? (int) $row['server_crand'] : null,
             isset($row['created_by_crand']) ? (int) $row['created_by_crand'] : null,
+            array_key_exists('created_by_username', $row) ? (string) $row['created_by_username'] : null,
             isset($row['updated_by_crand']) ? (int) $row['updated_by_crand'] : null,
             (string) $row['updated_at'],
             isset($row['first_response_at']) ? (string) $row['first_response_at'] : null,

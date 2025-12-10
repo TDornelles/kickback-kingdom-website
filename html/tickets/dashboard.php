@@ -709,8 +709,9 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
 
             assigneeOptions.forEach(option => {
                 const opt = document.createElement('option');
-                opt.value = (option.username || '').toLowerCase();
-                opt.textContent = option.username || `Account #${option.id}`;
+                const username = option.username || 'Unknown user';
+                opt.value = username.toLowerCase();
+                opt.textContent = username;
                 select.appendChild(opt);
             });
 
@@ -752,7 +753,7 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                             tickets = result.data.map((ticket) => ({
                                 ...ticket,
                                 id: `${ticket.ctime}-${ticket.crand}`,
-                                requester: ticket.createdByCrand ? `Account #${ticket.createdByCrand}` : 'Unknown',
+                                requester: ticket.createdByUsername || 'Unknown user',
                                 updated: ticket.updatedAt || '',
                                 assignee: ticket.assignee || '',
                                 category: ticket.category || '',

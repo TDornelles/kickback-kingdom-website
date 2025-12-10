@@ -149,6 +149,7 @@ class TicketController
             $serverCtime,
             $serverCrand,
             $createdBy,
+            isset($account->username) ? $account->username : null,
             $updatedBy,
             $now,
             null,
@@ -345,6 +346,7 @@ class TicketController
             $serverCtime,
             $serverCrand,
             $ticket->createdByCrand,
+            property_exists($ticket, 'createdByUsername') ? $ticket->createdByUsername : null,
             $updatedBy,
             $now,
             $firstResponseAt,
@@ -435,7 +437,7 @@ class TicketController
         }
 
         if (!$account->isSteward) {
-            $conditions[] = '(t.created_by_crand = ? OR EXISTS (SELECT 1 FROM ' . self::ASSIGNMENT_TABLE . ' a WHERE a.ticket_ctime = t.ctime AND a.ticket_crand = t.crand AND a.created_by_crand = ?))';
+            $conditions[] = '(t.created_by_crand = ? OR EXISTS (SELECT 1 FROM ' . self::ASSIGNMENT_TABLE . ' a WHERE a.ticket_ctime = t.ctime AND a.ticket_crand = t.crand AND a.account_crand = ?))';
             $params[] = $account->crand;
             $params[] = $account->crand;
             $types .= 'ii';
@@ -443,7 +445,9 @@ class TicketController
 
         $whereClause = empty($conditions) ? '' : ('WHERE ' . implode(' AND ', $conditions));
 
-        $query = 'SELECT t.* FROM ' . self::TICKET_TABLE . ' t ' . $whereClause . ' ORDER BY t.updated_at DESC';
+        $query = 'SELECT t.*, acc.Username AS created_by_username FROM ' . self::TICKET_TABLE . ' t '
+            . 'LEFT JOIN account acc ON acc.Id = t.created_by_crand '
+            . $whereClause . ' ORDER BY t.updated_at DESC';
         $stmt = $conn->prepare($query);
         if ($stmt === false) {
             return new Response(false, 'Unable to prepare ticket list.', null);
@@ -477,10 +481,10 @@ class TicketController
         $conn = Database::getConnection();
 
         $baseQuery =
-            'SELECT DISTINCT ta.created_by_crand AS id, COALESCE(acc.Username, CONCAT("Account #", ta.created_by_crand)) AS username '
+            'SELECT DISTINCT ta.account_crand AS id, acc.Username AS username '
             . 'FROM ' . self::ASSIGNMENT_TABLE . ' ta '
             . 'JOIN ' . self::TICKET_TABLE . ' t ON t.ctime = ta.ticket_ctime AND t.crand = ta.ticket_crand '
-            . 'LEFT JOIN account acc ON acc.Id = ta.created_by_crand';
+            . 'LEFT JOIN account acc ON acc.Id = ta.account_crand';
 
         $conditions = [];
         $params = [];
@@ -489,7 +493,7 @@ class TicketController
         if (!$account->isSteward) {
             $conditions[] =
                 '(t.created_by_crand = ? OR EXISTS (SELECT 1 FROM ' . self::ASSIGNMENT_TABLE . ' ta2 '
-                . 'WHERE ta2.ticket_ctime = t.ctime AND ta2.ticket_crand = t.crand AND ta2.created_by_crand = ?))';
+                . 'WHERE ta2.ticket_ctime = t.ctime AND ta2.ticket_crand = t.crand AND ta2.account_crand = ?))';
             $params[] = $account->crand;
             $params[] = $account->crand;
             $types .= 'ii';
@@ -517,7 +521,7 @@ class TicketController
         while ($row = $result->fetch_assoc()) {
             $assignees[] = [
                 'id' => (int) $row['id'],
-                'username' => (string) $row['username'],
+                'username' => isset($row['username']) && $row['username'] !== '' ? (string) $row['username'] : 'Unknown user',
             ];
         }
         $stmt->close();
@@ -870,7 +874,7 @@ class TicketController
         }
 
         $insert = $conn->prepare(
-            'INSERT INTO ' . self::ASSIGNMENT_TABLE . ' (ticket_ctime, ticket_crand, created_by_crand, assigned_by_crand, assigned_at, email_opt_in, unsubscribe_token)
+            'INSERT INTO ' . self::ASSIGNMENT_TABLE . ' (ticket_ctime, ticket_crand, account_crand, assigned_by_crand, assigned_at, email_opt_in, unsubscribe_token)
              VALUES (?, ?, ?, ?, ?, 1, ?)' 
         );
         if ($insert === false) {
@@ -929,7 +933,7 @@ class TicketController
         }
 
         $conn = Database::getConnection();
-        $stmt = $conn->prepare('UPDATE ' . self::ASSIGNMENT_TABLE . ' SET email_opt_in = ? WHERE ticket_ctime = ? AND ticket_crand = ? AND created_by_crand = ?');
+        $stmt = $conn->prepare('UPDATE ' . self::ASSIGNMENT_TABLE . ' SET email_opt_in = ? WHERE ticket_ctime = ? AND ticket_crand = ? AND account_crand = ?');
         if ($stmt === false) {
             return;
         }
@@ -1029,7 +1033,11 @@ class TicketController
     private static function fetchTicket(string $ctime, int $crand): ?Ticket
     {
         $conn = Database::getConnection();
-        $stmt = $conn->prepare('SELECT * FROM ' . self::TICKET_TABLE . ' WHERE ctime = ? AND crand = ?');
+        $stmt = $conn->prepare(
+            'SELECT t.*, acc.Username AS created_by_username FROM ' . self::TICKET_TABLE . ' t'
+            . ' LEFT JOIN account acc ON acc.Id = t.created_by_crand'
+            . ' WHERE t.ctime = ? AND t.crand = ?'
+        );
         if ($stmt === false) {
             return null;
         }
@@ -1067,7 +1075,7 @@ class TicketController
     private static function isAssigned(string $ticketCtime, int $ticketCrand, int $accountCrand): bool
     {
         $conn = Database::getConnection();
-        $stmt = $conn->prepare('SELECT 1 FROM ' . self::ASSIGNMENT_TABLE . ' WHERE ticket_ctime = ? AND ticket_crand = ? AND created_by_crand = ? LIMIT 1');
+        $stmt = $conn->prepare('SELECT 1 FROM ' . self::ASSIGNMENT_TABLE . ' WHERE ticket_ctime = ? AND ticket_crand = ? AND account_crand = ? LIMIT 1');
         if ($stmt === false) {
             return false;
         }
