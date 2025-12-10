@@ -694,10 +694,10 @@ $activeTabPage = 'active show';
                 
                 
                 <?php 
-                
+
                 $activePageName = $profile->username;
                 require("php-components/base-page-breadcrumbs.php");
-                
+
                 ?>
                 <div class="row">
                     <div class="col-12">
