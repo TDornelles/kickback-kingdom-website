@@ -100,6 +100,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $itemTableResp = ItemController::getItemTable();
 $itemRows = $itemTableResp->success ? $itemTableResp->data : [];
 
+$collectionOptions = [];
+foreach ($itemRows as $row) {
+    $collectionId = isset($row['collection_id']) ? (int)$row['collection_id'] : 0;
+    if ($collectionId > 0) {
+        if (!isset($collectionOptions[$collectionId])) {
+            $collectionOptions[$collectionId] = [
+                'id' => $collectionId,
+                'items' => [],
+            ];
+        }
+
+        if (isset($row['name']) && $row['name'] !== '') {
+            $collectionOptions[$collectionId]['items'][] = $row['name'];
+        }
+    }
+}
+
 $itemTypes = ItemType::cases();
 $itemRarities = ItemRarity::cases();
 $equipmentSlots = ItemEquipmentSlot::cases();
@@ -288,25 +305,67 @@ function enumLabel(string $value): string
                             </div>
 
                             <div class="col-md-4">
-                                <label class="form-label">Media ID (Large)</label>
-                                <input type="number" class="form-control" name="media_id_large" id="media-large" required>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <label class="form-label mb-1">Media ID (Large)</label>
+                                    <img src="" alt="Large preview" id="media-large-preview" class="rounded border d-none" style="width: 56px; height: 56px; object-fit: cover;">
+                                </div>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" name="media_id_large" id="media-large" required>
+                                    <button class="btn btn-outline-secondary" type="button" onclick="openMediaPicker('media-large', 'media-large-preview')">
+                                        <i class="bi bi-images"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Media ID (Small)</label>
-                                <input type="number" class="form-control" name="media_id_small" id="media-small" required>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <label class="form-label mb-1">Media ID (Small)</label>
+                                    <img src="" alt="Small preview" id="media-small-preview" class="rounded border d-none" style="width: 56px; height: 56px; object-fit: cover;">
+                                </div>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" name="media_id_small" id="media-small" required>
+                                    <button class="btn btn-outline-secondary" type="button" onclick="openMediaPicker('media-small', 'media-small-preview')">
+                                        <i class="bi bi-images"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Media ID (Back)</label>
-                                <input type="number" class="form-control" name="media_id_back" id="media-back" required>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <label class="form-label mb-1">Media ID (Back)</label>
+                                    <img src="" alt="Back preview" id="media-back-preview" class="rounded border d-none" style="width: 56px; height: 56px; object-fit: cover;">
+                                </div>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" name="media_id_back" id="media-back" required>
+                                    <button class="btn btn-outline-secondary" type="button" onclick="openMediaPicker('media-back', 'media-back-preview')">
+                                        <i class="bi bi-images"></i>
+                                    </button>
+                                </div>
                             </div>
 
                             <div class="col-md-6">
-                                <label class="form-label">Nominated By (Account ID)</label>
-                                <input type="number" class="form-control" name="nominated_by_id" id="nominated-by" placeholder="Optional">
+                                <label class="form-label">Nominated By</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" name="nominated_by_id" id="nominated-by" placeholder="Optional">
+                                    <button class="btn btn-outline-secondary" type="button" onclick="openAccountPicker()">
+                                        <i class="bi bi-search"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger" type="button" onclick="clearNominatedBy()" title="Clear selection">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text" id="nominated-by-label">No account selected.</div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Collection ID</label>
-                                <input type="number" class="form-control" name="collection_id" id="collection-id" placeholder="Optional">
+                                <label class="form-label">Collection</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" name="collection_id" id="collection-id" placeholder="Optional">
+                                    <button class="btn btn-outline-secondary" type="button" onclick="openCollectionModal()">
+                                        <i class="bi bi-collection"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger" type="button" onclick="clearCollection()" title="Clear collection">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text" id="collection-label">No collection selected.</div>
                             </div>
 
                             <div class="col-md-4">
@@ -363,6 +422,36 @@ function enumLabel(string $value): string
         </div>
     </div>
 
+    <!-- Collection Search Modal -->
+    <div class="modal fade" id="collectionSearchModal" tabindex="-1" aria-labelledby="collectionSearchModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-scrollable modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title mb-1" id="collectionSearchModalLabel">Select a Collection</h5>
+                        <p class="text-muted small mb-0">Search available item collections by ID or item names.</p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" for="collection-search-input">Search</label>
+                        <input type="search" class="form-control" id="collection-search-input" placeholder="Search by ID or item name">
+                        <div class="form-text">Results update as you type.</div>
+                    </div>
+                    <div class="row g-3" id="collection-search-results"></div>
+                    <div class="text-center text-muted py-3 d-none" id="collection-search-empty">
+                        <i class="bi bi-search"></i>
+                        <p class="mb-0">No collections match your search.</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Delete Modal -->
     <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
         <div class="modal-dialog">
@@ -390,6 +479,7 @@ function enumLabel(string $value): string
     <?php require("php-components/base-page-javascript.php"); ?>
 
     <script>
+        const collectionOptions = <?= json_encode(array_values($collectionOptions)); ?>;
         const itemModal = document.getElementById('itemModal');
         itemModal.addEventListener('show.bs.modal', (event) => {
             const trigger = event.relatedTarget;
@@ -414,9 +504,14 @@ function enumLabel(string $value): string
                 document.getElementById('media-large').value = itemData.media_id_large ?? '';
                 document.getElementById('media-small').value = itemData.media_id_small ?? '';
                 document.getElementById('media-back').value = itemData.media_id_back ?? '';
+                updateMediaPreview('media-large', 'media-large-preview');
+                updateMediaPreview('media-small', 'media-small-preview');
+                updateMediaPreview('media-back', 'media-back-preview');
 
                 document.getElementById('nominated-by').value = itemData.nominated_by_id ?? '';
+                updateNominatedByLabel();
                 document.getElementById('collection-id').value = itemData.collection_id ?? '';
+                updateCollectionLabel();
 
                 document.getElementById('equipment-slot').value = itemData.equipment_slot ?? '';
                 document.getElementById('container-item-category').value = itemData.container_item_category ?? '';
@@ -435,8 +530,192 @@ function enumLabel(string $value): string
                 document.querySelector('#itemModal form').reset();
                 document.getElementById('item-id').value = '';
                 document.getElementById('container-size').value = -1;
+                clearNominatedBy();
+                clearCollection();
+                clearMediaPreviews();
             }
         });
+
+        function openMediaPicker(inputId, previewId) {
+            OpenSelectMediaModal('itemModal', previewId, inputId, () => updateMediaPreview(previewId));
+        }
+
+        function updateMediaPreview(previewId) {
+            const preview = document.getElementById(previewId);
+            if (!preview) return;
+
+            const imagePath = preview.getAttribute('src');
+            const hasImage = imagePath && imagePath.trim() !== '';
+            preview.classList.toggle('d-none', !hasImage);
+        }
+
+        function clearMediaPreviews() {
+            ['media-large-preview', 'media-small-preview', 'media-back-preview'].forEach((id) => {
+                const preview = document.getElementById(id);
+                if (preview) {
+                    preview.src = '';
+                    preview.classList.add('d-none');
+                }
+            });
+        }
+
+        function openAccountPicker() {
+            OpenSelectAccountModal('itemModal', 'selectNominatedAccount');
+        }
+
+        function selectNominatedAccount(accountId) {
+            const nominatedInput = document.getElementById('nominated-by');
+            if (!nominatedInput) return;
+
+            nominatedInput.value = accountId ?? '';
+            updateNominatedByLabel();
+
+            const selectModalElement = document.getElementById('selectAccountModal');
+            const selectModalInstance = selectModalElement ? bootstrap.Modal.getOrCreateInstance(selectModalElement) : null;
+            if (selectModalInstance) {
+                selectModalInstance.hide();
+            }
+
+            if (selectAccountModalCallerId && selectAccountModalCallerId !== -1) {
+                const previousModalElement = document.getElementById(selectAccountModalCallerId);
+                const previousInstance = previousModalElement ? bootstrap.Modal.getOrCreateInstance(previousModalElement) : null;
+                previousInstance?.show();
+            }
+
+            selectAccountModalCallerId = -1;
+        }
+
+        function updateNominatedByLabel() {
+            const nominatedInput = document.getElementById('nominated-by');
+            const label = document.getElementById('nominated-by-label');
+            if (!nominatedInput || !label) return;
+
+            const id = nominatedInput.value?.trim();
+            if (!id) {
+                label.textContent = 'No account selected.';
+                return;
+            }
+
+            let username = '';
+            if (typeof selectAccountResultsById !== 'undefined' && selectAccountResultsById[id]) {
+                username = selectAccountResultsById[id]?.username ?? '';
+            }
+
+            label.textContent = username ? `Selected: ${username} (#${id})` : `Selected Account ID: #${id}`;
+        }
+
+        function clearNominatedBy() {
+            const nominatedInput = document.getElementById('nominated-by');
+            if (nominatedInput) {
+                nominatedInput.value = '';
+            }
+            updateNominatedByLabel();
+        }
+
+        let previousModalInstance = null;
+        function openCollectionModal() {
+            const itemModalInstance = bootstrap.Modal.getOrCreateInstance(document.getElementById('itemModal'));
+            itemModalInstance.hide();
+            previousModalInstance = itemModalInstance;
+
+            renderCollectionResults();
+
+            const modalElement = document.getElementById('collectionSearchModal');
+            const collectionModal = bootstrap.Modal.getOrCreateInstance(modalElement);
+            collectionModal.show();
+        }
+
+        function renderCollectionResults() {
+            const resultsContainer = document.getElementById('collection-search-results');
+            const emptyState = document.getElementById('collection-search-empty');
+            const searchTerm = (document.getElementById('collection-search-input')?.value || '').toLowerCase();
+
+            if (!resultsContainer) return;
+
+            resultsContainer.innerHTML = '';
+            let hasResults = false;
+
+            collectionOptions.forEach((collection) => {
+                const idMatch = collection.id.toString().includes(searchTerm);
+                const nameMatch = collection.items.some((name) => name.toLowerCase().includes(searchTerm));
+
+                if (searchTerm && !idMatch && !nameMatch) {
+                    return;
+                }
+
+                hasResults = true;
+                const sampleItems = collection.items.slice(0, 3).join(', ');
+                const card = document.createElement('div');
+                card.className = 'col-12 col-md-6';
+                card.innerHTML = `
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body d-flex flex-column gap-2">
+                            <div class="fw-semibold">Collection #${collection.id}</div>
+                            <div class="text-muted small">${sampleItems || 'No item names recorded'}</div>
+                            <button type="button" class="btn btn-sm btn-outline-primary mt-auto" data-collection-id="${collection.id}">
+                                <i class="bi bi-check2-circle me-1"></i>Select Collection
+                            </button>
+                        </div>
+                    </div>`;
+
+                card.querySelector('button')?.addEventListener('click', () => selectCollection(collection.id));
+                resultsContainer.appendChild(card);
+            });
+
+            if (emptyState) {
+                emptyState.classList.toggle('d-none', hasResults);
+            }
+        }
+
+        const collectionSearchInput = document.getElementById('collection-search-input');
+        collectionSearchInput?.addEventListener('input', renderCollectionResults);
+
+        function selectCollection(collectionId) {
+            const collectionInput = document.getElementById('collection-id');
+            if (collectionInput) {
+                collectionInput.value = collectionId;
+            }
+            updateCollectionLabel();
+
+            const modalElement = document.getElementById('collectionSearchModal');
+            const collectionModal = modalElement ? bootstrap.Modal.getOrCreateInstance(modalElement) : null;
+            collectionModal?.hide();
+
+            if (previousModalInstance) {
+                previousModalInstance.show();
+            }
+        }
+
+        function updateCollectionLabel() {
+            const collectionInput = document.getElementById('collection-id');
+            const label = document.getElementById('collection-label');
+            if (!collectionInput || !label) return;
+
+            const id = collectionInput.value?.trim();
+            if (!id) {
+                label.textContent = 'No collection selected.';
+                return;
+            }
+
+            label.textContent = `Selected Collection ID: #${id}`;
+        }
+
+        function clearCollection() {
+            const collectionInput = document.getElementById('collection-id');
+            if (collectionInput) {
+                collectionInput.value = '';
+            }
+            updateCollectionLabel();
+        }
+
+        const collectionModalElement = document.getElementById('collectionSearchModal');
+        if (collectionModalElement) {
+            collectionModalElement.addEventListener('hidden.bs.modal', () => {
+                if (previousModalInstance) {
+                    previousModalInstance.show();
+                }
+            });
+        }
 
         const deleteModal = document.getElementById('deleteModal');
         deleteModal.addEventListener('show.bs.modal', (event) => {
