@@ -311,39 +311,33 @@ function enumLabel(string $value): string
                                 </div>
                                 <div class="row g-3">
                                     <div class="col-md-4">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <label class="form-label mb-1">Media ID (Large)</label>
-                                            <img src="" alt="Large preview" id="media-large-preview" class="rounded border d-none" style="width: 56px; height: 56px; object-fit: cover;">
-                                        </div>
-                                        <div class="input-group">
-                                            <input type="number" class="form-control" name="media_id_large" id="media-large" required>
-                                            <button class="btn btn-outline-secondary" type="button" onclick="openMediaPicker('media-large', 'media-large-preview')">
-                                                <i class="fa-solid fa-images"></i>
-                                            </button>
+                                        <label class="form-label">Media (Large)</label>
+                                        <input type="hidden" name="media_id_large" id="media-large" value="221" required>
+                                        <div class="card h-100 shadow-sm border" role="button" style="cursor: pointer;" onclick="openMediaPicker('media-large', 'media-large-preview', 'media-large-label')">
+                                            <img src="/assets/media/items/221.png" alt="Large preview" id="media-large-preview" class="card-img-top object-fit-cover" style="height: 160px;">
+                                            <div class="card-body py-2">
+                                                <p class="card-text small mb-0" id="media-large-label">Default preview shown. Click to select.</p>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="col-md-4">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <label class="form-label mb-1">Media ID (Small)</label>
-                                            <img src="" alt="Small preview" id="media-small-preview" class="rounded border d-none" style="width: 56px; height: 56px; object-fit: cover;">
-                                        </div>
-                                        <div class="input-group">
-                                            <input type="number" class="form-control" name="media_id_small" id="media-small" required>
-                                            <button class="btn btn-outline-secondary" type="button" onclick="openMediaPicker('media-small', 'media-small-preview')">
-                                                <i class="fa-solid fa-images"></i>
-                                            </button>
+                                        <label class="form-label">Media (Small)</label>
+                                        <input type="hidden" name="media_id_small" id="media-small" value="221" required>
+                                        <div class="card h-100 shadow-sm border" role="button" style="cursor: pointer;" onclick="openMediaPicker('media-small', 'media-small-preview', 'media-small-label')">
+                                            <img src="/assets/media/items/221.png" alt="Small preview" id="media-small-preview" class="card-img-top object-fit-cover" style="height: 160px;">
+                                            <div class="card-body py-2">
+                                                <p class="card-text small mb-0" id="media-small-label">Default preview shown. Click to select.</p>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="col-md-4">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <label class="form-label mb-1">Media ID (Back)</label>
-                                            <img src="" alt="Back preview" id="media-back-preview" class="rounded border d-none" style="width: 56px; height: 56px; object-fit: cover;">
-                                        </div>
-                                        <div class="input-group">
-                                            <input type="number" class="form-control" name="media_id_back" id="media-back" required>
-                                            <button class="btn btn-outline-secondary" type="button" onclick="openMediaPicker('media-back', 'media-back-preview')">
-                                                <i class="fa-solid fa-images"></i>
-                                            </button>
+                                        <label class="form-label">Media (Back)</label>
+                                        <input type="hidden" name="media_id_back" id="media-back" value="221" required>
+                                        <div class="card h-100 shadow-sm border" role="button" style="cursor: pointer;" onclick="openMediaPicker('media-back', 'media-back-preview', 'media-back-label')">
+                                            <img src="/assets/media/items/221.png" alt="Back preview" id="media-back-preview" class="card-img-top object-fit-cover" style="height: 160px;">
+                                            <div class="card-body py-2">
+                                                <p class="card-text small mb-0" id="media-back-label">Default preview shown. Click to select.</p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -357,8 +351,9 @@ function enumLabel(string $value): string
                                 <div class="row g-3">
                                     <div class="col-md-6">
                                         <label class="form-label">Nominated By</label>
+                                        <input type="hidden" name="nominated_by_id" id="nominated-by">
                                         <div class="input-group">
-                                            <input type="number" class="form-control" name="nominated_by_id" id="nominated-by" placeholder="Optional">
+                                            <input type="text" class="form-control" id="nominated-by-display" placeholder="No account selected" readonly>
                                             <button class="btn btn-outline-secondary" type="button" onclick="openAccountPicker()">
                                                 <i class="fa-solid fa-magnifying-glass"></i>
                                             </button>
@@ -370,8 +365,9 @@ function enumLabel(string $value): string
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label">Collection</label>
+                                        <input type="hidden" name="collection_id" id="collection-id">
                                         <div class="input-group">
-                                            <input type="number" class="form-control" name="collection_id" id="collection-id" placeholder="Optional">
+                                            <input type="text" class="form-control" id="collection-display" placeholder="No collection selected" readonly>
                                             <button class="btn btn-outline-secondary" type="button" onclick="openCollectionModal()">
                                                 <i class="fa-solid fa-layer-group"></i>
                                             </button>
@@ -505,8 +501,17 @@ function enumLabel(string $value): string
     <script>
         const collectionOptions = <?= json_encode(array_values($collectionOptions)); ?>;
         const itemModal = document.getElementById('itemModal');
+        const DEFAULT_MEDIA_SRC = '/assets/media/items/221.png';
+        const DEFAULT_MEDIA_ID = '221';
+
         itemModal.addEventListener('show.bs.modal', (event) => {
             const trigger = event.relatedTarget;
+
+            // When returning from a nested modal (e.g., media picker) we do not want to reset the form.
+            if (!trigger) {
+                return;
+            }
+
             const mode = trigger?.getAttribute('data-mode') || 'create';
             const modalTitle = document.getElementById('itemModalLabel');
             const submitBtn = document.getElementById('item-submit');
@@ -528,9 +533,9 @@ function enumLabel(string $value): string
                 document.getElementById('media-large').value = itemData.media_id_large ?? '';
                 document.getElementById('media-small').value = itemData.media_id_small ?? '';
                 document.getElementById('media-back').value = itemData.media_id_back ?? '';
-                updateMediaPreview('media-large', 'media-large-preview');
-                updateMediaPreview('media-small', 'media-small-preview');
-                updateMediaPreview('media-back', 'media-back-preview');
+                updateMediaPreview('media-large-preview', 'media-large', 'media-large-label');
+                updateMediaPreview('media-small-preview', 'media-small', 'media-small-label');
+                updateMediaPreview('media-back-preview', 'media-back', 'media-back-label');
 
                 document.getElementById('nominated-by').value = itemData.nominated_by_id ?? '';
                 updateNominatedByLabel();
@@ -560,25 +565,43 @@ function enumLabel(string $value): string
             }
         });
 
-        function openMediaPicker(inputId, previewId) {
-            OpenSelectMediaModal('itemModal', previewId, inputId, () => updateMediaPreview(previewId));
+        function openMediaPicker(inputId, previewId, labelId) {
+            OpenSelectMediaModal('itemModal', previewId, inputId, () => updateMediaPreview(previewId, inputId, labelId));
         }
 
-        function updateMediaPreview(previewId) {
+        function updateMediaPreview(previewId, inputId, labelId) {
             const preview = document.getElementById(previewId);
-            if (!preview) return;
+            const input = document.getElementById(inputId);
+            const label = document.getElementById(labelId);
+            if (!preview || !input) return;
 
-            const imagePath = preview.getAttribute('src');
-            const hasImage = imagePath && imagePath.trim() !== '';
-            preview.classList.toggle('d-none', !hasImage);
+            const mediaId = input.value?.trim();
+            const hasSelection = !!mediaId;
+            preview.dataset.selectedSrc = preview.src;
+            preview.src = hasSelection && preview.dataset.selectedSrc ? preview.dataset.selectedSrc : DEFAULT_MEDIA_SRC;
+
+            if (label) {
+                label.textContent = hasSelection
+                    ? `Selected media ID: #${mediaId}`
+                    : 'Default preview shown. Click to select.';
+            }
         }
 
         function clearMediaPreviews() {
-            ['media-large-preview', 'media-small-preview', 'media-back-preview'].forEach((id) => {
-                const preview = document.getElementById(id);
+            ['media-large', 'media-small', 'media-back'].forEach((inputId) => {
+                const input = document.getElementById(inputId);
+                const preview = document.getElementById(`${inputId}-preview`);
+                const label = document.getElementById(`${inputId}-label`);
+
+                if (input) {
+                    input.value = DEFAULT_MEDIA_ID;
+                }
                 if (preview) {
-                    preview.src = '';
-                    preview.classList.add('d-none');
+                    preview.dataset.selectedSrc = '';
+                    preview.src = DEFAULT_MEDIA_SRC;
+                }
+                if (label) {
+                    label.textContent = 'Default preview shown. Click to select.';
                 }
             });
         }
@@ -611,12 +634,14 @@ function enumLabel(string $value): string
 
         function updateNominatedByLabel() {
             const nominatedInput = document.getElementById('nominated-by');
+            const display = document.getElementById('nominated-by-display');
             const label = document.getElementById('nominated-by-label');
             if (!nominatedInput || !label) return;
 
             const id = nominatedInput.value?.trim();
             if (!id) {
                 label.textContent = 'No account selected.';
+                if (display) display.value = '';
                 return;
             }
 
@@ -626,12 +651,19 @@ function enumLabel(string $value): string
             }
 
             label.textContent = username ? `Selected: ${username} (#${id})` : `Selected Account ID: #${id}`;
+            if (display) {
+                display.value = username || `Account #${id}`;
+            }
         }
 
         function clearNominatedBy() {
             const nominatedInput = document.getElementById('nominated-by');
+            const display = document.getElementById('nominated-by-display');
             if (nominatedInput) {
                 nominatedInput.value = '';
+            }
+            if (display) {
+                display.value = '';
             }
             updateNominatedByLabel();
         }
@@ -712,22 +744,34 @@ function enumLabel(string $value): string
 
         function updateCollectionLabel() {
             const collectionInput = document.getElementById('collection-id');
+            const display = document.getElementById('collection-display');
             const label = document.getElementById('collection-label');
             if (!collectionInput || !label) return;
 
             const id = collectionInput.value?.trim();
             if (!id) {
                 label.textContent = 'No collection selected.';
+                if (display) display.value = '';
                 return;
             }
 
-            label.textContent = `Selected Collection ID: #${id}`;
+            const collection = collectionOptions.find((c) => c.id.toString() === id);
+            const sampleItems = collection?.items?.slice(0, 3).join(', ') || '';
+            label.textContent = sampleItems ? `Selected Collection #${id} (${sampleItems})` : `Selected Collection ID: #${id}`;
+
+            if (display) {
+                display.value = sampleItems ? `Collection #${id} • ${sampleItems}` : `Collection #${id}`;
+            }
         }
 
         function clearCollection() {
             const collectionInput = document.getElementById('collection-id');
+            const display = document.getElementById('collection-display');
             if (collectionInput) {
                 collectionInput.value = '';
+            }
+            if (display) {
+                display.value = '';
             }
             updateCollectionLabel();
         }
