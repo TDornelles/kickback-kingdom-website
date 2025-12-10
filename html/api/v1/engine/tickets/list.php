@@ -9,6 +9,7 @@ OnlyPOST();
 $payload = [
     'status' => isset($_POST['status']) ? Validate($_POST['status']) : null,
     'priority' => isset($_POST['priority']) ? Validate($_POST['priority']) : null,
+    'assignee' => isset($_POST['assignee']) ? Validate($_POST['assignee']) : null,
     'updatedFrom' => isset($_POST['from']) ? Validate($_POST['from']) : null,
     'updatedTo' => isset($_POST['to']) ? Validate($_POST['to']) : null,
     'search' => isset($_POST['search']) ? Validate($_POST['search']) : null,
