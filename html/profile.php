@@ -150,8 +150,10 @@ $itemStackInformationJSON = json_encode($accountInventory);
 $activeTab = 'active';
 $activeTabPage = 'active show';
 
+$emptySlotPath = 'http://localhost/assets/media/menu/empty_slot.jpg';
+
 $equippedAvatarLootId = '';
-$equippedAvatarIconPath = '/assets/media/menu/empty_slot.jpg';
+$equippedAvatarIconPath = $emptySlotPath;
 $equippedBannerLootId = '';
 $defaultDesktopBannerPath = '/assets/images/kk-1.jpg';
 $defaultMobileBannerPath = '/assets/images/kk-2.jpg';
@@ -160,6 +162,10 @@ $equippedBannerMobilePath = $defaultMobileBannerPath;
 
 $equippedBackgroundLootId = '';
 $equippedBackgroundPath = null;
+
+$equippedAvatarPreviewPath = $emptySlotPath;
+$equippedBannerPreviewPath = $emptySlotPath;
+$equippedBackgroundPreviewPath = $emptySlotPath;
 
 if (isset($profile) && isset($profile->avatar)) {
     $equippedAvatarIconPath = $profile->avatar->getFullPath();
@@ -224,6 +230,10 @@ foreach ($accountInventory as $accountInventoryItemStack) {
         }
     }
 }
+
+$equippedAvatarPreviewPath = $equippedAvatarLootId === '' ? $emptySlotPath : $equippedAvatarIconPath;
+$equippedBannerPreviewPath = $equippedBannerLootId === '' ? $emptySlotPath : $equippedBannerPath;
+$equippedBackgroundPreviewPath = $equippedBackgroundLootId === '' ? $emptySlotPath : ($equippedBackgroundPath ?? $emptySlotPath);
 ?>
 
 <!DOCTYPE html>
@@ -305,13 +315,16 @@ foreach ($accountInventory as $accountInventoryItemStack) {
                                     
                                     <div class="row g-0">
                                         <div class="col-4">
-                                            <button type="button"  class="btn btn-dark p-0" data-bs-target="#selectAvatarModal" data-bs-toggle="modal"><img id="equipment-preview-avatar" src="<?= htmlspecialchars($equippedAvatarIconPath); ?>" class="img-fluid"></button>
+                                            <button type="button"  class="btn btn-dark p-0" data-bs-target="#selectAvatarModal" data-bs-toggle="modal"><img id="equipment-preview-avatar" src="<?= htmlspecialchars($equippedAvatarPreviewPath); ?>" class="img-fluid"></button>
                                         </div>
                                         <div class="col-8">
-                                            
+
                                             <div class="card-header">Avatar</div>
                                             <div class="card-body pt-1">
                                                 <p class="card-text">This is how others will see you.</p>
+                                                <?php if ($isMyProfile) { ?>
+                                                <button type="button" class="btn btn-outline-danger btn-sm" onclick="unequipSlot('AVATAR')">Unequip</button>
+                                                <?php } ?>
                                             </div>
                                         </div>
                                     </div>
@@ -322,31 +335,37 @@ foreach ($accountInventory as $accountInventoryItemStack) {
                                     
                                     <div class="row g-0">
                                         <div class="col-4">
-                                            <button type="button" data-bs-target="#selectPCBorderModal" data-bs-toggle="modal" class="btn btn-dark p-0"><img src="/assets/media/menu/empty_slot.jpg" class="img-fluid"></button>
+                                            <button type="button" data-bs-target="#selectPCBorderModal" data-bs-toggle="modal" class="btn btn-dark p-0"><img id="equipment-preview-pc-card" src="<?= htmlspecialchars($emptySlotPath); ?>" class="img-fluid"></button>
                                         </div>
                                         <div class="col-8">
-                                            
+
                                             <div class="card-header">Player Card Border</div>
                                             <div class="card-body pt-1">
                                                 <p class="card-text">This is a border that will be on top of your player card.</p>
+                                                <?php if ($isMyProfile) { ?>
+                                                <button type="button" class="btn btn-outline-danger btn-sm" onclick="unequipSlot('PC_CARD')">Unequip</button>
+                                                <?php } ?>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                                
+
                             </div>
                             <div class="col-12 col-lg-6">
                                 <div class="card border-dark mb-3">
-                                    
+
                                     <div class="row g-0">
                                         <div class="col-4">
-                                            <button type="button" data-bs-target="#selectBannerModal" data-bs-toggle="modal" class="btn btn-dark p-0"><img id="equipment-preview-banner" src="<?= htmlspecialchars($equippedBannerPath); ?>" class="img-fluid object-fit-cover"></button>
+                                            <button type="button" data-bs-target="#selectBannerModal" data-bs-toggle="modal" class="btn btn-dark p-0"><img id="equipment-preview-banner" src="<?= htmlspecialchars($equippedBannerPreviewPath); ?>" class="img-fluid object-fit-cover"></button>
                                         </div>
                                         <div class="col-8">
 
                                             <div class="card-header">Banner</div>
                                             <div class="card-body pt-1">
                                                 <p class="card-text">This is what shows at the top of your profile page.</p>
+                                                <?php if ($isMyProfile) { ?>
+                                                <button type="button" class="btn btn-outline-danger btn-sm" onclick="unequipSlot('BANNER')">Unequip</button>
+                                                <?php } ?>
                                             </div>
                                         </div>
                                     </div>
@@ -358,13 +377,16 @@ foreach ($accountInventory as $accountInventoryItemStack) {
                                     
                                     <div class="row g-0">
                                         <div class="col-4">
-                                            <button type="button" data-bs-target="#selectBackgroundModal" data-bs-toggle="modal" class="btn btn-dark p-0"><img id="equipment-preview-background" src="<?= htmlspecialchars($equippedBackgroundPath ?? '/assets/media/menu/empty_slot.jpg'); ?>" class="img-fluid object-fit-cover"></button>
+                                            <button type="button" data-bs-target="#selectBackgroundModal" data-bs-toggle="modal" class="btn btn-dark p-0"><img id="equipment-preview-background" src="<?= htmlspecialchars($equippedBackgroundPreviewPath); ?>" class="img-fluid object-fit-cover"></button>
                                         </div>
                                         <div class="col-8">
-                                            
+
                                             <div class="card-header">Background</div>
                                             <div class="card-body pt-1">
                                                 <p class="card-text">This is the background of your profile page.</p>
+                                                <?php if ($isMyProfile) { ?>
+                                                <button type="button" class="btn btn-outline-danger btn-sm" onclick="unequipSlot('BACKGROUND')">Unequip</button>
+                                                <?php } ?>
                                             </div>
                                         </div>
                                     </div>
@@ -372,16 +394,19 @@ foreach ($accountInventory as $accountInventoryItemStack) {
                             </div>
                             <div class="col-12 col-lg-6">
                                 <div class="card border-dark mb-3">
-                                    
+
                                     <div class="row g-0">
                                         <div class="col-4">
-                                            <button type="button" data-bs-target="#selectCharmModal" data-bs-toggle="modal" class="btn btn-dark p-0"><img src="/assets/media/menu/empty_slot.jpg" class="img-fluid"></button>
+                                            <button type="button" data-bs-target="#selectCharmModal" data-bs-toggle="modal" class="btn btn-dark p-0"><img id="equipment-preview-charm" src="<?= htmlspecialchars($emptySlotPath); ?>" class="img-fluid"></button>
                                         </div>
                                         <div class="col-8">
-                                            
+
                                             <div class="card-header">Charm</div>
                                             <div class="card-body pt-1">
                                                 <p class="card-text">Can effect your experiences in the kingdom</p>
+                                                <?php if ($isMyProfile) { ?>
+                                                <button type="button" class="btn btn-outline-danger btn-sm" onclick="unequipSlot('CHARM')">Unequip</button>
+                                                <?php } ?>
                                             </div>
                                         </div>
                                     </div>
@@ -389,16 +414,19 @@ foreach ($accountInventory as $accountInventoryItemStack) {
                             </div>
                             <div class="col-12 col-lg-6">
                                 <div class="card border-dark mb-3">
-                                    
+
                                     <div class="row g-0">
                                         <div class="col-4">
-                                            <button type="button" data-bs-target="#selectPetModal" data-bs-toggle="modal" class="btn btn-dark p-0"><img src="/assets/media/menu/empty_slot.jpg" class="img-fluid"></button>
+                                            <button type="button" data-bs-target="#selectPetModal" data-bs-toggle="modal" class="btn btn-dark p-0"><img id="equipment-preview-pet" src="<?= htmlspecialchars($emptySlotPath); ?>" class="img-fluid"></button>
                                         </div>
                                         <div class="col-8">
-                                            
+
                                             <div class="card-header">Pet</div>
                                             <div class="card-body pt-1">
                                                 <p class="card-text">Can effect your experiences in the kingdom</p>
+                                                <?php if ($isMyProfile) { ?>
+                                                <button type="button" class="btn btn-outline-danger btn-sm" onclick="unequipSlot('PET')">Unequip</button>
+                                                <?php } ?>
                                             </div>
                                         </div>
                                     </div>
@@ -1036,6 +1064,8 @@ foreach ($accountInventory as $accountInventoryItemStack) {
             }
         });
 
+        const emptySlotImagePath = <?= json_encode($emptySlotPath); ?>;
+
         function GetItemStackInformationById(id)
         {
             for (let index = 0; index < itemStackInformation.length; index++) {
@@ -1046,6 +1076,40 @@ foreach ($accountInventory as $accountInventoryItemStack) {
                 }
             }
             return null;
+        }
+
+        function unequipSlot(slot)
+        {
+            const inputMap = {
+                AVATAR: "#equipment-avatar",
+                PC_CARD: "#equipment-pc-card",
+                BANNER: "#equipment-banner",
+                BACKGROUND: "#equipment-background",
+                CHARM: "#equipment-charm",
+                PET: "#equipment-pet",
+            };
+
+            const previewMap = {
+                AVATAR: "#equipment-preview-avatar",
+                PC_CARD: "#equipment-preview-pc-card",
+                BANNER: "#equipment-preview-banner",
+                BACKGROUND: "#equipment-preview-background",
+                CHARM: "#equipment-preview-charm",
+                PET: "#equipment-preview-pet",
+            };
+
+            const inputSelector = inputMap[slot];
+            const previewSelector = previewMap[slot];
+
+            if (inputSelector !== undefined)
+            {
+                $(inputSelector).val("");
+            }
+
+            if (previewSelector !== undefined)
+            {
+                $(previewSelector).attr("src", emptySlotImagePath);
+            }
         }
 
         function SelectInventoryItemStackEquipment(item_id)
