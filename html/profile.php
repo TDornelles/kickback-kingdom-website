@@ -152,9 +152,19 @@ $activeTabPage = 'active show';
 
 $equippedAvatarLootId = '';
 $equippedAvatarIconPath = '/assets/media/menu/empty_slot.jpg';
+$equippedBannerLootId = '';
+$defaultDesktopBannerPath = '/assets/images/kk-1.jpg';
+$defaultMobileBannerPath = '/assets/images/kk-2.jpg';
+$equippedBannerPath = $defaultDesktopBannerPath;
+$equippedBannerMobilePath = $defaultMobileBannerPath;
 
 if (isset($profile) && isset($profile->avatar)) {
     $equippedAvatarIconPath = $profile->avatar->getFullPath();
+}
+
+if (isset($profile) && isset($profile->banner)) {
+    $equippedBannerPath = $profile->banner->getFullPath();
+    $equippedBannerMobilePath = $profile->banner->getFullPath();
 }
 
 foreach ($accountInventory as $accountInventoryItemStack) {
@@ -164,6 +174,25 @@ foreach ($accountInventory as $accountInventoryItemStack) {
                 $equippedAvatarLootId = $accountInventoryItemStack->nextLootId->crand;
             } elseif (isset($accountInventoryItemStack->itemLootId)) {
                 $equippedAvatarLootId = $accountInventoryItemStack->itemLootId->crand;
+            }
+            break;
+        }
+    }
+}
+
+foreach ($accountInventory as $accountInventoryItemStack) {
+    if ($accountInventoryItemStack->item->equipable && $accountInventoryItemStack->item->equipmentSlot == ItemEquipmentSlot::BANNER) {
+        $bannerMediaPaths = [
+            $accountInventoryItemStack->item->iconBig->getFullPath(),
+            $accountInventoryItemStack->item->iconSmall->getFullPath(),
+            $accountInventoryItemStack->item->iconBack->getFullPath(),
+        ];
+
+        if (in_array($equippedBannerPath, $bannerMediaPaths, true)) {
+            if (isset($accountInventoryItemStack->nextLootId)) {
+                $equippedBannerLootId = $accountInventoryItemStack->nextLootId->crand;
+            } elseif (isset($accountInventoryItemStack->itemLootId)) {
+                $equippedBannerLootId = $accountInventoryItemStack->itemLootId->crand;
             }
             break;
         }
@@ -189,11 +218,11 @@ foreach ($accountInventory as $accountInventoryItemStack) {
     <div>
         <!--TOP BANNER-->
         <div class="d-none d-md-block w-100 ratio" style="--bs-aspect-ratio: 26%; margin-top: 56px">
-            <img src="/assets/images/kk-1.jpg" class="" />
+            <img src="<?= htmlspecialchars($equippedBannerPath); ?>" class="object-fit-cover w-100 h-100" />
             <img class="img-fluid img-thumbnail" src="<?= $profile->profilePictureURL(); ?>" style="width: auto;height: 90%;top: 5%;left: 5%;">
         </div>
         <div class="d-block d-md-none w-100 ratio" style="margin-top: 56px; --bs-aspect-ratio: 46.3%;">
-            <img src="/assets/images/kk-2.jpg" />
+            <img src="<?= htmlspecialchars($equippedBannerMobilePath); ?>" class="object-fit-cover w-100 h-100" />
             <img class="img-fluid img-thumbnail" src="<?= $profile->profilePictureURL(); ?>" style="width: auto;height: 90%;top: 5%;left: 5%;">
         </div>
     </div>
@@ -231,7 +260,7 @@ foreach ($accountInventory as $accountInventoryItemStack) {
         <input id="equipment-account-id" type="hidden" name="equipment-account-id" required="" value="<?php echo $profile->crand; ?>"/>
         <input id="equipment-avatar" type="hidden" name="equipment-avatar" required="" value="<?= htmlspecialchars((string)$equippedAvatarLootId); ?>"/>
         <input id="equipment-pc-card" type="hidden" name="equipment-pc-card" required=""/>
-        <input id="equipment-banner" type="hidden" name="equipment-banner" required=""/>
+        <input id="equipment-banner" type="hidden" name="equipment-banner" required="" value="<?= htmlspecialchars((string)$equippedBannerLootId); ?>"/>
         <input id="equipment-background" type="hidden" name="equipment-background" required=""/>
         <input id="equipment-charm" type="hidden" name="equipment-charm" required=""/>
         <input id="equipment-pet" type="hidden" name="equipment-pet" required=""/>
@@ -285,10 +314,10 @@ foreach ($accountInventory as $accountInventoryItemStack) {
                                     
                                     <div class="row g-0">
                                         <div class="col-4">
-                                            <button type="button" data-bs-target="#selectBannerModal" data-bs-toggle="modal" class="btn btn-dark p-0"><img src="/assets/media/menu/empty_slot.jpg" class="img-fluid"></button>
+                                            <button type="button" data-bs-target="#selectBannerModal" data-bs-toggle="modal" class="btn btn-dark p-0"><img id="equipment-preview-banner" src="<?= htmlspecialchars($equippedBannerPath); ?>" class="img-fluid object-fit-cover"></button>
                                         </div>
                                         <div class="col-8">
-                                            
+
                                             <div class="card-header">Banner</div>
                                             <div class="card-body pt-1">
                                                 <p class="card-text">This is what shows at the top of your profile page.</p>
