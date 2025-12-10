@@ -773,7 +773,7 @@ class StoreService
             return 403;
         }
 
-        if(!$vCart->account->equals($vCart->store->owner))
+        if($vCart->account->equals($vCart->store->owner))
         {
             $resp->message = "Cannot checkout cart for a store you own";
             return 403;

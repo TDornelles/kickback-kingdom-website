@@ -414,7 +414,7 @@ class StoreController
             //transactions
             TransactionController::markTransactionAsComplete($transaction);
 
-            //sanit check
+            //sanity check
             static::ensureLootsHaveTransacted($cart, $productLoots, $priceComponentLoots);
 
             $conn->commit();
@@ -989,7 +989,7 @@ class StoreController
         }
         catch(Exception $e)
         {
-            throw new Exception("exception caught while materializing product reseravations | sql : $sql | params : ".json_encode($params)." : $e");
+            throw new Exception("exception caught while materializing product reseravations : $e");
         }
 
         return $resp;
@@ -1135,7 +1135,7 @@ private static function interpolateSql(string $sql, array $params): string
                     FROM loot l
                     JOIN product_loot_link pll ON pll.ref_loot_crand = l.Id
                     LEFT JOIN v_loot_reservation_total rlt ON rlt.loot_crand = l.Id
-                    WHERE COALESCE(rlt.quantity_available, l.quantity) >= 1
+                    WHERE COALESCE(rlt.quantity_available, l.quantity) >= 1 AND removed = 0
                     ORDER BY pll.ref_product_ctime, pll.ref_product_crand, l.Id
                 ) AS x
                 CROSS JOIN (SELECT @rn_l := 0, @last_l_prod_ctime := NULL, @last_l_prod_crand := NULL) AS vars_l
@@ -1144,6 +1144,8 @@ private static function interpolateSql(string $sql, array $params): string
             AND r.product_crand = l.ref_product_crand
             AND r.rn_res = l.rn_loot
         ";
+
+        throw new Exception(static::interpolateSql($valueClause, $params));
 
         return $valueClause;
     }
@@ -1381,9 +1383,7 @@ private static function interpolateSql(string $sql, array $params): string
         $params = [];
         $valueClause = static::createValueClauseForCreateTradeEntriesForProductReservations($buyer, $seller, $productLoots, $params);
 
-        $sql = "INSERT INTO trade (id, from_account_id, to_account_id, loot_id, from_account_obtain_date, quantity) $valueClause";
-
-        
+        $sql = "INSERT INTO trade (from_account_id, to_account_id, loot_id, from_account_obtain_date, quantity) $valueClause";
 
         $result = database::executeSqlQuery($sql, $params);
 
@@ -1402,13 +1402,13 @@ private static function interpolateSql(string $sql, array $params): string
 
             if($i === 0)
             {
-                $valueClause .= "(SELECT ? AS id, ? AS from_account_id, ? AS to_account_id, ? AS loot_id, ? AS from_account_obtain_date, ? AS quantity)";
-                array_push($params, $trade->crand, $trade->fromAccountId->crand, $trade->toAccountId->crand, $loot->crand, $loot->dateObtained->value->format("Y-m-d H:i:s.u"), $loot->quantity);
+                $valueClause .= "(SELECT ? AS from_account_id, ? AS to_account_id, ? AS loot_id, ? AS from_account_obtain_date, ? AS quantity)";
+                array_push($params, $trade->fromAccountId->crand, $trade->toAccountId->crand, $loot->crand, $loot->dateObtained->value->format("Y-m-d H:i:s.u"), $loot->quantity);
                 continue;
             }
 
-            $valueClause .= "UNION ALL (SELECT ?,?,?,?,?,?)";
-            array_push($params, $trade->crand, $trade->fromAccountId->crand, $trade->toAccountId->crand, $loot->crand, $loot->dateObtained->value->format("Y-m-d H:i:s.u"), $loot->quantity);
+            $valueClause .= "UNION ALL (SELECT ?,?,?,?,?)";
+            array_push($params, $trade->fromAccountId->crand, $trade->toAccountId->crand, $loot->crand, $loot->dateObtained->value->format("Y-m-d H:i:s.u"), $loot->quantity);
         }
 
         return $valueClause;
@@ -1418,7 +1418,7 @@ private static function interpolateSql(string $sql, array $params): string
     {
         $params = [];
         $valueClause = static::createValueClauseForCreateTradeEntriesForPriceComponentReservations($buyer, $seller, $priceComponentLootReservations, $params);
-        $sql = "INSERT INTO trade (id, from_account_id, to_account_id, loot_id, trade_date, from_account_obtain_date, quantity) $valueClause;";
+        $sql = "INSERT INTO trade (from_account_id, to_account_id, loot_id, trade_date, from_account_obtain_date, quantity) $valueClause;";
 
         $result = Database::executeSqlQuery($sql, $params);
 
@@ -1437,13 +1437,13 @@ private static function interpolateSql(string $sql, array $params): string
 
             if($i === 0)
             {
-                $valueClause .= "(SELECT ? AS id, ? as from_account_id, ? as to_account_id, ? as loot_id, ? as trade_date, (SELECT dateObtained FROM loot WHERE id = ? LIMIT 1) as from_account_obtain_date, ? as quantity)";
-                array_push($params, $trade->crand, $trade->fromAccountId->crand, $trade->toAccountId->crand, $trade->lootId->crand, $trade->ctime, $trade->lootId->crand, $trade->quantity);
+                $valueClause .= "(SELECT ? as from_account_id, ? as to_account_id, ? as loot_id, ? as trade_date, (SELECT dateObtained FROM loot WHERE id = ? LIMIT 1) as from_account_obtain_date, ? as quantity)";
+                array_push($params, $trade->fromAccountId->crand, $trade->toAccountId->crand, $trade->lootId->crand, $trade->ctime, $trade->lootId->crand, $trade->quantity);
                 continue;
             }
 
-            $valueClause .= "UNION ALL (SELECT ?, ?, ?, ?, ?, (SELECT dateObtained FROM loot WHERE id = ? LIMIT 1), ?)";
-            array_push($params, $trade->crand, $trade->fromAccountId->crand, $trade->toAccountId->crand, $trade->lootId->crand, $trade->ctime, $trade->lootId->crand, $trade->quantity);
+            $valueClause .= "UNION ALL (SELECT ?, ?, ?, ?, (SELECT dateObtained FROM loot WHERE id = ? LIMIT 1), ?)";
+            array_push($params, $trade->fromAccountId->crand, $trade->toAccountId->crand, $trade->lootId->crand, $trade->ctime, $trade->lootId->crand, $trade->quantity);
             continue;
         }
 
