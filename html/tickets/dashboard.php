@@ -203,17 +203,31 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                                 <thead>
                                     <tr>
                                         <th scope="col"></th>
-                                        <th scope="col">Ticket</th>
-                                        <th scope="col">Status</th>
-                                        <th scope="col">Priority</th>
-                                        <th scope="col">Category</th>
-                                        <th scope="col">Assignee</th>
-                                        <th scope="col">Guild</th>
-                                        <th scope="col">Updated</th>
+                                        <th scope="col" class="sortable" data-sort="ticket">Ticket <span class="sort-indicator"></span></th>
+                                        <th scope="col" class="sortable" data-sort="status">Status <span class="sort-indicator"></span></th>
+                                        <th scope="col" class="sortable" data-sort="priority">Priority <span class="sort-indicator"></span></th>
+                                        <th scope="col" class="sortable" data-sort="category">Category <span class="sort-indicator"></span></th>
+                                        <th scope="col" class="sortable" data-sort="assignee">Assignee <span class="sort-indicator"></span></th>
+                                        <th scope="col" class="sortable" data-sort="guild">Guild <span class="sort-indicator"></span></th>
+                                        <th scope="col" class="sortable" data-sort="updated">Updated <span class="sort-indicator"></span></th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
                             </table>
+                            <div class="d-flex flex-wrap justify-content-between align-items-center mt-3 gap-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <label for="pageSizeSelect" class="form-label mb-0 small">Rows per page</label>
+                                    <select id="pageSizeSelect" class="form-select form-select-sm" style="width: auto; min-width: 90px;">
+                                        <option value="5">5</option>
+                                        <option value="10" selected>10</option>
+                                        <option value="20">20</option>
+                                        <option value="50">50</option>
+                                    </select>
+                                </div>
+                                <nav>
+                                    <ul class="pagination pagination-sm mb-0" id="ticketPagination"></ul>
+                                </nav>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -274,6 +288,9 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
         let tickets = [];
         let filteredTickets = [];
         let notificationCount = 0;
+        let currentPage = 1;
+        let pageSize = 10;
+        let sortConfig = { column: 'updated', direction: 'desc' };
         let isLoading = false;
         let loadError = '';
         let categories = [];
@@ -294,6 +311,17 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
             if (Number.isNaN(date.getTime())) return null;
             if (endOfDay) date.setHours(23, 59, 59, 999);
             return date;
+        };
+
+        const buildDateTimeElement = (value, rawValue = '') => {
+            const date = value instanceof Date ? value : normalizeDateInput(value);
+            if (!date) return '<span class="text-muted">--</span>';
+            const basic = date.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+            const detailed = date.toUTCString();
+            const isoValue = date.toISOString();
+            const dbValue = rawValue || isoValue;
+
+            return `<span class="date" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="${detailed} UTC" data-datetime-utc="${isoValue}" data-db-value="${dbValue}">${basic}</span>`;
         };
 
         function getFilterValues() {
@@ -759,13 +787,24 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
             const openCount = filteredTickets.filter(t => t.status === 'open').length;
             const inProgressCount = filteredTickets.filter(t => t.status === 'in_progress').length;
             const highCount = filteredTickets.filter(t => t.priority === 'urgent' || t.priority === 'high').length;
-            const lastUpdated = filteredTickets.reduce((latest, ticket) => ticket.updated > latest ? ticket.updated : latest, '');
+            const lastUpdated = filteredTickets.reduce((latest, ticket) => {
+                const ticketTime = ticket.updatedDate ? ticket.updatedDate.getTime() : 0;
+                if (ticketTime > latest.time) {
+                    return { time: ticketTime, raw: ticket.updated || '' };
+                }
+                return latest;
+            }, { time: 0, raw: '' });
 
             document.getElementById('statTotal').textContent = total;
             document.getElementById('statOpen').textContent = openCount;
             document.getElementById('statInProgress').textContent = inProgressCount;
             document.getElementById('statHigh').textContent = highCount;
-            document.getElementById('statLastUpdated').textContent = lastUpdated ? `Updated ${lastUpdated}` : 'Updated --';
+            const statLastUpdated = document.getElementById('statLastUpdated');
+            if (lastUpdated.raw) {
+                statLastUpdated.innerHTML = `Updated ${buildDateTimeElement(lastUpdated.time, lastUpdated.raw)}`;
+            } else {
+                statLastUpdated.textContent = 'Updated --';
+            }
         }
 
         function applyPrefill() {
@@ -806,6 +845,97 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
             return true;
         }
 
+        function sortTickets(ticketsToSort) {
+            const sortedTickets = [...ticketsToSort];
+            const { column, direction } = sortConfig;
+            const directionMultiplier = direction === 'asc' ? 1 : -1;
+
+            const getSortValue = (ticket) => {
+                switch (column) {
+                    case 'ticket':
+                        return normalizeValue(ticket.subject);
+                    case 'status':
+                        return ticket.normalizedStatus;
+                    case 'priority':
+                        return ticket.normalizedPriority;
+                    case 'category':
+                        return ticket.normalizedCategory;
+                    case 'assignee':
+                        return ticket.normalizedAssignee;
+                    case 'guild':
+                        return ticket.normalizedGuild;
+                    case 'updated':
+                        return ticket.updatedDate ? ticket.updatedDate.getTime() : 0;
+                    default:
+                        return '';
+                }
+            };
+
+            sortedTickets.sort((a, b) => {
+                const valueA = getSortValue(a);
+                const valueB = getSortValue(b);
+
+                if (valueA === valueB) return 0;
+                if (valueA === undefined || valueA === null) return 1 * directionMultiplier;
+                if (valueB === undefined || valueB === null) return -1 * directionMultiplier;
+
+                if (typeof valueA === 'number' && typeof valueB === 'number') {
+                    return (valueA - valueB) * directionMultiplier;
+                }
+
+                return valueA > valueB ? directionMultiplier : -directionMultiplier;
+            });
+
+            return sortedTickets;
+        }
+
+        function renderPagination(totalPages) {
+            const pagination = document.getElementById('ticketPagination');
+            pagination.innerHTML = '';
+
+            if (totalPages <= 1) {
+                pagination.innerHTML = '<li class="page-item disabled"><span class="page-link">1</span></li>';
+                return;
+            }
+
+            const addPageItem = (page, label, disabled = false, active = false) => {
+                const li = document.createElement('li');
+                li.className = `page-item ${disabled ? 'disabled' : ''} ${active ? 'active' : ''}`;
+                const link = document.createElement('a');
+                link.className = 'page-link';
+                link.href = '#';
+                link.textContent = label;
+                link.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    if (disabled || page === currentPage) return;
+                    currentPage = page;
+                    renderTickets();
+                });
+                li.appendChild(link);
+                pagination.appendChild(li);
+            };
+
+            addPageItem(Math.max(1, currentPage - 1), '«', currentPage === 1);
+
+            for (let page = 1; page <= totalPages; page++) {
+                addPageItem(page, page, false, currentPage === page);
+            }
+
+            addPageItem(Math.min(totalPages, currentPage + 1), '»', currentPage === totalPages);
+        }
+
+        function updateSortIndicators() {
+            document.querySelectorAll('#ticketTable th[data-sort]').forEach((th) => {
+                const indicator = th.querySelector('.sort-indicator');
+                if (!indicator) return;
+                if (th.dataset.sort === sortConfig.column) {
+                    indicator.textContent = sortConfig.direction === 'asc' ? '▲' : '▼';
+                } else {
+                    indicator.textContent = '';
+                }
+            });
+        }
+
         function renderTickets() {
             const tbody = document.querySelector('#ticketTable tbody');
             tbody.innerHTML = '';
@@ -814,6 +944,7 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                 tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4">Loading tickets...</td></tr>';
                 document.getElementById('listSummary').textContent = 'Loading...';
                 renderStats();
+                updateSortIndicators();
                 return;
             }
 
@@ -821,6 +952,7 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                 tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">${loadError}</td></tr>`;
                 document.getElementById('listSummary').textContent = '0 tickets';
                 renderStats();
+                updateSortIndicators();
                 return;
             }
 
@@ -828,9 +960,18 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                 tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4">No tickets match your filters yet.</td></tr>';
                 document.getElementById('listSummary').textContent = '0 tickets';
                 renderStats();
+                updateSortIndicators();
                 return;
             }
-            filteredTickets.forEach(ticket => {
+
+            const sortedTickets = sortTickets(filteredTickets);
+            const totalPages = Math.max(1, Math.ceil(sortedTickets.length / pageSize));
+            currentPage = Math.min(currentPage, totalPages);
+            const startIndex = (currentPage - 1) * pageSize;
+            const endIndex = startIndex + pageSize;
+            const pageTickets = sortedTickets.slice(startIndex, endIndex);
+
+            pageTickets.forEach(ticket => {
                 const row = document.createElement('tr');
                 const detailLink = `<?= Version::urlBetaPrefix(); ?>/tickets/view.php?ctime=${encodeURIComponent(ticket.ctime)}&crand=${encodeURIComponent(ticket.crand)}`;
                 row.innerHTML = `
@@ -846,13 +987,19 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                     <td>${ticket.category || 'Uncategorized'}</td>
                     <td>${ticket.assignee || 'Unassigned'}</td>
                     <td>${ticket.guild}</td>
-                    <td>${ticket.updated}</td>
+                    <td>${buildDateTimeElement(ticket.updatedDate || ticket.updated, ticket.updated)}</td>
                 `;
                 tbody.appendChild(row);
             });
-            document.getElementById('listSummary').textContent = `${filteredTickets.length} ticket${filteredTickets.length === 1 ? '' : 's'}`;
+
+            const showingStart = startIndex + 1;
+            const showingEnd = Math.min(filteredTickets.length, endIndex);
+            const summaryText = `${showingStart}-${showingEnd} of ${filteredTickets.length} ticket${filteredTickets.length === 1 ? '' : 's'}`;
+            document.getElementById('listSummary').textContent = summaryText;
+            renderPagination(totalPages);
             bindTicketSelection();
             renderStats();
+            updateSortIndicators();
         }
 
         function bindTicketSelection() {
@@ -866,12 +1013,16 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
             });
         }
 
-        function applyFiltersAndRender(refetch = false) {
+        function applyFiltersAndRender(refetch = false, resetPage = false) {
             if (refetch) {
+                currentPage = 1;
                 fetchTickets(getFilterValues());
                 return;
             }
             filteredTickets = tickets.filter(ticketMatchesFilters);
+            if (resetPage) {
+                currentPage = 1;
+            }
             renderTickets();
         }
 
@@ -907,6 +1058,25 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                 document.getElementById(id).value = '';
             });
             applyFiltersAndRender(true);
+        });
+
+        document.querySelectorAll('#ticketTable th[data-sort]').forEach((th) => {
+            th.addEventListener('click', () => {
+                const column = th.dataset.sort;
+                if (sortConfig.column === column) {
+                    sortConfig.direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    sortConfig = { column, direction: column === 'updated' ? 'desc' : 'asc' };
+                }
+                renderTickets();
+            });
+        });
+
+        document.getElementById('pageSizeSelect').addEventListener('change', (event) => {
+            const newSize = parseInt(event.target.value, 10);
+            pageSize = Number.isNaN(newSize) ? 10 : newSize;
+            currentPage = 1;
+            renderTickets();
         });
 
         const categoryForm = document.getElementById('categoryCreateForm');
@@ -1023,6 +1193,9 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
         .priority-low { background: #eef2ff; color: #4650dd; }
         .comment-thread .comment-internal { border-left: 4px solid #6c757d; background: #f8f9fa; }
         .comment-thread .comment { border: 1px solid #e9ecef; }
+        #ticketPagination .page-link { min-width: 2.25rem; text-align: center; }
+        th.sortable { cursor: pointer; user-select: none; }
+        th .sort-indicator { font-size: 0.75rem; }
     </style>
 </body>
 
