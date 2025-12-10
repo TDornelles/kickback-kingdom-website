@@ -105,7 +105,7 @@ class TicketController
         $updatedBy = $account->crand;
 
         $stmt->bind_param(
-            'siissiisiiisssssi',
+            'siisiisiiissssssi',
             $recordId->ctime,
             $recordId->crand,
             $createdBy,
