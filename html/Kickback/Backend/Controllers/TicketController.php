@@ -53,6 +53,7 @@ class TicketController
 
         $subject = trim((string) ($payload['subject'] ?? ''));
         $description = trim((string) ($payload['description'] ?? ''));
+        $category = self::normalizeCategory($payload['category'] ?? null);
         $priorityInput = $payload['priority'] ?? 'medium';
         $severityInput = $payload['severity'] ?? null;
         $tags = self::normalizeTags($payload['tags'] ?? []);
@@ -62,6 +63,12 @@ class TicketController
         $serverCtime = self::normalizeNullableString($payload['serverCtime'] ?? null);
         $serverCrand = self::normalizeNullableInt($payload['serverCrand'] ?? null);
         $assignees = self::normalizeIntList($payload['assignees'] ?? []);
+        $createdIp = self::normalizeCreatedIp($payload['createdIp'] ?? null);
+        $userAgent = self::normalizeUserAgent($payload['userAgent'] ?? null);
+
+        if ($category === null) {
+            return new Response(false, 'Category is invalid.', null);
+        }
 
         $priority = self::normalizePriority($priorityInput);
         if ($priority === null) {
@@ -84,9 +91,9 @@ class TicketController
         $conn = Database::getConnection();
         $stmt = $conn->prepare(
             'INSERT INTO ' . self::TICKET_TABLE
-            . ' (ctime, crand, created_by_crand, guild_id, game_id, server_ctime, server_crand, status, priority, severity,'
-            . ' subject, description, tags_json, updated_at, updated_by_crand)'
-            . ' VALUES (?, ?, ?, ?, ?, ?, ?, "open", ?, ?, ?, ?, ?, ?, ?)'
+            . ' (ctime, crand, created_by_crand, category, guild_id, game_id, server_ctime, server_crand, status, priority, severity,'
+            . ' subject, description, tags_json, created_ip, user_agent, updated_at, updated_by_crand)'
+            . ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, "open", ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
 
         if ($stmt === false) {
@@ -98,10 +105,11 @@ class TicketController
         $updatedBy = $account->crand;
 
         $stmt->bind_param(
-            'siiiisiiissssi',
+            'siissiisiiisssssi',
             $recordId->ctime,
             $recordId->crand,
             $createdBy,
+            $category,
             $guildId,
             $gameId,
             $serverCtime,
@@ -111,6 +119,8 @@ class TicketController
             $subject,
             $description,
             $tagsJson,
+            $createdIp,
+            $userAgent,
             $now,
             $updatedBy
         );
@@ -129,6 +139,7 @@ class TicketController
             $recordId->crand,
             $subject,
             $description,
+            $category,
             'open',
             $priority,
             $severity,
@@ -142,7 +153,9 @@ class TicketController
             $now,
             null,
             null,
-            null
+            null,
+            $createdIp,
+            $userAgent
         );
 
         if (!empty($assignments)) {
@@ -322,6 +335,7 @@ class TicketController
             $ticketCrand,
             $subject,
             $description,
+            $ticket->category,
             $status,
             $priority,
             $severity,
@@ -335,7 +349,9 @@ class TicketController
             $now,
             $firstResponseAt,
             $resolvedAt,
-            $closedAt
+            $closedAt,
+            $ticket->createdIp,
+            $ticket->userAgent
         );
 
         if (!empty($assignments)) {
@@ -572,6 +588,53 @@ class TicketController
         }
 
         return new Response(true, 'Validated', null);
+    }
+
+    private static function normalizeCategory(mixed $input): ?string
+    {
+        if (is_null($input)) {
+            return null;
+        }
+
+        $category = strtolower(trim((string) $input));
+        if ($category === '') {
+            return null;
+        }
+
+        return in_array($category, self::getAllowedCategories(), true) ? $category : null;
+    }
+
+    private static function normalizeCreatedIp(mixed $input): ?string
+    {
+        if (is_null($input)) {
+            return null;
+        }
+
+        $ip = trim((string) $input);
+        if ($ip === '') {
+            return null;
+        }
+
+        $validated = filter_var($ip, FILTER_VALIDATE_IP);
+        if ($validated === false) {
+            return null;
+        }
+
+        return substr($validated, 0, 45);
+    }
+
+    private static function normalizeUserAgent(mixed $input): ?string
+    {
+        if (is_null($input)) {
+            return null;
+        }
+
+        $userAgent = trim((string) $input);
+        if ($userAgent === '') {
+            return null;
+        }
+
+        return mb_substr($userAgent, 0, 255);
     }
 
     private static function normalizePriority(mixed $input): ?int
