@@ -379,6 +379,7 @@ class TicketController
         $statusFilter = isset($payload['status']) ? strtolower(trim((string) $payload['status'])) : null;
         $priorityFilter = $payload['priority'] ?? null;
         $severityFilter = $payload['severity'] ?? null;
+        $assigneeFilter = isset($payload['assignee']) ? strtolower(trim((string) $payload['assignee'])) : null;
         $fromFilter = isset($payload['updatedFrom']) ? trim((string) $payload['updatedFrom']) : null;
         $toFilter = isset($payload['updatedTo']) ? trim((string) $payload['updatedTo']) : null;
         $searchFilter = isset($payload['search']) ? trim((string) $payload['search']) : null;
@@ -469,7 +470,105 @@ class TicketController
         }
         $stmt->close();
 
-        return new Response(true, 'Tickets loaded.', $tickets);
+        $assignments = self::getAssigneesForTickets($tickets);
+
+        $filteredTickets = [];
+        foreach ($tickets as $ticket) {
+            $ticketKey = $ticket->ctime . '-' . $ticket->crand;
+            $assignees = $assignments[$ticketKey] ?? [];
+
+            if ($assigneeFilter !== null && $assigneeFilter !== '') {
+                $matchesAssignee = array_reduce(
+                    $assignees,
+                    static fn(bool $carry, string $name) => $carry || strtolower($name) === $assigneeFilter,
+                    false
+                );
+                if (!$matchesAssignee) {
+                    continue;
+                }
+            }
+
+            $priorityLabel = self::priorityLabel($ticket->priority);
+            $primaryAssignee = $assignees[0] ?? '';
+
+            $filteredTickets[] = [
+                'ctime' => $ticket->ctime,
+                'crand' => $ticket->crand,
+                'subject' => $ticket->subject,
+                'description' => $ticket->description,
+                'category' => $ticket->category,
+                'status' => $ticket->status,
+                'priority' => $priorityLabel,
+                'priorityValue' => $ticket->priority,
+                'severity' => $ticket->severity,
+                'tags' => $ticket->tags,
+                'guildId' => $ticket->guildId,
+                'gameId' => $ticket->gameId,
+                'serverCtime' => $ticket->serverCtime,
+                'serverCrand' => $ticket->serverCrand,
+                'createdByUsername' => $ticket->createdByUsername,
+                'updatedByCrand' => $ticket->updatedByCrand,
+                'updatedAt' => $ticket->updatedAt,
+                'firstResponseAt' => $ticket->firstResponseAt,
+                'resolvedAt' => $ticket->resolvedAt,
+                'closedAt' => $ticket->closedAt,
+                'assignees' => $assignees,
+                'assignee' => $primaryAssignee,
+            ];
+        }
+
+        return new Response(true, 'Tickets loaded.', $filteredTickets);
+    }
+
+    /**
+     * @param Ticket[] $tickets
+     * @return array<string,string[]>
+     */
+    private static function getAssigneesForTickets(array $tickets): array
+    {
+        if (empty($tickets)) {
+            return [];
+        }
+
+        $conn = Database::getConnection();
+        $placeholders = implode(',', array_fill(0, count($tickets), '(?, ?)'));
+        $types = str_repeat('si', count($tickets));
+        $params = [];
+
+        foreach ($tickets as $ticket) {
+            $params[] = $ticket->ctime;
+            $params[] = $ticket->crand;
+        }
+
+        $query =
+            'SELECT ta.ticket_ctime, ta.ticket_crand, '
+            . "COALESCE(NULLIF(a.Username, ''), 'Unknown user') AS username "
+            . 'FROM ' . self::ASSIGNMENT_TABLE . ' ta '
+            . 'LEFT JOIN account a ON a.Id = ta.account_crand '
+            . 'WHERE (ta.ticket_ctime, ta.ticket_crand) IN (' . $placeholders . ') '
+            . 'ORDER BY username ASC';
+
+        $stmt = $conn->prepare($query);
+        if ($stmt === false) {
+            return [];
+        }
+
+        $stmt->bind_param($types, ...$params);
+
+        if (!$stmt->execute()) {
+            $stmt->close();
+            return [];
+        }
+
+        $result = $stmt->get_result();
+        $assignees = [];
+        while ($row = $result->fetch_assoc()) {
+            $key = $row['ticket_ctime'] . '-' . $row['ticket_crand'];
+            $assignees[$key][] = (string) $row['username'];
+        }
+        $stmt->close();
+
+        return $assignees;
     }
 
     public static function listAssignees(): Response

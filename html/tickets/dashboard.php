@@ -750,24 +750,34 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
 
                         const result = await response.json();
                         if (result.success && Array.isArray(result.data)) {
-                            tickets = result.data.map((ticket) => ({
-                                ...ticket,
-                                id: `${ticket.ctime}-${ticket.crand}`,
-                                requester: ticket.createdByUsername || 'Unknown user',
-                                updated: ticket.updatedAt || '',
-                                assignee: ticket.assignee || '',
-                                category: ticket.category || '',
-                                guild: ticket.guild || '',
-                                status: ticket.status || '',
-                                priority: ticket.priority || '',
-                                normalizedStatus: normalizeStatus(ticket.status),
-                                normalizedPriority: normalizeValue(ticket.priority),
-                                normalizedAssignee: normalizeValue(ticket.assignee),
-                                normalizedCategory: normalizeValue(ticket.category),
-                                normalizedGuild: normalizeValue(ticket.guild),
-                                updatedDate: normalizeDateInput(ticket.updatedAt || ticket.updated),
-                                comments: Array.isArray(ticket.comments) ? ticket.comments : [],
-                            }));
+                            tickets = result.data.map((ticket) => {
+                                const assignees = Array.isArray(ticket.assignees)
+                                    ? ticket.assignees.filter(name => !!name)
+                                    : [];
+                                const primaryAssignee = (ticket.assignee || assignees[0] || '').trim();
+                                const priorityLabel = (ticket.priority || '').toString();
+
+                                return {
+                                    ...ticket,
+                                    assignees,
+                                    assignee: primaryAssignee,
+                                    id: `${ticket.ctime}-${ticket.crand}`,
+                                    requester: ticket.createdByUsername || 'Unknown user',
+                                    updated: ticket.updatedAt || '',
+                                    category: ticket.category || '',
+                                    guild: ticket.guild || '',
+                                    status: ticket.status || '',
+                                    priority: priorityLabel,
+                                    normalizedStatus: normalizeStatus(ticket.status),
+                                    normalizedPriority: normalizeValue(priorityLabel),
+                                    normalizedAssignee: normalizeValue(primaryAssignee),
+                                    normalizedAssignees: assignees.map(normalizeValue).filter(Boolean),
+                                    normalizedCategory: normalizeValue(ticket.category),
+                                    normalizedGuild: normalizeValue(ticket.guild),
+                                    updatedDate: normalizeDateInput(ticket.updatedAt || ticket.updated),
+                                    comments: Array.isArray(ticket.comments) ? ticket.comments : [],
+                                };
+                            });
                 } else {
                     tickets = [];
                     loadError = result.message || 'Unable to load tickets.';
@@ -833,7 +843,10 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
             if (normalizedPriority && ticket.normalizedPriority !== normalizedPriority) return false;
             if (normalizedCategory && ticket.normalizedCategory !== normalizedCategory) return false;
             if (normalizedGuild && ticket.normalizedGuild !== normalizedGuild) return false;
-            if (assignee && ticket.normalizedAssignee !== assignee) return false;
+            if (assignee) {
+                const matchesAssignee = (ticket.normalizedAssignees || []).includes(assignee) || ticket.normalizedAssignee === assignee;
+                if (!matchesAssignee) return false;
+            }
 
             if (fromDate && (!ticketDate || ticketDate < fromDate)) return false;
             if (toDate && (!ticketDate || ticketDate > toDate)) return false;
@@ -975,6 +988,9 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
             pageTickets.forEach(ticket => {
                 const row = document.createElement('tr');
                 const detailLink = `<?= Version::urlBetaPrefix(); ?>/tickets/view.php?ctime=${encodeURIComponent(ticket.ctime)}&crand=${encodeURIComponent(ticket.crand)}`;
+                const assigneeDisplay = ticket.assignees && ticket.assignees.length > 0
+                    ? ticket.assignees.join(', ')
+                    : 'Unassigned';
                 row.innerHTML = `
                     <td><input type="checkbox" class="form-check-input ticket-checkbox" data-id="${ticket.id}"></td>
                     <td class="ticket-subject position-relative" data-id="${ticket.id}">
@@ -986,7 +1002,7 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                     <td><span class="badge status-pill status-${ticket.status}">${ticket.status.replace(/[_-]/g, ' ')}</span></td>
                     <td><span class="badge priority-pill priority-${ticket.priority}">${ticket.priority}</span></td>
                     <td>${ticket.category || 'Uncategorized'}</td>
-                    <td>${ticket.assignee || 'Unassigned'}</td>
+                    <td>${assigneeDisplay}</td>
                     <td>${ticket.guild}</td>
                     <td>${buildDateTimeElement(ticket.updatedDate || ticket.updated, ticket.updated)}</td>
                 `;
