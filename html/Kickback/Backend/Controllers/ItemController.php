@@ -57,6 +57,34 @@ class ItemController
         return new Response(true, "Items retrieved successfully", $items);
     }
 
+    public static function getItemTable(): Response
+    {
+        $conn = Database::getConnection();
+
+        $sql = "SELECT Id, name, `desc`, type, rarity, media_id_large, media_id_small, media_id_back, nominated_by_id, collection_id, equipable, equipment_slot, redeemable, useable, is_container, container_size, container_item_category, item_category, is_fungible, DateCreated FROM item ORDER BY name";
+
+        $stmt = $conn->prepare($sql);
+
+        if (!$stmt) {
+            return new Response(false, "Failed to load items: " . $conn->error);
+        }
+
+        if (!$stmt->execute()) {
+            return new Response(false, "Failed to load items: " . $stmt->error);
+        }
+
+        $result = $stmt->get_result();
+        $items = [];
+
+        while ($row = $result->fetch_assoc()) {
+            $items[] = $row;
+        }
+
+        $stmt->close();
+
+        return new Response(true, "Items retrieved successfully", $items);
+    }
+
     public static function insertItem(Item $item): Response {
         $conn = Database::getConnection();
     
@@ -136,6 +164,112 @@ class ItemController
         $stmt->close();
     
         return new Response(true, "Item inserted successfully.", new vRecordId('', (int)$insertedId));
+    }
+
+    public static function updateItem(Item $item): Response {
+        $conn = Database::getConnection();
+
+        $sql = "
+            UPDATE item
+            SET
+                type = ?,
+                rarity = ?,
+                media_id_large = ?,
+                media_id_small = ?,
+                media_id_back = ?,
+                `desc` = ?,
+                `name` = ?,
+                nominated_by_id = ?,
+                collection_id = ?,
+                equipable = ?,
+                equipment_slot = ?,
+                redeemable = ?,
+                useable = ?,
+                is_container = ?,
+                container_size = ?,
+                container_item_category = ?,
+                item_category = ?,
+                is_fungible = ?
+            WHERE Id = ?
+        ";
+
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            return new Response(false, "Failed to prepare item update: " . $conn->error);
+        }
+
+        $equipmentSlot = $item->equipmentSlot?->value;
+        $nominatedById = $item->nominatedBy?->crand;
+        $collectionId  = $item->collection?->crand;
+        $containerItemCategory = $item->containerItemCategory?->value;
+        $itemCategory  = $item->itemCategory?->value;
+
+        $typeValue   = $item->type->value;
+        $rarityValue = $item->rarity->value;
+
+        $mediaIdBack = $item->mediaLarge->crand;
+
+        $isFungible = $item->fungible ?? false;
+
+        if ($item->mediaBack != null)
+        {
+            $mediaIdBack = $item->mediaBack->crand;
+        }
+
+        $stmt->bind_param(
+            'iiiiissiiiiiiiiiiii',
+            $typeValue,
+            $rarityValue,
+            $item->mediaLarge->crand,
+            $item->mediaSmall->crand,
+            $mediaIdBack,
+            $item->desc,
+            $item->name,
+            $nominatedById,
+            $collectionId,
+            $item->equipable,
+            $equipmentSlot,
+            $item->redeemable,
+            $item->useable,
+            $item->isContainer,
+            $item->containerSize,
+            $containerItemCategory,
+            $itemCategory,
+            $isFungible,
+            $item->crand
+        );
+
+        if (!$stmt->execute()) {
+            return new Response(false, "Failed to update item: " . $stmt->error);
+        }
+
+        $stmt->close();
+
+        return new Response(true, "Item updated successfully.", new vRecordId('', (int)$item->crand));
+    }
+
+    public static function deleteItem(vRecordId $itemId): Response {
+        $conn = Database::getConnection();
+
+        $sql = "DELETE FROM item WHERE Id = ?";
+
+        $stmt = $conn->prepare($sql);
+
+        if (!$stmt) {
+            return new Response(false, "Failed to prepare item delete: " . $conn->error);
+        }
+
+        $stmt->bind_param('i', $itemId->crand);
+
+        if (!$stmt->execute()) {
+            return new Response(false, "Failed to delete item: " . $stmt->error);
+        }
+
+        $affected = $stmt->affected_rows;
+        $stmt->close();
+
+        $message = $affected > 0 ? 'Item deleted successfully.' : 'No item was deleted.';
+        return new Response($affected > 0, $message, null);
     }
     
 
