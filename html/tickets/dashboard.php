@@ -286,12 +286,22 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
         let assigneeLoadError = '';
         let pendingAssigneeValue = prefillFilters.assignee || '';
 
+        const normalizeValue = (value) => (value || '').toString().trim().toLowerCase();
+        const normalizeStatus = (value) => normalizeValue(value).replace('-', '_');
+        const normalizeDateInput = (value, endOfDay = false) => {
+            if (!value) return null;
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return null;
+            if (endOfDay) date.setHours(23, 59, 59, 999);
+            return date;
+        };
+
         function getFilterValues() {
             return {
                 status: document.getElementById('filterStatus').value,
                 priority: document.getElementById('filterPriority').value,
                 category: document.getElementById('filterCategory').value,
-                assignee: document.getElementById('filterAssignee').value.toLowerCase(),
+                assignee: normalizeValue(document.getElementById('filterAssignee').value),
                 guild: document.getElementById('filterGuild').value,
                 from: document.getElementById('filterFrom').value,
                 to: document.getElementById('filterTo').value,
@@ -692,6 +702,8 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
             if (normalizedStatus) payload.append('status', normalizedStatus);
             if (filters.priority) payload.append('priority', filters.priority);
             if (filters.category) payload.append('category', filters.category);
+            if (filters.assignee) payload.append('assignee', filters.assignee);
+            if (filters.guild) payload.append('guild', filters.guild);
             if (filters.from) payload.append('from', filters.from);
             if (filters.to) payload.append('to', filters.to);
             if (filters.search) payload.append('search', filters.search);
@@ -719,6 +731,12 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                                 guild: ticket.guild || '',
                                 status: ticket.status || '',
                                 priority: ticket.priority || '',
+                                normalizedStatus: normalizeStatus(ticket.status),
+                                normalizedPriority: normalizeValue(ticket.priority),
+                                normalizedAssignee: normalizeValue(ticket.assignee),
+                                normalizedCategory: normalizeValue(ticket.category),
+                                normalizedGuild: normalizeValue(ticket.guild),
+                                updatedDate: normalizeDateInput(ticket.updatedAt || ticket.updated),
                                 comments: Array.isArray(ticket.comments) ? ticket.comments : [],
                             }));
                 } else {
@@ -762,16 +780,24 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
 
         function ticketMatchesFilters(ticket) {
             const { status, priority, assignee, category, guild, search, from, to } = getFilterValues();
-            const normalizedStatus = status.replace('-', '_');
-            const searchTerm = (search || '').toLowerCase();
+            const normalizedStatus = normalizeStatus(status);
+            const normalizedPriority = normalizeValue(priority);
+            const normalizedCategory = normalizeValue(category);
+            const normalizedGuild = normalizeValue(guild);
+            const searchTerm = normalizeValue(search);
+            const fromDate = normalizeDateInput(from);
+            const toDate = normalizeDateInput(to, true);
+            const ticketDate = ticket.updatedDate;
 
-            if (normalizedStatus && ticket.status !== normalizedStatus) return false;
-            if (priority && ticket.priority !== priority) return false;
-            if (category && (ticket.category || '') !== category) return false;
-            if (guild && (ticket.guild || '') !== guild) return false;
-            if (assignee && (ticket.assignee || '').toLowerCase() !== assignee) return false;
-            if (from && ticket.updated < from) return false;
-            if (to && ticket.updated > to) return false;
+            if (normalizedStatus && ticket.normalizedStatus !== normalizedStatus) return false;
+            if (normalizedPriority && ticket.normalizedPriority !== normalizedPriority) return false;
+            if (normalizedCategory && ticket.normalizedCategory !== normalizedCategory) return false;
+            if (normalizedGuild && ticket.normalizedGuild !== normalizedGuild) return false;
+            if (assignee && ticket.normalizedAssignee !== assignee) return false;
+
+            if (fromDate && (!ticketDate || ticketDate < fromDate)) return false;
+            if (toDate && (!ticketDate || ticketDate > toDate)) return false;
+
             if (searchTerm) {
                 const haystack = `${ticket.subject || ''} ${ticket.description || ''} ${ticket.requester || ''} ${ticket.id || ''}`.toLowerCase();
                 if (!haystack.includes(searchTerm)) return false;
