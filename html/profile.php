@@ -158,6 +158,9 @@ $defaultMobileBannerPath = '/assets/images/kk-2.jpg';
 $equippedBannerPath = $defaultDesktopBannerPath;
 $equippedBannerMobilePath = $defaultMobileBannerPath;
 
+$equippedBackgroundLootId = '';
+$equippedBackgroundPath = null;
+
 if (isset($profile) && isset($profile->avatar)) {
     $equippedAvatarIconPath = $profile->avatar->getFullPath();
 }
@@ -165,6 +168,10 @@ if (isset($profile) && isset($profile->avatar)) {
 if (isset($profile) && isset($profile->banner)) {
     $equippedBannerPath = $profile->banner->getFullPath();
     $equippedBannerMobilePath = $profile->banner->getFullPath();
+}
+
+if (isset($profile) && isset($profile->background)) {
+    $equippedBackgroundPath = $profile->background->getFullPath();
 }
 
 foreach ($accountInventory as $accountInventoryItemStack) {
@@ -198,6 +205,25 @@ foreach ($accountInventory as $accountInventoryItemStack) {
         }
     }
 }
+
+foreach ($accountInventory as $accountInventoryItemStack) {
+    if ($accountInventoryItemStack->item->equipable && $accountInventoryItemStack->item->equipmentSlot == ItemEquipmentSlot::BACKGROUND) {
+        $backgroundMediaPaths = array_filter([
+            $accountInventoryItemStack->item->iconBack?->getFullPath(),
+            $accountInventoryItemStack->item->iconBig?->getFullPath(),
+            $accountInventoryItemStack->item->iconSmall->getFullPath(),
+        ]);
+
+        if ($equippedBackgroundPath !== null && in_array($equippedBackgroundPath, $backgroundMediaPaths, true)) {
+            if (isset($accountInventoryItemStack->nextLootId)) {
+                $equippedBackgroundLootId = $accountInventoryItemStack->nextLootId->crand;
+            } elseif (isset($accountInventoryItemStack->itemLootId)) {
+                $equippedBackgroundLootId = $accountInventoryItemStack->itemLootId->crand;
+            }
+            break;
+        }
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -206,7 +232,7 @@ foreach ($accountInventory as $accountInventoryItemStack) {
 
 <?php require("php-components/base-page-head.php"); ?>
 
-<body class="bg-body-secondary container p-0">
+<body class="bg-body-secondary container p-0" <?php if ($equippedBackgroundPath !== null) { ?>style="background-image: url('<?= htmlspecialchars($equippedBackgroundPath); ?>') !important;"<?php } ?>>
     
     <?php 
     
@@ -261,7 +287,7 @@ foreach ($accountInventory as $accountInventoryItemStack) {
         <input id="equipment-avatar" type="hidden" name="equipment-avatar" required="" value="<?= htmlspecialchars((string)$equippedAvatarLootId); ?>"/>
         <input id="equipment-pc-card" type="hidden" name="equipment-pc-card" required=""/>
         <input id="equipment-banner" type="hidden" name="equipment-banner" required="" value="<?= htmlspecialchars((string)$equippedBannerLootId); ?>"/>
-        <input id="equipment-background" type="hidden" name="equipment-background" required=""/>
+        <input id="equipment-background" type="hidden" name="equipment-background" required="" value="<?= htmlspecialchars((string)$equippedBackgroundLootId); ?>"/>
         <input id="equipment-charm" type="hidden" name="equipment-charm" required=""/>
         <input id="equipment-pet" type="hidden" name="equipment-pet" required=""/>
 
@@ -332,7 +358,7 @@ foreach ($accountInventory as $accountInventoryItemStack) {
                                     
                                     <div class="row g-0">
                                         <div class="col-4">
-                                            <button type="button" data-bs-target="#selectBackgroundModal" data-bs-toggle="modal" class="btn btn-dark p-0"><img src="/assets/media/menu/empty_slot.jpg" class="img-fluid"></button>
+                                            <button type="button" data-bs-target="#selectBackgroundModal" data-bs-toggle="modal" class="btn btn-dark p-0"><img id="equipment-preview-background" src="<?= htmlspecialchars($equippedBackgroundPath ?? '/assets/media/menu/empty_slot.jpg'); ?>" class="img-fluid object-fit-cover"></button>
                                         </div>
                                         <div class="col-8">
                                             
