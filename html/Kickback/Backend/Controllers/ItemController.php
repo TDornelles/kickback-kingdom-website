@@ -61,7 +61,7 @@ class ItemController
     {
         $conn = Database::getConnection();
 
-        $sql = "SELECT Id, name, `desc`, type, rarity, media_id_large, media_id_small, media_id_back, nominated_by_id, collection_id, equipable, equipment_slot, redeemable, useable, is_container, container_size, container_item_category, item_category, is_fungible, DateCreated FROM item ORDER BY name";
+        $sql = "SELECT Id, name, `desc`, type, rarity, media_id_large, media_id_small, media_id_back, nominated_by_id, collection_id, equipable, equipment_slot, redeemable, useable, is_container, container_size, container_item_category, item_category, is_fungible FROM item ORDER BY name";
 
         $stmt = $conn->prepare($sql);
 
