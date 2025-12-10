@@ -914,16 +914,24 @@ class AccountController
                 ["Error in UpsertAccountEquipment(...) when preparing SQL query. (mysqli_prepare)"]);
         }
 
+        $equipmentAccountId = intval($equipmentData['equipment-account-id']);
+        $equipmentAvatar = ($equipmentData['equipment-avatar'] ?? '') === '' ? null : intval($equipmentData['equipment-avatar']);
+        $equipmentPcCard = ($equipmentData['equipment-pc-card'] ?? '') === '' ? null : intval($equipmentData['equipment-pc-card']);
+        $equipmentBanner = ($equipmentData['equipment-banner'] ?? '') === '' ? null : intval($equipmentData['equipment-banner']);
+        $equipmentBackground = ($equipmentData['equipment-background'] ?? '') === '' ? null : intval($equipmentData['equipment-background']);
+        $equipmentCharm = ($equipmentData['equipment-charm'] ?? '') === '' ? null : intval($equipmentData['equipment-charm']);
+        $equipmentPet = ($equipmentData['equipment-pet'] ?? '') === '' ? null : intval($equipmentData['equipment-pet']);
+
         // Bind the variables to the SQL statement
         $success = $stmt->bind_param(
             "iiiiiii",
-            $equipmentData['equipment-account-id'],
-            $equipmentData['equipment-avatar'],
-            $equipmentData['equipment-pc-card'],
-            $equipmentData['equipment-banner'],
-            $equipmentData['equipment-background'],
-            $equipmentData['equipment-charm'],
-            $equipmentData['equipment-pet']);
+            $equipmentAccountId,
+            $equipmentAvatar,
+            $equipmentPcCard,
+            $equipmentBanner,
+            $equipmentBackground,
+            $equipmentCharm,
+            $equipmentPet);
 
         if (false === $success) {
             error_log($stmt->error);
