@@ -250,7 +250,7 @@ function enumLabel(string $value): string
 
     <!-- Create / Edit Modal -->
     <div class="modal fade" id="itemModal" tabindex="-1" aria-labelledby="itemModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-scrollable modal-lg">
+        <div class="modal-dialog modal-dialog-scrollable modal-xl modal-fullscreen-sm-down">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="itemModalLabel">Create Item</h5>
@@ -272,7 +272,7 @@ function enumLabel(string $value): string
                                         <label class="form-label">Name</label>
                                         <input type="text" class="form-control" name="name" id="item-name" required>
                                     </div>
-                                    <div class="col-md-6">
+                                    <div class="col-12">
                                         <label class="form-label">Description</label>
                                         <textarea class="form-control" name="description" id="item-description" rows="2" required></textarea>
                                     </div>
@@ -314,9 +314,11 @@ function enumLabel(string $value): string
                                         <label class="form-label">Media (Large)</label>
                                         <input type="hidden" name="media_id_large" id="media-large" value="221" required>
                                         <div class="card h-100 shadow-sm border" role="button" style="cursor: pointer;" onclick="openMediaPicker('media-large', 'media-large-preview', 'media-large-label')">
-                                            <img src="/assets/media/items/221.png" alt="Large preview" id="media-large-preview" class="card-img-top object-fit-cover" style="height: 160px;">
-                                            <div class="card-body py-2">
-                                                <p class="card-text small mb-0" id="media-large-label">Default preview shown. Click to select.</p>
+                                            <div class="ratio ratio-1x1 bg-body-secondary bg-opacity-25">
+                                                <img src="/assets/media/items/221.png" alt="Large preview" id="media-large-preview" class="object-fit-contain w-100 h-100">
+                                            </div>
+                                            <div class="card-body py-3">
+                                                <p class="card-text small mb-0" id="media-large-label">Default preview shown. Click to select a different image.</p>
                                             </div>
                                         </div>
                                     </div>
@@ -324,9 +326,11 @@ function enumLabel(string $value): string
                                         <label class="form-label">Media (Small)</label>
                                         <input type="hidden" name="media_id_small" id="media-small" value="221" required>
                                         <div class="card h-100 shadow-sm border" role="button" style="cursor: pointer;" onclick="openMediaPicker('media-small', 'media-small-preview', 'media-small-label')">
-                                            <img src="/assets/media/items/221.png" alt="Small preview" id="media-small-preview" class="card-img-top object-fit-cover" style="height: 160px;">
-                                            <div class="card-body py-2">
-                                                <p class="card-text small mb-0" id="media-small-label">Default preview shown. Click to select.</p>
+                                            <div class="ratio ratio-1x1 bg-body-secondary bg-opacity-25">
+                                                <img src="/assets/media/items/221.png" alt="Small preview" id="media-small-preview" class="object-fit-contain w-100 h-100">
+                                            </div>
+                                            <div class="card-body py-3">
+                                                <p class="card-text small mb-0" id="media-small-label">Default preview shown. Click to select a different image.</p>
                                             </div>
                                         </div>
                                     </div>
@@ -334,9 +338,11 @@ function enumLabel(string $value): string
                                         <label class="form-label">Media (Back)</label>
                                         <input type="hidden" name="media_id_back" id="media-back" value="221" required>
                                         <div class="card h-100 shadow-sm border" role="button" style="cursor: pointer;" onclick="openMediaPicker('media-back', 'media-back-preview', 'media-back-label')">
-                                            <img src="/assets/media/items/221.png" alt="Back preview" id="media-back-preview" class="card-img-top object-fit-cover" style="height: 160px;">
-                                            <div class="card-body py-2">
-                                                <p class="card-text small mb-0" id="media-back-label">Default preview shown. Click to select.</p>
+                                            <div class="ratio ratio-1x1 bg-body-secondary bg-opacity-25">
+                                                <img src="/assets/media/items/221.png" alt="Back preview" id="media-back-preview" class="object-fit-contain w-100 h-100">
+                                            </div>
+                                            <div class="card-body py-3">
+                                                <p class="card-text small mb-0" id="media-back-label">Default preview shown. Click to select a different image.</p>
                                             </div>
                                         </div>
                                     </div>
@@ -409,25 +415,60 @@ function enumLabel(string $value): string
                                     <div class="border-top flex-grow-1 opacity-25"></div>
                                 </div>
                                 <div class="row g-3">
-                                    <div class="col-sm-6 col-md-3 form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" role="switch" id="equipable" name="equipable" value="1">
-                                        <label class="form-check-label" for="equipable">Equipable</label>
+                                    <div class="col-md-6 col-lg-4">
+                                        <div class="d-flex align-items-start justify-content-between p-3 border rounded bg-body-tertiary h-100">
+                                            <div class="me-3">
+                                                <div class="fw-semibold">Equipable</div>
+                                                <div class="text-body-secondary small">Allows this item to be worn or held when an equipment slot is provided.</div>
+                                            </div>
+                                            <div class="form-check form-switch m-0">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="equipable" name="equipable" value="1">
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="col-sm-6 col-md-3 form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" role="switch" id="redeemable" name="redeemable" value="1">
-                                        <label class="form-check-label" for="redeemable">Redeemable</label>
+                                    <div class="col-md-6 col-lg-4">
+                                        <div class="d-flex align-items-start justify-content-between p-3 border rounded bg-body-tertiary h-100">
+                                            <div class="me-3">
+                                                <div class="fw-semibold">Redeemable</div>
+                                                <div class="text-body-secondary small">Flag items that can be exchanged or turned in through redemption flows.</div>
+                                            </div>
+                                            <div class="form-check form-switch m-0">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="redeemable" name="redeemable" value="1">
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="col-sm-6 col-md-3 form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" role="switch" id="useable" name="useable" value="1">
-                                        <label class="form-check-label" for="useable">Useable</label>
+                                    <div class="col-md-6 col-lg-4">
+                                        <div class="d-flex align-items-start justify-content-between p-3 border rounded bg-body-tertiary h-100">
+                                            <div class="me-3">
+                                                <div class="fw-semibold">Useable</div>
+                                                <div class="text-body-secondary small">Marks items that can be actively consumed or triggered by players.</div>
+                                            </div>
+                                            <div class="form-check form-switch m-0">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="useable" name="useable" value="1">
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="col-sm-6 col-md-3 form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" role="switch" id="is-container" name="is_container" value="1">
-                                        <label class="form-check-label" for="is-container">Is Container</label>
+                                    <div class="col-md-6 col-lg-4">
+                                        <div class="d-flex align-items-start justify-content-between p-3 border rounded bg-body-tertiary h-100">
+                                            <div class="me-3">
+                                                <div class="fw-semibold">Is Container</div>
+                                                <div class="text-body-secondary small">Enables storage behavior so container size and category limits apply.</div>
+                                            </div>
+                                            <div class="form-check form-switch m-0">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="is-container" name="is_container" value="1">
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="col-sm-6 col-md-3 form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" role="switch" id="is-fungible" name="is_fungible" value="1">
-                                        <label class="form-check-label" for="is-fungible">Fungible</label>
+                                    <div class="col-md-6 col-lg-4">
+                                        <div class="d-flex align-items-start justify-content-between p-3 border rounded bg-body-tertiary h-100">
+                                            <div class="me-3">
+                                                <div class="fw-semibold">Fungible</div>
+                                                <div class="text-body-secondary small">Makes the item stackable and interchangeable with identical copies.</div>
+                                            </div>
+                                            <div class="form-check form-switch m-0">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="is-fungible" name="is_fungible" value="1">
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
