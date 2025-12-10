@@ -1364,6 +1364,95 @@ class TicketController
     /**
      * @param array<string,mixed> $payload
      */
+    public static function updateCategory(array $payload): Response
+    {
+        if (!self::canManageCategories()) {
+            return new Response(false, 'You do not have permission to update categories.', null);
+        }
+
+        $ctime = trim((string) ($payload['ctime'] ?? ''));
+        $crand = (int) ($payload['crand'] ?? 0);
+        $nameInput = trim((string) ($payload['name'] ?? ''));
+        $slugInput = trim((string) ($payload['slug'] ?? ''));
+
+        if ($ctime === '' || $crand <= 0) {
+            return new Response(false, 'A category identifier is required.', null);
+        }
+
+        $conn = Database::getConnection();
+        $selectStmt = $conn->prepare('SELECT slug, name FROM ' . self::CATEGORY_TABLE . ' WHERE ctime = ? AND crand = ? LIMIT 1');
+        if ($selectStmt === false) {
+            return new Response(false, 'Unable to load category for update.', null);
+        }
+
+        $selectStmt->bind_param('si', $ctime, $crand);
+        if (!$selectStmt->execute()) {
+            $selectStmt->close();
+            return new Response(false, 'Unable to load category for update.', null);
+        }
+
+        $result = $selectStmt->get_result();
+        if ($result === false || $result->num_rows === 0) {
+            $selectStmt->close();
+            return new Response(false, 'Category not found.', null);
+        }
+
+        $existing = $result->fetch_assoc();
+        $selectStmt->close();
+
+        $currentName = (string) ($existing['name'] ?? '');
+        $currentSlug = (string) ($existing['slug'] ?? '');
+
+        $newName = $nameInput !== '' ? $nameInput : $currentName;
+        $newSlug = $slugInput !== '' ? self::normalizeSlug($slugInput) : $currentSlug;
+
+        if ($newName === '') {
+            return new Response(false, 'Category name is required.', null);
+        }
+
+        if (strlen($newName) > 100) {
+            return new Response(false, 'Category name must be 100 characters or less.', null);
+        }
+
+        if ($newSlug === '') {
+            return new Response(false, 'Category slug is invalid.', null);
+        }
+
+        if (strlen($newSlug) > 100) {
+            return new Response(false, 'Category slug must be 100 characters or less.', null);
+        }
+
+        if ($newName === $currentName && $newSlug === $currentSlug) {
+            return new Response(true, 'No changes made.', new TicketCategory($ctime, $crand, $currentSlug, $currentName));
+        }
+
+        $updateStmt = $conn->prepare('UPDATE ' . self::CATEGORY_TABLE . ' SET slug = ?, name = ? WHERE ctime = ? AND crand = ?');
+        if ($updateStmt === false) {
+            return new Response(false, 'Unable to prepare category update.', null);
+        }
+
+        $updateStmt->bind_param('sssi', $newSlug, $newName, $ctime, $crand);
+        if (!$updateStmt->execute()) {
+            $message = 'Failed to update category.';
+            if ($updateStmt->errno === 1062) {
+                $constraint = (string) $updateStmt->error;
+                if (str_contains($constraint, 'slug')) {
+                    $message = 'A category with that slug already exists.';
+                } else {
+                    $message = 'A category with that name already exists.';
+                }
+            }
+            $updateStmt->close();
+            return new Response(false, $message, null);
+        }
+
+        $updateStmt->close();
+        return new Response(true, 'Category updated.', new TicketCategory($ctime, $crand, $newSlug, $newName));
+    }
+
+    /**
+     * @param array<string,mixed> $payload
+     */
     public static function deleteCategory(array $payload): Response
     {
         if (!self::canManageCategories()) {

@@ -129,7 +129,14 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                                 </select>
                             </div>
                             <div class="col-sm-6 col-lg-3">
-                                <label for="filterCategory" class="form-label">Category</label>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <label for="filterCategory" class="form-label mb-0">Category</label>
+                                    <?php if ($canManageTickets) { ?>
+                                        <button type="button" class="btn btn-link btn-sm text-decoration-none" data-bs-toggle="modal" data-bs-target="#categoryManagerModal">
+                                            <i class="fa-solid fa-gear me-1"></i>Manage
+                                        </button>
+                                    <?php } ?>
+                                </div>
                                 <select class="form-select" id="filterCategory">
                                     <option value="">Any</option>
                                 </select>
@@ -163,22 +170,6 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                                 <label for="filterSearch" class="form-label">Search</label>
                                 <input type="text" class="form-control" id="filterSearch" placeholder="Subject, requester, tags">
                             </div>
-                        </div>
-                        <div class="mt-4 border-top pt-3" id="categoryManagement">
-                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                                <div>
-                                    <div class="fw-semibold">Ticket Categories</div>
-                                    <div class="text-muted small">Manage reusable categories for filtering and ticket creation.</div>
-                                </div>
-                                <?php if ($canManageTickets) { ?>
-                                    <form class="d-flex gap-2" id="categoryCreateForm">
-                                        <input type="text" class="form-control" id="categoryNameInput" placeholder="New category name">
-                                        <button class="btn btn-outline-primary" type="submit"><i class="fa-solid fa-plus me-1"></i>Add</button>
-                                    </form>
-                                <?php } ?>
-                            </div>
-                            <div class="text-danger small mt-2" id="categoryError"></div>
-                            <div id="categoryList" class="d-flex flex-wrap gap-2 mt-2"></div>
                         </div>
                         <div class="d-flex justify-content-end gap-2 mt-3">
                             <button class="btn btn-outline-secondary" id="resetFilters"><i class="fa-solid fa-rotate-left me-1"></i>Reset</button>
@@ -232,6 +223,47 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
         <?php require("../php-components/base-page-footer.php"); ?>
     </main>
 
+    <div class="modal fade" id="categoryManagerModal" tabindex="-1" aria-labelledby="categoryManagerModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="categoryManagerModalLabel">Manage Ticket Categories</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">Add, rename, or remove categories used for ticket submission and filtering.</p>
+                    <?php if ($canManageTickets) { ?>
+                        <form class="row g-2 align-items-end mb-3" id="categoryCreateForm">
+                            <div class="col-sm-8">
+                                <label for="categoryNameInput" class="form-label">Add a category</label>
+                                <input type="text" class="form-control" id="categoryNameInput" placeholder="New category name">
+                            </div>
+                            <div class="col-sm-4 text-sm-end">
+                                <button class="btn btn-primary w-100" type="submit"><i class="fa-solid fa-plus me-1"></i>Add Category</button>
+                            </div>
+                        </form>
+                    <?php } ?>
+                    <div id="categoryErrorAlert" class="alert alert-danger d-none" role="alert"></div>
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Name</th>
+                                    <th scope="col" class="d-none d-sm-table-cell">Slug</th>
+                                    <th scope="col" class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="categoryManagerTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <?php require("../php-components/base-page-javascript.php"); ?>
     <script>
         const canManageTickets = <?= $canManageTickets ? 'true' : 'false'; ?>;
@@ -247,6 +279,8 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
         let categories = [];
         let isLoadingCategories = false;
         let categoryError = '';
+        let editingCategoryId = '';
+        let editingCategoryName = '';
         let assigneeOptions = [];
         let isLoadingAssignees = false;
         let assigneeLoadError = '';
@@ -384,39 +418,120 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
         }
 
         function renderCategoryManagement() {
-            const list = document.getElementById('categoryList');
-            const errorEl = document.getElementById('categoryError');
-            if (!list || !errorEl) return;
+            const tableBody = document.getElementById('categoryManagerTable');
+            const errorAlert = document.getElementById('categoryErrorAlert');
+            if (!tableBody) return;
 
-            list.innerHTML = '';
-            errorEl.textContent = categoryError;
+            if (errorAlert) {
+                if (categoryError) {
+                    errorAlert.textContent = categoryError;
+                    errorAlert.classList.remove('d-none');
+                } else {
+                    errorAlert.classList.add('d-none');
+                    errorAlert.textContent = '';
+                }
+            }
+
+            tableBody.innerHTML = '';
+
+            if (editingCategoryId) {
+                const editingCategory = categories.find(cat => `${cat.ctime || ''}-${cat.crand || ''}` === editingCategoryId);
+                if (!editingCategory) {
+                    editingCategoryId = '';
+                    editingCategoryName = '';
+                } else if (editingCategoryName === '') {
+                    editingCategoryName = editingCategory.name || '';
+                }
+            }
 
             if (isLoadingCategories) {
-                list.innerHTML = '<span class="text-muted">Loading categories...</span>';
+                tableBody.innerHTML = '<tr><td colspan="3" class="py-3 text-center text-muted">Loading categories...</td></tr>';
                 return;
             }
 
-            if (!categoryError && categories.length === 0) {
-                list.innerHTML = '<span class="text-muted">No categories yet.</span>';
+            if (categoryError) {
+                tableBody.innerHTML = '<tr><td colspan="3" class="py-3 text-danger">There was an issue loading categories.</td></tr>';
+                return;
+            }
+
+            if (categories.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="3" class="py-3 text-center text-muted">No categories yet. Add your first one to get started.</td></tr>';
                 return;
             }
 
             categories.forEach(category => {
-                const badge = document.createElement('div');
-                badge.className = 'badge text-bg-light text-dark d-inline-flex align-items-center gap-2 py-2 px-3';
-                badge.innerHTML = `<span>${category.name}</span>`;
+                const row = document.createElement('tr');
+                const categoryId = `${category.ctime || ''}-${category.crand || ''}`;
+                const isEditing = editingCategoryId === categoryId;
 
-                if (canManageTickets) {
-                    const deleteBtn = document.createElement('button');
-                    deleteBtn.type = 'button';
-                    deleteBtn.className = 'btn btn-sm btn-outline-danger';
-                    deleteBtn.setAttribute('data-category-ctime', category.ctime || '');
-                    deleteBtn.setAttribute('data-category-crand', category.crand || '');
-                    deleteBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
-                    badge.appendChild(deleteBtn);
+                const nameCell = document.createElement('td');
+                if (isEditing) {
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'form-control form-control-sm';
+                    input.value = editingCategoryName;
+                    input.setAttribute('data-edit-id', categoryId);
+                    nameCell.appendChild(input);
+
+                    const helper = document.createElement('div');
+                    helper.className = 'form-text';
+                    helper.textContent = `Slug: ${category.slug}`;
+                    nameCell.appendChild(helper);
+                } else {
+                    nameCell.innerHTML = `<div class="fw-semibold">${category.name}</div><div class="text-muted small">Slug: ${category.slug}</div>`;
                 }
 
-                list.appendChild(badge);
+                const slugCell = document.createElement('td');
+                slugCell.className = 'd-none d-sm-table-cell';
+                slugCell.textContent = category.slug;
+
+                const actionsCell = document.createElement('td');
+                actionsCell.className = 'text-end';
+
+                if (canManageTickets) {
+                    if (isEditing) {
+                        const saveBtn = document.createElement('button');
+                        saveBtn.type = 'button';
+                        saveBtn.className = 'btn btn-primary btn-sm me-2';
+                        saveBtn.setAttribute('data-action', 'save');
+                        saveBtn.setAttribute('data-category-ctime', category.ctime || '');
+                        saveBtn.setAttribute('data-category-crand', category.crand || '');
+                        saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk me-1"></i>Save';
+                        actionsCell.appendChild(saveBtn);
+
+                        const cancelBtn = document.createElement('button');
+                        cancelBtn.type = 'button';
+                        cancelBtn.className = 'btn btn-outline-secondary btn-sm me-2';
+                        cancelBtn.setAttribute('data-action', 'cancel');
+                        cancelBtn.innerHTML = 'Cancel';
+                        actionsCell.appendChild(cancelBtn);
+                    } else {
+                        const editBtn = document.createElement('button');
+                        editBtn.type = 'button';
+                        editBtn.className = 'btn btn-outline-primary btn-sm me-2';
+                        editBtn.setAttribute('data-action', 'edit');
+                        editBtn.setAttribute('data-category-ctime', category.ctime || '');
+                        editBtn.setAttribute('data-category-crand', category.crand || '');
+                        editBtn.setAttribute('data-category-name', category.name || '');
+                        editBtn.innerHTML = '<i class="fa-solid fa-pen me-1"></i>Rename';
+                        actionsCell.appendChild(editBtn);
+                    }
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.type = 'button';
+                    deleteBtn.className = 'btn btn-outline-danger btn-sm';
+                    deleteBtn.setAttribute('data-action', 'delete');
+                    deleteBtn.setAttribute('data-category-ctime', category.ctime || '');
+                    deleteBtn.setAttribute('data-category-crand', category.crand || '');
+                    deleteBtn.setAttribute('data-category-name', category.name || '');
+                    deleteBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+                    actionsCell.appendChild(deleteBtn);
+                }
+
+                row.appendChild(nameCell);
+                row.appendChild(slugCell);
+                row.appendChild(actionsCell);
+                tableBody.appendChild(row);
             });
         }
 
@@ -452,9 +567,44 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
             await fetchCategories();
         }
 
+        async function renameCategory(ctime, crand, name) {
+            if (!canManageTickets || !ctime || !crand || name.trim() === '') return;
+            categoryError = '';
+            renderCategoryManagement();
+
+            try {
+                const payload = new FormData();
+                payload.append('ctime', ctime);
+                payload.append('crand', String(crand));
+                payload.append('name', name.trim());
+
+                const response = await fetch('<?= Version::urlBetaPrefix(); ?>/api/v1/tickets/categories/update.php', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    body: payload
+                });
+
+                const result = await response.json();
+                if (!result.success) {
+                    categoryError = result.message || 'Unable to update category.';
+                }
+            } catch (error) {
+                console.error('Failed to update category', error);
+                categoryError = 'Failed to update category. Please try again.';
+            }
+
+            editingCategoryId = '';
+            editingCategoryName = '';
+            await fetchCategories();
+        }
+
         async function deleteCategory(ctime, crand) {
             if (!canManageTickets || !ctime || !crand) return;
             categoryError = '';
+            if (editingCategoryId === `${ctime}-${crand}`) {
+                editingCategoryId = '';
+                editingCategoryName = '';
+            }
             renderCategoryManagement();
 
             try {
@@ -745,18 +895,60 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
             });
         }
 
-        const categoryListEl = document.getElementById('categoryList');
-        if (categoryListEl) {
-            categoryListEl.addEventListener('click', (event) => {
-                const button = event.target.closest('button[data-category-ctime][data-category-crand]');
+        const categoryTable = document.getElementById('categoryManagerTable');
+        if (categoryTable) {
+            categoryTable.addEventListener('click', (event) => {
+                const button = event.target.closest('button[data-action]');
                 if (!button) return;
 
-                event.preventDefault();
+                const action = button.getAttribute('data-action');
                 const ctime = button.getAttribute('data-category-ctime') || '';
                 const crand = parseInt(button.getAttribute('data-category-crand') || '0', 10);
-                if (!Number.isNaN(crand) && crand > 0 && ctime) {
-                    deleteCategory(ctime, crand);
+
+                if (action === 'delete') {
+                    const name = button.getAttribute('data-category-name') || 'this category';
+                    if (!Number.isNaN(crand) && crand > 0 && ctime && confirm(`Delete ${name}? This cannot be undone.`)) {
+                        deleteCategory(ctime, crand);
+                    }
+                    return;
                 }
+
+                if (action === 'edit') {
+                    editingCategoryId = `${ctime}-${crand}`;
+                    editingCategoryName = button.getAttribute('data-category-name') || '';
+                    renderCategoryManagement();
+                    return;
+                }
+
+                if (action === 'cancel') {
+                    editingCategoryId = '';
+                    editingCategoryName = '';
+                    renderCategoryManagement();
+                    return;
+                }
+
+                if (action === 'save' && !Number.isNaN(crand) && crand > 0 && ctime) {
+                    renameCategory(ctime, crand, editingCategoryName || '');
+                }
+            });
+
+            categoryTable.addEventListener('input', (event) => {
+                const input = event.target.closest('input[data-edit-id]');
+                if (!input) return;
+                editingCategoryName = input.value;
+            });
+        }
+
+        const categoryManagerModal = document.getElementById('categoryManagerModal');
+        if (categoryManagerModal) {
+            categoryManagerModal.addEventListener('show.bs.modal', () => {
+                renderCategoryManagement();
+            });
+
+            categoryManagerModal.addEventListener('hidden.bs.modal', () => {
+                editingCategoryId = '';
+                editingCategoryName = '';
+                renderCategoryManagement();
             });
         }
 
