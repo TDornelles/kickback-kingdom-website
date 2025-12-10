@@ -41,6 +41,7 @@ function parseOptionalInt(string $key): ?int
 }
 
 $payload = [
+    'category' => isset($_POST['category']) ? strtolower(Validate($_POST['category'])) : null,
     'subject' => Validate($_POST['subject'] ?? ''),
     'description' => trim((string) ($_POST['description'] ?? '')),
     'priority' => Validate($_POST['priority'] ?? 'medium'),
@@ -52,6 +53,8 @@ $payload = [
     'serverCtime' => isset($_POST['serverCtime']) ? Validate($_POST['serverCtime']) : null,
     'serverCrand' => parseOptionalInt('serverCrand'),
     'assignees' => parseList('assignees'),
+    'createdIp' => $_SERVER['REMOTE_ADDR'] ?? null,
+    'userAgent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
 ];
 
 $resp = TicketController::createTicket($payload);

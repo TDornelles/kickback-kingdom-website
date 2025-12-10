@@ -10,6 +10,7 @@ class Ticket extends vRecordId
 {
     public string $subject;
     public string $description;
+    public ?string $category;
     public string $status;
     public int $priority;
     public ?int $severity;
@@ -25,6 +26,8 @@ class Ticket extends vRecordId
     public ?string $firstResponseAt;
     public ?string $resolvedAt;
     public ?string $closedAt;
+    public ?string $createdIp;
+    public ?string $userAgent;
 
     /**
      * @param string[] $tags
@@ -34,6 +37,7 @@ class Ticket extends vRecordId
         int $crand,
         string $subject,
         string $description,
+        ?string $category,
         string $status,
         int $priority,
         ?int $severity,
@@ -47,11 +51,14 @@ class Ticket extends vRecordId
         string $updatedAt,
         ?string $firstResponseAt,
         ?string $resolvedAt,
-        ?string $closedAt
+        ?string $closedAt,
+        ?string $createdIp,
+        ?string $userAgent
     ) {
         parent::__construct($ctime, $crand);
         $this->subject = $subject;
         $this->description = $description;
+        $this->category = $category;
         $this->status = $status;
         $this->priority = $priority;
         $this->severity = $severity;
@@ -66,6 +73,8 @@ class Ticket extends vRecordId
         $this->firstResponseAt = $firstResponseAt;
         $this->resolvedAt = $resolvedAt;
         $this->closedAt = $closedAt;
+        $this->createdIp = $createdIp;
+        $this->userAgent = $userAgent;
     }
 
     /**
@@ -86,6 +95,7 @@ class Ticket extends vRecordId
             (int) $row['crand'],
             (string) $row['subject'],
             (string) $row['description'],
+            isset($row['category']) ? (string) $row['category'] : null,
             (string) $row['status'],
             isset($row['priority']) ? (int) $row['priority'] : 0,
             isset($row['severity']) ? (int) $row['severity'] : null,
@@ -99,7 +109,9 @@ class Ticket extends vRecordId
             (string) $row['updated_at'],
             isset($row['first_response_at']) ? (string) $row['first_response_at'] : null,
             isset($row['resolved_at']) ? (string) $row['resolved_at'] : null,
-            isset($row['closed_at']) ? (string) $row['closed_at'] : null
+            isset($row['closed_at']) ? (string) $row['closed_at'] : null,
+            isset($row['created_ip']) ? (string) $row['created_ip'] : null,
+            isset($row['user_agent']) ? (string) $row['user_agent'] : null
         );
     }
 }
