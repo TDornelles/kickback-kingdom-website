@@ -525,6 +525,38 @@ class TicketController
         return new Response(true, 'Assignees loaded.', $assignees);
     }
 
+    public static function listStewards(): Response
+    {
+        if (!Session::readCurrentAccountInto($account)) {
+            return new Response(false, 'You must be logged in to view stewards.', null);
+        }
+
+        $conn = Database::getConnection();
+        $query = 'SELECT Id AS id, COALESCE(NULLIF(Username, ''), ''Unknown steward'') AS username FROM account WHERE IsSteward = 1 ORDER BY username ASC';
+
+        $stmt = $conn->prepare($query);
+        if ($stmt === false) {
+            return new Response(false, 'Unable to load stewards.', null);
+        }
+
+        if (!$stmt->execute()) {
+            $stmt->close();
+            return new Response(false, 'Failed to load stewards.', null);
+        }
+
+        $result = $stmt->get_result();
+        $stewards = [];
+        while ($row = $result->fetch_assoc()) {
+            $stewards[] = [
+                'id' => (int) $row['id'],
+                'username' => (string) $row['username'],
+            ];
+        }
+        $stmt->close();
+
+        return new Response(true, 'Stewards loaded.', $stewards);
+    }
+
     /**
      * @param array<string,mixed> $payload
      */
@@ -847,7 +879,7 @@ class TicketController
             $token = bin2hex(random_bytes(16));
             $insert->bind_param('siisss', $ticketCtime, $ticketCrand, $assignee, $actorCrand, $now, $token);
             $insert->execute();
-            $assignments[] = new TicketAssignment($ticketCtime, $ticketCrand, $assignee, $actorCrand, $now, true, $token);
+            $assignments[] = new TicketAssignment($ticketCtime, $ticketCrand, $assignee, $actorCrand, $now, true, $token, null, null);
         }
         $insert->close();
 
@@ -860,7 +892,13 @@ class TicketController
     private static function getAssignments(string $ticketCtime, int $ticketCrand): array
     {
         $conn = Database::getConnection();
-        $stmt = $conn->prepare('SELECT * FROM ' . self::ASSIGNMENT_TABLE . ' WHERE ticket_ctime = ? AND ticket_crand = ?');
+        $stmt = $conn->prepare(
+            'SELECT ta.*, a.Username AS account_username, ab.Username AS assigned_by_username'
+            . ' FROM ' . self::ASSIGNMENT_TABLE . ' ta'
+            . ' LEFT JOIN account a ON a.Id = ta.account_crand'
+            . ' LEFT JOIN account ab ON ab.Id = ta.assigned_by_crand'
+            . ' WHERE ta.ticket_ctime = ? AND ta.ticket_crand = ?'
+        );
         if ($stmt === false) {
             return [];
         }
@@ -957,7 +995,13 @@ class TicketController
     private static function getComments(string $ticketCtime, int $ticketCrand): array
     {
         $conn = Database::getConnection();
-        $stmt = $conn->prepare('SELECT * FROM ' . self::COMMENT_TABLE . ' WHERE ticket_ctime = ? AND ticket_crand = ? ORDER BY ctime ASC');
+        $stmt = $conn->prepare(
+            'SELECT tc.*, a.Username AS author_username'
+            . ' FROM ' . self::COMMENT_TABLE . ' tc'
+            . ' LEFT JOIN account a ON a.Id = tc.author_crand'
+            . ' WHERE tc.ticket_ctime = ? AND tc.ticket_crand = ?'
+            . ' ORDER BY tc.ctime ASC'
+        );
         if ($stmt === false) {
             return [];
         }
