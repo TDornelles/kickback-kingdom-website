@@ -1145,8 +1145,6 @@ private static function interpolateSql(string $sql, array $params): string
             AND r.rn_res = l.rn_loot
         ";
 
-        throw new Exception(static::interpolateSql($valueClause, $params));
-
         return $valueClause;
     }
 
