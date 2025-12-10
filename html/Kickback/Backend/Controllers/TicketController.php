@@ -177,7 +177,7 @@ class TicketController
             return new Response(false, 'Ticket not found.', null);
         }
 
-        if (!self::canModifyTicket($ticket, $account->crand, $account->isAdmin)) {
+        if (!self::canModifyTicket($ticket, $account->crand, $account->isSteward)) {
             return new Response(false, 'You do not have permission to update this ticket.', null);
         }
 
@@ -418,7 +418,7 @@ class TicketController
             $types .= 'ss';
         }
 
-        if (!$account->isAdmin) {
+        if (!$account->isSteward) {
             $conditions[] = '(t.created_by_crand = ? OR EXISTS (SELECT 1 FROM ' . self::ASSIGNMENT_TABLE . ' a WHERE a.ticket_ctime = t.ctime AND a.ticket_crand = t.crand AND a.created_by_crand = ?))';
             $params[] = $account->crand;
             $params[] = $account->crand;
@@ -470,7 +470,7 @@ class TicketController
         $params = [];
         $types = '';
 
-        if (!$account->isAdmin) {
+        if (!$account->isSteward) {
             $conditions[] =
                 '(t.created_by_crand = ? OR EXISTS (SELECT 1 FROM ' . self::ASSIGNMENT_TABLE . ' ta2 '
                 . 'WHERE ta2.ticket_ctime = t.ctime AND ta2.ticket_crand = t.crand AND ta2.created_by_crand = ?))';
@@ -530,7 +530,7 @@ class TicketController
             return new Response(false, 'Ticket not found.', null);
         }
 
-        if (!self::canModifyTicket($ticket, $account->crand, $account->isAdmin)) {
+        if (!self::canModifyTicket($ticket, $account->crand, $account->isSteward)) {
             return new Response(false, 'You do not have permission to view this ticket.', null);
         }
 
@@ -940,9 +940,9 @@ class TicketController
         return Ticket::fromRow($row);
     }
 
-    private static function canModifyTicket(Ticket $ticket, int $accountCrand, bool $isAdmin): bool
+    private static function canModifyTicket(Ticket $ticket, int $accountCrand, bool $isSteward): bool
     {
-        if ($isAdmin) {
+        if ($isSteward) {
             return true;
         }
 
@@ -1395,9 +1395,7 @@ class TicketController
 
     private static function canManageCategories(): bool
     {
-        return Session::isAdmin()
-            || Session::isMagisterOfTheAdventurersGuild()
-            || Session::isServantOfTheLich();
+        return Session::isSteward();
     }
 
     private static function normalizeSlug(string $input): string
