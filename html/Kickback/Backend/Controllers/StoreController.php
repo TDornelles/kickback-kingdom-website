@@ -1215,7 +1215,7 @@ private static function interpolateSql(string $sql, array $params): string
         $sql = "INSERT INTO loot
             (Id, `description`, account_id, item_id, quest_id, dateObtained, redeemed, container_loot_id, quantity, Opened)
             SELECT
-            i.Id, i.`description`, i.account_id, i.item_id, i.quest_id, NOW(), 1, NULL, i.quantity, 0
+            i.Id, i.`description`, i.account_id, i.item_id, i.quest_id, NOW(), 0, NULL, i.quantity, 0
             FROM ($valueClause) AS i
             LEFT JOIN loot AS l
             ON  l.account_id = i.account_id
@@ -2482,13 +2482,13 @@ private static function interpolateSql(string $sql, array $params): string
             $containerLootCrand = is_null($loot->containerLoot) ? null : $loot->containerLoot->crand;
             $params = [
                 $Id->crand, 
-                $loot->opened, 
+                0, 
                 $loot->description, 
                 $toAccount->crand, 
                 $loot->item->crand, 
                 $questIdCrand, 
                 $Id->ctime, 
-                $loot->opened, 
+                0, 
                 $containerLootCrand, 
                 $quantity];
 
