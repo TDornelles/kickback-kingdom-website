@@ -177,7 +177,7 @@ function enumLabel(string $value): string
                         <div class="d-flex gap-2 align-items-center">
                             <input type="search" class="form-control" id="item-search" placeholder="Search by name or ID">
                             <button class="btn btn-ranked" data-bs-toggle="modal" data-bs-target="#itemModal" data-mode="create">
-                                <i class="bi bi-plus-lg"></i> New Item
+                                <i class="fa-solid fa-plus"></i> New Item
                             </button>
                         </div>
                     </div>
@@ -236,10 +236,10 @@ function enumLabel(string $value): string
                                             <div class="btn-group" role="group">
                                                 <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#itemModal" data-mode="edit"
                                                     data-item='<?= htmlspecialchars(json_encode($row), ENT_QUOTES); ?>'>
-                                                    <i class="bi bi-pencil"></i> Edit
+                                                    <i class="fa-solid fa-pen"></i> Edit
                                                 </button>
                                                 <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal" data-item-id="<?= (int)$row['Id']; ?>" data-item-name="<?= htmlspecialchars($row['name']); ?>">
-                                                    <i class="bi bi-trash"></i>
+                                                    <i class="fa-solid fa-trash"></i>
                                                 </button>
                                             </div>
                                         </td>
@@ -268,148 +268,179 @@ function enumLabel(string $value): string
                         <input type="hidden" name="action" value="create" id="item-form-action">
                         <input type="hidden" name="item_id" value="" id="item-id">
 
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Name</label>
-                                <input type="text" class="form-control" name="name" id="item-name" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Description</label>
-                                <input type="text" class="form-control" name="description" id="item-description" required>
-                            </div>
-
-                            <div class="col-md-4">
-                                <label class="form-label">Type</label>
-                                <select class="form-select" name="type" id="item-type">
-                                    <?php foreach ($itemTypes as $type) { ?>
-                                        <option value="<?= $type->value; ?>"><?= enumLabel($type->name); ?></option>
-                                    <?php } ?>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Rarity</label>
-                                <select class="form-select" name="rarity" id="item-rarity">
-                                    <?php foreach ($itemRarities as $rarity) { ?>
-                                        <option value="<?= $rarity->value; ?>"><?= enumLabel($rarity->name); ?></option>
-                                    <?php } ?>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Item Category</label>
-                                <select class="form-select" name="item_category" id="item-category">
-                                    <option value="">None</option>
-                                    <?php foreach ($itemCategories as $category) { ?>
-                                        <option value="<?= $category->value; ?>"><?= enumLabel($category->name); ?></option>
-                                    <?php } ?>
-                                </select>
-                            </div>
-
-                            <div class="col-md-4">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <label class="form-label mb-1">Media ID (Large)</label>
-                                    <img src="" alt="Large preview" id="media-large-preview" class="rounded border d-none" style="width: 56px; height: 56px; object-fit: cover;">
+                        <div class="row gy-4">
+                            <div class="col-12">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <span class="text-uppercase small fw-semibold text-body-secondary">Item Details</span>
+                                    <div class="border-top flex-grow-1 opacity-25"></div>
                                 </div>
-                                <div class="input-group">
-                                    <input type="number" class="form-control" name="media_id_large" id="media-large" required>
-                                    <button class="btn btn-outline-secondary" type="button" onclick="openMediaPicker('media-large', 'media-large-preview')">
-                                        <i class="bi bi-images"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <label class="form-label mb-1">Media ID (Small)</label>
-                                    <img src="" alt="Small preview" id="media-small-preview" class="rounded border d-none" style="width: 56px; height: 56px; object-fit: cover;">
-                                </div>
-                                <div class="input-group">
-                                    <input type="number" class="form-control" name="media_id_small" id="media-small" required>
-                                    <button class="btn btn-outline-secondary" type="button" onclick="openMediaPicker('media-small', 'media-small-preview')">
-                                        <i class="bi bi-images"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <label class="form-label mb-1">Media ID (Back)</label>
-                                    <img src="" alt="Back preview" id="media-back-preview" class="rounded border d-none" style="width: 56px; height: 56px; object-fit: cover;">
-                                </div>
-                                <div class="input-group">
-                                    <input type="number" class="form-control" name="media_id_back" id="media-back" required>
-                                    <button class="btn btn-outline-secondary" type="button" onclick="openMediaPicker('media-back', 'media-back-preview')">
-                                        <i class="bi bi-images"></i>
-                                    </button>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Name</label>
+                                        <input type="text" class="form-control" name="name" id="item-name" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Description</label>
+                                        <textarea class="form-control" name="description" id="item-description" rows="2" required></textarea>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Type</label>
+                                        <select class="form-select" name="type" id="item-type">
+                                            <?php foreach ($itemTypes as $type) { ?>
+                                                <option value="<?= $type->value; ?>"><?= enumLabel($type->name); ?></option>
+                                            <?php } ?>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Rarity</label>
+                                        <select class="form-select" name="rarity" id="item-rarity">
+                                            <?php foreach ($itemRarities as $rarity) { ?>
+                                                <option value="<?= $rarity->value; ?>"><?= enumLabel($rarity->name); ?></option>
+                                            <?php } ?>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Item Category</label>
+                                        <select class="form-select" name="item_category" id="item-category">
+                                            <option value="">None</option>
+                                            <?php foreach ($itemCategories as $category) { ?>
+                                                <option value="<?= $category->value; ?>"><?= enumLabel($category->name); ?></option>
+                                            <?php } ?>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="col-md-6">
-                                <label class="form-label">Nominated By</label>
-                                <div class="input-group">
-                                    <input type="number" class="form-control" name="nominated_by_id" id="nominated-by" placeholder="Optional">
-                                    <button class="btn btn-outline-secondary" type="button" onclick="openAccountPicker()">
-                                        <i class="bi bi-search"></i>
-                                    </button>
-                                    <button class="btn btn-outline-danger" type="button" onclick="clearNominatedBy()" title="Clear selection">
-                                        <i class="bi bi-x-lg"></i>
-                                    </button>
+                            <div class="col-12">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <span class="text-uppercase small fw-semibold text-body-secondary">Media & Visuals</span>
+                                    <div class="border-top flex-grow-1 opacity-25"></div>
                                 </div>
-                                <div class="form-text" id="nominated-by-label">No account selected.</div>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Collection</label>
-                                <div class="input-group">
-                                    <input type="number" class="form-control" name="collection_id" id="collection-id" placeholder="Optional">
-                                    <button class="btn btn-outline-secondary" type="button" onclick="openCollectionModal()">
-                                        <i class="bi bi-collection"></i>
-                                    </button>
-                                    <button class="btn btn-outline-danger" type="button" onclick="clearCollection()" title="Clear collection">
-                                        <i class="bi bi-x-lg"></i>
-                                    </button>
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <label class="form-label mb-1">Media ID (Large)</label>
+                                            <img src="" alt="Large preview" id="media-large-preview" class="rounded border d-none" style="width: 56px; height: 56px; object-fit: cover;">
+                                        </div>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" name="media_id_large" id="media-large" required>
+                                            <button class="btn btn-outline-secondary" type="button" onclick="openMediaPicker('media-large', 'media-large-preview')">
+                                                <i class="fa-solid fa-images"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <label class="form-label mb-1">Media ID (Small)</label>
+                                            <img src="" alt="Small preview" id="media-small-preview" class="rounded border d-none" style="width: 56px; height: 56px; object-fit: cover;">
+                                        </div>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" name="media_id_small" id="media-small" required>
+                                            <button class="btn btn-outline-secondary" type="button" onclick="openMediaPicker('media-small', 'media-small-preview')">
+                                                <i class="fa-solid fa-images"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <label class="form-label mb-1">Media ID (Back)</label>
+                                            <img src="" alt="Back preview" id="media-back-preview" class="rounded border d-none" style="width: 56px; height: 56px; object-fit: cover;">
+                                        </div>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" name="media_id_back" id="media-back" required>
+                                            <button class="btn btn-outline-secondary" type="button" onclick="openMediaPicker('media-back', 'media-back-preview')">
+                                                <i class="fa-solid fa-images"></i>
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="form-text" id="collection-label">No collection selected.</div>
                             </div>
 
-                            <div class="col-md-4">
-                                <label class="form-label">Equipment Slot</label>
-                                <select class="form-select" name="equipment_slot" id="equipment-slot">
-                                    <option value="">None</option>
-                                    <?php foreach ($equipmentSlots as $slot) { ?>
-                                        <option value="<?= $slot->value; ?>"><?= enumLabel($slot->value); ?></option>
-                                    <?php } ?>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Container Category</label>
-                                <select class="form-select" name="container_item_category" id="container-item-category">
-                                    <option value="">None</option>
-                                    <?php foreach ($itemCategories as $category) { ?>
-                                        <option value="<?= $category->value; ?>"><?= enumLabel($category->name); ?></option>
-                                    <?php } ?>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Container Size</label>
-                                <input type="number" class="form-control" name="container_size" id="container-size" value="-1">
+                            <div class="col-12">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <span class="text-uppercase small fw-semibold text-body-secondary">Associations</span>
+                                    <div class="border-top flex-grow-1 opacity-25"></div>
+                                </div>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Nominated By</label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" name="nominated_by_id" id="nominated-by" placeholder="Optional">
+                                            <button class="btn btn-outline-secondary" type="button" onclick="openAccountPicker()">
+                                                <i class="fa-solid fa-magnifying-glass"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger" type="button" onclick="clearNominatedBy()" title="Clear selection">
+                                                <i class="fa-solid fa-xmark"></i>
+                                            </button>
+                                        </div>
+                                        <div class="form-text" id="nominated-by-label">No account selected.</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Collection</label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" name="collection_id" id="collection-id" placeholder="Optional">
+                                            <button class="btn btn-outline-secondary" type="button" onclick="openCollectionModal()">
+                                                <i class="fa-solid fa-layer-group"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger" type="button" onclick="clearCollection()" title="Clear collection">
+                                                <i class="fa-solid fa-xmark"></i>
+                                            </button>
+                                        </div>
+                                        <div class="form-text" id="collection-label">No collection selected.</div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Equipment Slot</label>
+                                        <select class="form-select" name="equipment_slot" id="equipment-slot">
+                                            <option value="">None</option>
+                                            <?php foreach ($equipmentSlots as $slot) { ?>
+                                                <option value="<?= $slot->value; ?>"><?= enumLabel($slot->value); ?></option>
+                                            <?php } ?>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Container Category</label>
+                                        <select class="form-select" name="container_item_category" id="container-item-category">
+                                            <option value="">None</option>
+                                            <?php foreach ($itemCategories as $category) { ?>
+                                                <option value="<?= $category->value; ?>"><?= enumLabel($category->name); ?></option>
+                                            <?php } ?>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Container Size</label>
+                                        <input type="number" class="form-control" name="container_size" id="container-size" value="-1">
+                                        <div class="form-text">Use -1 to leave unset.</div>
+                                    </div>
+                                </div>
                             </div>
 
-                            <div class="col-md-3 form-check form-switch">
-                                <input class="form-check-input" type="checkbox" role="switch" id="equipable" name="equipable" value="1">
-                                <label class="form-check-label" for="equipable">Equipable</label>
-                            </div>
-                            <div class="col-md-3 form-check form-switch">
-                                <input class="form-check-input" type="checkbox" role="switch" id="redeemable" name="redeemable" value="1">
-                                <label class="form-check-label" for="redeemable">Redeemable</label>
-                            </div>
-                            <div class="col-md-3 form-check form-switch">
-                                <input class="form-check-input" type="checkbox" role="switch" id="useable" name="useable" value="1">
-                                <label class="form-check-label" for="useable">Useable</label>
-                            </div>
-                            <div class="col-md-3 form-check form-switch">
-                                <input class="form-check-input" type="checkbox" role="switch" id="is-container" name="is_container" value="1">
-                                <label class="form-check-label" for="is-container">Is Container</label>
-                            </div>
-                            <div class="col-md-3 form-check form-switch">
-                                <input class="form-check-input" type="checkbox" role="switch" id="is-fungible" name="is_fungible" value="1">
-                                <label class="form-check-label" for="is-fungible">Fungible</label>
+                            <div class="col-12">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <span class="text-uppercase small fw-semibold text-body-secondary">Flags</span>
+                                    <div class="border-top flex-grow-1 opacity-25"></div>
+                                </div>
+                                <div class="row g-3">
+                                    <div class="col-sm-6 col-md-3 form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="equipable" name="equipable" value="1">
+                                        <label class="form-check-label" for="equipable">Equipable</label>
+                                    </div>
+                                    <div class="col-sm-6 col-md-3 form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="redeemable" name="redeemable" value="1">
+                                        <label class="form-check-label" for="redeemable">Redeemable</label>
+                                    </div>
+                                    <div class="col-sm-6 col-md-3 form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="useable" name="useable" value="1">
+                                        <label class="form-check-label" for="useable">Useable</label>
+                                    </div>
+                                    <div class="col-sm-6 col-md-3 form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="is-container" name="is_container" value="1">
+                                        <label class="form-check-label" for="is-container">Is Container</label>
+                                    </div>
+                                    <div class="col-sm-6 col-md-3 form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="is-fungible" name="is_fungible" value="1">
+                                        <label class="form-check-label" for="is-fungible">Fungible</label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -441,7 +472,7 @@ function enumLabel(string $value): string
                     </div>
                     <div class="row g-3" id="collection-search-results"></div>
                     <div class="text-center text-muted py-3 d-none" id="collection-search-empty">
-                        <i class="bi bi-search"></i>
+                        <i class="fa-solid fa-magnifying-glass"></i>
                         <p class="mb-0">No collections match your search.</p>
                     </div>
                 </div>
@@ -653,7 +684,7 @@ function enumLabel(string $value): string
                             <div class="fw-semibold">Collection #${collection.id}</div>
                             <div class="text-muted small">${sampleItems || 'No item names recorded'}</div>
                             <button type="button" class="btn btn-sm btn-outline-primary mt-auto" data-collection-id="${collection.id}">
-                                <i class="bi bi-check2-circle me-1"></i>Select Collection
+                                <i class="fa-solid fa-circle-check me-1"></i>Select Collection
                             </button>
                         </div>
                     </div>`;
