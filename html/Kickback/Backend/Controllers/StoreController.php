@@ -94,6 +94,13 @@ class StoreController
 
         try
         {
+
+            if($cart->account->equals($cart->store->owner))
+            {
+                $resp->message = "Cannot checkout cart for a store you own";
+                return $resp;
+            }
+
             //Does cart have items to transact
             if(count($cart->cartProducts) <= 0)
             {
@@ -1362,6 +1369,8 @@ private static function interpolateSql(string $sql, array $params): string
     {
         $buyer = $cart->account;
         $seller = $cart->store->owner;
+
+        if($buyer->equals($seller)) throw new LogicException("Cannot create trade records in which both accounts are the same");
 
         static::createTradeEntriesForProductReservations($buyer, $seller, $productLoots);
         static::createTradeEntriesForPriceComponentReservations($buyer, $seller, $priceComponentLootReservations);
