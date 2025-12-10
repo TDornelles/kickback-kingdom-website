@@ -123,7 +123,7 @@ $currentAccount = Session::getCurrentAccount();
                                 </div>
                                 <div class="mb-2">
                                     <label for="detailAssignee" class="form-label">Assignee</label>
-                                    <input type="text" id="detailAssignee" class="form-control form-control-sm" placeholder="Enter username or guild">
+                                    <select id="detailAssignee" class="form-select form-select-sm" aria-label="Select steward assignee"></select>
                                 </div>
                                 <button class="btn btn-outline-primary w-100" id="saveTicketMeta"><i class="fa-solid fa-floppy-disk me-1"></i>Save</button>
                             </div>
@@ -156,6 +156,10 @@ $currentAccount = Session::getCurrentAccount();
         let ticket = null;
         let assignments = [];
         let comments = [];
+        let stewardOptions = [];
+        let isLoadingStewards = false;
+        let stewardLoadError = '';
+        let pendingAssigneeValue = '';
 
         function renderCommentMarkdown(markdownText) {
             if (typeof renderMarkdownToHtml === 'function') {
@@ -223,6 +227,88 @@ $currentAccount = Session::getCurrentAccount();
             empty.classList.toggle('d-none', !isEmpty);
         }
 
+        function renderAssigneeSelect() {
+            const select = document.getElementById('detailAssignee');
+            if (!select) return;
+
+            select.innerHTML = '';
+
+            if (isLoadingStewards) {
+                select.disabled = true;
+                const loadingOption = document.createElement('option');
+                loadingOption.disabled = true;
+                loadingOption.textContent = 'Loading stewards...';
+                select.appendChild(loadingOption);
+                return;
+            }
+
+            select.disabled = false;
+
+            const unassignedOption = document.createElement('option');
+            unassignedOption.value = '';
+            unassignedOption.textContent = 'Unassigned';
+            select.appendChild(unassignedOption);
+
+            if (stewardLoadError) {
+                const errorOption = document.createElement('option');
+                errorOption.disabled = true;
+                errorOption.textContent = stewardLoadError;
+                select.appendChild(errorOption);
+                select.value = '';
+                return;
+            }
+
+            if (stewardOptions.length === 0) {
+                const emptyOption = document.createElement('option');
+                emptyOption.disabled = true;
+                emptyOption.textContent = 'No stewards available';
+                select.appendChild(emptyOption);
+                select.value = '';
+                return;
+            }
+
+            stewardOptions.forEach(option => {
+                const opt = document.createElement('option');
+                opt.value = String(option.id ?? '');
+                opt.textContent = (option.username || '').trim() || 'Unknown steward';
+                select.appendChild(opt);
+            });
+
+            const hasDesired = Array.from(select.options).some(opt => opt.value === pendingAssigneeValue);
+            select.value = hasDesired ? pendingAssigneeValue : '';
+            if (hasDesired) {
+                pendingAssigneeValue = '';
+            }
+        }
+
+        async function loadStewards() {
+            isLoadingStewards = true;
+            stewardLoadError = '';
+            renderAssigneeSelect();
+
+            try {
+                const response = await fetch('<?= Version::urlBetaPrefix(); ?>/api/v1/tickets/stewards.php', {
+                    method: 'POST',
+                    credentials: 'same-origin'
+                });
+
+                const result = await response.json();
+                if (result.success && Array.isArray(result.data)) {
+                    stewardOptions = result.data;
+                } else {
+                    stewardOptions = [];
+                    stewardLoadError = result.message || 'Unable to load stewards.';
+                }
+            } catch (error) {
+                console.error('Failed to load stewards', error);
+                stewardOptions = [];
+                stewardLoadError = 'Failed to load stewards. Please try again.';
+            }
+
+            isLoadingStewards = false;
+            renderAssigneeSelect();
+        }
+
         async function updateTicket(payload) {
             const formData = new FormData();
             formData.append('ctime', ticketCtime);
@@ -287,9 +373,12 @@ $currentAccount = Session::getCurrentAccount();
                 prioritySelect.disabled = !isSteward;
             }
 
-            const assigneeInput = document.getElementById('detailAssignee');
-            if (assigneeInput) {
-                assigneeInput.value = assignments[0]?.accountCrand ? `Account #${assignments[0].accountCrand}` : '';
+            const assigneeSelect = document.getElementById('detailAssignee');
+            if (assigneeSelect) {
+                const desiredAssignee = assignments[0]?.accountCrand ? String(assignments[0].accountCrand) : '';
+                pendingAssigneeValue = desiredAssignee;
+                const hasDesired = Array.from(assigneeSelect.options).some(opt => opt.value === desiredAssignee);
+                assigneeSelect.value = hasDesired ? desiredAssignee : '';
             }
 
             const metaBadges = document.getElementById('ticketMetaBadges');
@@ -320,8 +409,14 @@ $currentAccount = Session::getCurrentAccount();
 
             const entries = [];
             entries.push({ time: ticket?.ctime, entry: 'Ticket created', type: 'creation' });
-            assignments.forEach(assign => entries.push({ time: assign.assignedAt, entry: `Assigned to account #${assign.accountCrand}`, type: 'assignment' }));
-            comments.forEach(comment => entries.push({ time: comment.ctime, entry: `${getCommentVisibility(comment) === 'internal' ? 'Internal' : 'Public'} comment from ${comment.authorCrand ? 'account #' + comment.authorCrand : 'system'}`, type: 'comment' }));
+            assignments.forEach(assign => {
+                const assigneeName = (assign.accountUsername || '').trim() || 'Assigned steward';
+                entries.push({ time: assign.assignedAt, entry: `Assigned to ${assigneeName}`, type: 'assignment' });
+            });
+            comments.forEach(comment => {
+                const commenter = (comment.authorUsername || '').trim() || 'System';
+                entries.push({ time: comment.ctime, entry: `${getCommentVisibility(comment) === 'internal' ? 'Internal' : 'Public'} comment from ${commenter}`, type: 'comment' });
+            });
 
             entries
                 .filter(entry => entry.time)
@@ -361,7 +456,7 @@ $currentAccount = Session::getCurrentAccount();
                         <div class="d-flex justify-content-between align-items-start gap-2">
                             <div>
                                 <div class="d-flex align-items-center gap-2">
-                                    <strong>${comment.authorCrand ? 'Account #' + comment.authorCrand : 'System'}</strong>
+                                    <strong>${(comment.authorUsername || '').trim() || 'System'}</strong>
                                     <span class="badge rounded-pill ${isInternal ? 'text-bg-secondary' : 'text-bg-success'}">${isInternal ? 'Internal' : 'Public'}</span>
                                 </div>
                                 <div class="small text-muted">${renderDateTag(comment.ctime)}</div>
@@ -431,7 +526,7 @@ $currentAccount = Session::getCurrentAccount();
             }
 
             if (assigneeRaw) {
-                const numeric = parseInt(assigneeRaw.replace(/\D/g, ''), 10);
+                const numeric = parseInt(assigneeRaw, 10);
                 if (!Number.isNaN(numeric) && numeric > 0) {
                     payload.assignees = [numeric];
                 }
@@ -484,8 +579,10 @@ $currentAccount = Session::getCurrentAccount();
             radio.addEventListener('change', handleVisibilityToggle);
         });
 
+        renderAssigneeSelect();
         handleVisibilityToggle();
         loadTicket();
+        loadStewards();
     </script>
 
     <style>

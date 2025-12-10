@@ -10,6 +10,7 @@ class Ticket extends vRecordId
 {
     public string $subject;
     public string $description;
+    public ?string $category;
     public string $status;
     public int $priority;
     public ?int $severity;
@@ -20,11 +21,14 @@ class Ticket extends vRecordId
     public ?string $serverCtime;
     public ?int $serverCrand;
     public ?int $createdByCrand;
+    public ?string $createdByUsername;
     public ?int $updatedByCrand;
     public string $updatedAt;
     public ?string $firstResponseAt;
     public ?string $resolvedAt;
     public ?string $closedAt;
+    public ?string $createdIp;
+    public ?string $userAgent;
 
     /**
      * @param string[] $tags
@@ -34,6 +38,7 @@ class Ticket extends vRecordId
         int $crand,
         string $subject,
         string $description,
+        ?string $category,
         string $status,
         int $priority,
         ?int $severity,
@@ -43,15 +48,19 @@ class Ticket extends vRecordId
         ?string $serverCtime,
         ?int $serverCrand,
         ?int $createdByCrand,
+        ?string $createdByUsername,
         ?int $updatedByCrand,
         string $updatedAt,
         ?string $firstResponseAt,
         ?string $resolvedAt,
-        ?string $closedAt
+        ?string $closedAt,
+        ?string $createdIp,
+        ?string $userAgent
     ) {
         parent::__construct($ctime, $crand);
         $this->subject = $subject;
         $this->description = $description;
+        $this->category = $category;
         $this->status = $status;
         $this->priority = $priority;
         $this->severity = $severity;
@@ -61,11 +70,14 @@ class Ticket extends vRecordId
         $this->serverCtime = $serverCtime;
         $this->serverCrand = $serverCrand;
         $this->createdByCrand = $createdByCrand;
+        $this->createdByUsername = $createdByUsername;
         $this->updatedByCrand = $updatedByCrand;
         $this->updatedAt = $updatedAt;
         $this->firstResponseAt = $firstResponseAt;
         $this->resolvedAt = $resolvedAt;
         $this->closedAt = $closedAt;
+        $this->createdIp = $createdIp;
+        $this->userAgent = $userAgent;
     }
 
     /**
@@ -86,6 +98,7 @@ class Ticket extends vRecordId
             (int) $row['crand'],
             (string) $row['subject'],
             (string) $row['description'],
+            isset($row['category']) ? (string) $row['category'] : null,
             (string) $row['status'],
             isset($row['priority']) ? (int) $row['priority'] : 0,
             isset($row['severity']) ? (int) $row['severity'] : null,
@@ -95,11 +108,14 @@ class Ticket extends vRecordId
             isset($row['server_ctime']) ? (string) $row['server_ctime'] : null,
             isset($row['server_crand']) ? (int) $row['server_crand'] : null,
             isset($row['created_by_crand']) ? (int) $row['created_by_crand'] : null,
+            array_key_exists('created_by_username', $row) ? (string) $row['created_by_username'] : null,
             isset($row['updated_by_crand']) ? (int) $row['updated_by_crand'] : null,
             (string) $row['updated_at'],
             isset($row['first_response_at']) ? (string) $row['first_response_at'] : null,
             isset($row['resolved_at']) ? (string) $row['resolved_at'] : null,
-            isset($row['closed_at']) ? (string) $row['closed_at'] : null
+            isset($row['closed_at']) ? (string) $row['closed_at'] : null,
+            isset($row['created_ip']) ? (string) $row['created_ip'] : null,
+            isset($row['user_agent']) ? (string) $row['user_agent'] : null
         );
     }
 }

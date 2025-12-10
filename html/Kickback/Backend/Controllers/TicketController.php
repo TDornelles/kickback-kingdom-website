@@ -53,6 +53,7 @@ class TicketController
 
         $subject = trim((string) ($payload['subject'] ?? ''));
         $description = trim((string) ($payload['description'] ?? ''));
+        $category = self::normalizeCategory($payload['category'] ?? null);
         $priorityInput = $payload['priority'] ?? 'medium';
         $severityInput = $payload['severity'] ?? null;
         $tags = self::normalizeTags($payload['tags'] ?? []);
@@ -62,6 +63,12 @@ class TicketController
         $serverCtime = self::normalizeNullableString($payload['serverCtime'] ?? null);
         $serverCrand = self::normalizeNullableInt($payload['serverCrand'] ?? null);
         $assignees = self::normalizeIntList($payload['assignees'] ?? []);
+        $createdIp = self::normalizeCreatedIp($payload['createdIp'] ?? null);
+        $userAgent = self::normalizeUserAgent($payload['userAgent'] ?? null);
+
+        if ($category === null) {
+            return new Response(false, 'Category is invalid.', null);
+        }
 
         $priority = self::normalizePriority($priorityInput);
         if ($priority === null) {
@@ -84,9 +91,9 @@ class TicketController
         $conn = Database::getConnection();
         $stmt = $conn->prepare(
             'INSERT INTO ' . self::TICKET_TABLE
-            . ' (ctime, crand, created_by_crand, guild_id, game_id, server_ctime, server_crand, status, priority, severity,'
-            . ' subject, description, tags_json, updated_at, updated_by_crand)'
-            . ' VALUES (?, ?, ?, ?, ?, ?, ?, "open", ?, ?, ?, ?, ?, ?, ?)'
+            . ' (ctime, crand, created_by_crand, category, guild_id, game_id, server_ctime, server_crand, status, priority, severity,'
+            . ' subject, description, tags_json, created_ip, user_agent, updated_at, updated_by_crand)'
+            . ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, "open", ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
 
         if ($stmt === false) {
@@ -98,10 +105,11 @@ class TicketController
         $updatedBy = $account->crand;
 
         $stmt->bind_param(
-            'siiiisiiissssi',
+            'siisiisiiissssssi',
             $recordId->ctime,
             $recordId->crand,
             $createdBy,
+            $category,
             $guildId,
             $gameId,
             $serverCtime,
@@ -111,6 +119,8 @@ class TicketController
             $subject,
             $description,
             $tagsJson,
+            $createdIp,
+            $userAgent,
             $now,
             $updatedBy
         );
@@ -129,6 +139,7 @@ class TicketController
             $recordId->crand,
             $subject,
             $description,
+            $category,
             'open',
             $priority,
             $severity,
@@ -138,11 +149,14 @@ class TicketController
             $serverCtime,
             $serverCrand,
             $createdBy,
+            isset($account->username) ? $account->username : null,
             $updatedBy,
             $now,
             null,
             null,
-            null
+            null,
+            $createdIp,
+            $userAgent
         );
 
         if (!empty($assignments)) {
@@ -322,6 +336,7 @@ class TicketController
             $ticketCrand,
             $subject,
             $description,
+            $ticket->category,
             $status,
             $priority,
             $severity,
@@ -331,11 +346,14 @@ class TicketController
             $serverCtime,
             $serverCrand,
             $ticket->createdByCrand,
+            property_exists($ticket, 'createdByUsername') ? $ticket->createdByUsername : null,
             $updatedBy,
             $now,
             $firstResponseAt,
             $resolvedAt,
-            $closedAt
+            $closedAt,
+            $ticket->createdIp,
+            $ticket->userAgent
         );
 
         if (!empty($assignments)) {
@@ -361,6 +379,7 @@ class TicketController
         $statusFilter = isset($payload['status']) ? strtolower(trim((string) $payload['status'])) : null;
         $priorityFilter = $payload['priority'] ?? null;
         $severityFilter = $payload['severity'] ?? null;
+        $assigneeFilter = isset($payload['assignee']) ? strtolower(trim((string) $payload['assignee'])) : null;
         $fromFilter = isset($payload['updatedFrom']) ? trim((string) $payload['updatedFrom']) : null;
         $toFilter = isset($payload['updatedTo']) ? trim((string) $payload['updatedTo']) : null;
         $searchFilter = isset($payload['search']) ? trim((string) $payload['search']) : null;
@@ -419,7 +438,7 @@ class TicketController
         }
 
         if (!$account->isSteward) {
-            $conditions[] = '(t.created_by_crand = ? OR EXISTS (SELECT 1 FROM ' . self::ASSIGNMENT_TABLE . ' a WHERE a.ticket_ctime = t.ctime AND a.ticket_crand = t.crand AND a.created_by_crand = ?))';
+            $conditions[] = '(t.created_by_crand = ? OR EXISTS (SELECT 1 FROM ' . self::ASSIGNMENT_TABLE . ' a WHERE a.ticket_ctime = t.ctime AND a.ticket_crand = t.crand AND a.account_crand = ?))';
             $params[] = $account->crand;
             $params[] = $account->crand;
             $types .= 'ii';
@@ -427,7 +446,9 @@ class TicketController
 
         $whereClause = empty($conditions) ? '' : ('WHERE ' . implode(' AND ', $conditions));
 
-        $query = 'SELECT t.* FROM ' . self::TICKET_TABLE . ' t ' . $whereClause . ' ORDER BY t.updated_at DESC';
+        $query = 'SELECT t.*, acc.Username AS created_by_username FROM ' . self::TICKET_TABLE . ' t '
+            . 'LEFT JOIN account acc ON acc.Id = t.created_by_crand '
+            . $whereClause . ' ORDER BY t.updated_at DESC';
         $stmt = $conn->prepare($query);
         if ($stmt === false) {
             return new Response(false, 'Unable to prepare ticket list.', null);
@@ -449,7 +470,105 @@ class TicketController
         }
         $stmt->close();
 
-        return new Response(true, 'Tickets loaded.', $tickets);
+        $assignments = self::getAssigneesForTickets($tickets);
+
+        $filteredTickets = [];
+        foreach ($tickets as $ticket) {
+            $ticketKey = $ticket->ctime . '-' . $ticket->crand;
+            $assignees = $assignments[$ticketKey] ?? [];
+
+            if ($assigneeFilter !== null && $assigneeFilter !== '') {
+                $matchesAssignee = array_reduce(
+                    $assignees,
+                    static fn(bool $carry, string $name) => $carry || strtolower($name) === $assigneeFilter,
+                    false
+                );
+                if (!$matchesAssignee) {
+                    continue;
+                }
+            }
+
+            $priorityLabel = self::priorityLabel($ticket->priority);
+            $primaryAssignee = $assignees[0] ?? '';
+
+            $filteredTickets[] = [
+                'ctime' => $ticket->ctime,
+                'crand' => $ticket->crand,
+                'subject' => $ticket->subject,
+                'description' => $ticket->description,
+                'category' => $ticket->category,
+                'status' => $ticket->status,
+                'priority' => $priorityLabel,
+                'priorityValue' => $ticket->priority,
+                'severity' => $ticket->severity,
+                'tags' => $ticket->tags,
+                'guildId' => $ticket->guildId,
+                'gameId' => $ticket->gameId,
+                'serverCtime' => $ticket->serverCtime,
+                'serverCrand' => $ticket->serverCrand,
+                'createdByUsername' => $ticket->createdByUsername,
+                'updatedByCrand' => $ticket->updatedByCrand,
+                'updatedAt' => $ticket->updatedAt,
+                'firstResponseAt' => $ticket->firstResponseAt,
+                'resolvedAt' => $ticket->resolvedAt,
+                'closedAt' => $ticket->closedAt,
+                'assignees' => $assignees,
+                'assignee' => $primaryAssignee,
+            ];
+        }
+
+        return new Response(true, 'Tickets loaded.', $filteredTickets);
+    }
+
+    /**
+     * @param Ticket[] $tickets
+     * @return array<string,string[]>
+     */
+    private static function getAssigneesForTickets(array $tickets): array
+    {
+        if (empty($tickets)) {
+            return [];
+        }
+
+        $conn = Database::getConnection();
+        $placeholders = implode(',', array_fill(0, count($tickets), '(?, ?)'));
+        $types = str_repeat('si', count($tickets));
+        $params = [];
+
+        foreach ($tickets as $ticket) {
+            $params[] = $ticket->ctime;
+            $params[] = $ticket->crand;
+        }
+
+        $query =
+            'SELECT ta.ticket_ctime, ta.ticket_crand, '
+            . "COALESCE(NULLIF(a.Username, ''), 'Unknown user') AS username "
+            . 'FROM ' . self::ASSIGNMENT_TABLE . ' ta '
+            . 'LEFT JOIN account a ON a.Id = ta.account_crand '
+            . 'WHERE (ta.ticket_ctime, ta.ticket_crand) IN (' . $placeholders . ') '
+            . 'ORDER BY username ASC';
+
+        $stmt = $conn->prepare($query);
+        if ($stmt === false) {
+            return [];
+        }
+
+        $stmt->bind_param($types, ...$params);
+
+        if (!$stmt->execute()) {
+            $stmt->close();
+            return [];
+        }
+
+        $result = $stmt->get_result();
+        $assignees = [];
+        while ($row = $result->fetch_assoc()) {
+            $key = $row['ticket_ctime'] . '-' . $row['ticket_crand'];
+            $assignees[$key][] = (string) $row['username'];
+        }
+        $stmt->close();
+
+        return $assignees;
     }
 
     public static function listAssignees(): Response
@@ -461,10 +580,10 @@ class TicketController
         $conn = Database::getConnection();
 
         $baseQuery =
-            'SELECT DISTINCT ta.created_by_crand AS id, COALESCE(acc.Username, CONCAT("Account #", ta.created_by_crand)) AS username '
+            'SELECT DISTINCT ta.account_crand AS id, acc.Username AS username '
             . 'FROM ' . self::ASSIGNMENT_TABLE . ' ta '
             . 'JOIN ' . self::TICKET_TABLE . ' t ON t.ctime = ta.ticket_ctime AND t.crand = ta.ticket_crand '
-            . 'LEFT JOIN account acc ON acc.Id = ta.created_by_crand';
+            . 'LEFT JOIN account acc ON acc.Id = ta.account_crand';
 
         $conditions = [];
         $params = [];
@@ -473,7 +592,7 @@ class TicketController
         if (!$account->isSteward) {
             $conditions[] =
                 '(t.created_by_crand = ? OR EXISTS (SELECT 1 FROM ' . self::ASSIGNMENT_TABLE . ' ta2 '
-                . 'WHERE ta2.ticket_ctime = t.ctime AND ta2.ticket_crand = t.crand AND ta2.created_by_crand = ?))';
+                . 'WHERE ta2.ticket_ctime = t.ctime AND ta2.ticket_crand = t.crand AND ta2.account_crand = ?))';
             $params[] = $account->crand;
             $params[] = $account->crand;
             $types .= 'ii';
@@ -501,12 +620,48 @@ class TicketController
         while ($row = $result->fetch_assoc()) {
             $assignees[] = [
                 'id' => (int) $row['id'],
-                'username' => (string) $row['username'],
+                'username' => isset($row['username']) && $row['username'] !== '' ? (string) $row['username'] : 'Unknown user',
             ];
         }
         $stmt->close();
 
         return new Response(true, 'Assignees loaded.', $assignees);
+    }
+
+    public static function listStewards(): Response
+    {
+        if (!Session::readCurrentAccountInto($account)) {
+            return new Response(false, 'You must be logged in to view stewards.', null);
+        }
+
+        $conn = Database::getConnection();
+        $query =
+            "SELECT a.Id AS id, COALESCE(NULLIF(a.Username, ''), 'Unknown steward') AS username "
+            . "FROM account a "
+            . "INNER JOIN v_stewards s ON s.account_id = a.Id "
+            . "ORDER BY username ASC";
+
+        $stmt = $conn->prepare($query);
+        if ($stmt === false) {
+            return new Response(false, 'Unable to load stewards.', null);
+        }
+
+        if (!$stmt->execute()) {
+            $stmt->close();
+            return new Response(false, 'Failed to load stewards.', null);
+        }
+
+        $result = $stmt->get_result();
+        $stewards = [];
+        while ($row = $result->fetch_assoc()) {
+            $stewards[] = [
+                'id' => (int) $row['id'],
+                'username' => (string) $row['username'],
+            ];
+        }
+        $stmt->close();
+
+        return new Response(true, 'Stewards loaded.', $stewards);
     }
 
     /**
@@ -572,6 +727,53 @@ class TicketController
         }
 
         return new Response(true, 'Validated', null);
+    }
+
+    private static function normalizeCategory(mixed $input): ?string
+    {
+        if (is_null($input)) {
+            return null;
+        }
+
+        $category = strtolower(trim((string) $input));
+        if ($category === '') {
+            return null;
+        }
+
+        return in_array($category, self::getAllowedCategories(), true) ? $category : null;
+    }
+
+    private static function normalizeCreatedIp(mixed $input): ?string
+    {
+        if (is_null($input)) {
+            return null;
+        }
+
+        $ip = trim((string) $input);
+        if ($ip === '') {
+            return null;
+        }
+
+        $validated = filter_var($ip, FILTER_VALIDATE_IP);
+        if ($validated === false) {
+            return null;
+        }
+
+        return substr($validated, 0, 45);
+    }
+
+    private static function normalizeUserAgent(mixed $input): ?string
+    {
+        if (is_null($input)) {
+            return null;
+        }
+
+        $userAgent = trim((string) $input);
+        if ($userAgent === '') {
+            return null;
+        }
+
+        return mb_substr($userAgent, 0, 255);
     }
 
     private static function normalizePriority(mixed $input): ?int
@@ -770,10 +972,12 @@ class TicketController
             return [];
         }
 
-        $insert = $conn->prepare(
-            'INSERT INTO ' . self::ASSIGNMENT_TABLE . ' (ticket_ctime, ticket_crand, created_by_crand, assigned_by_crand, assigned_at, email_opt_in, unsubscribe_token)
-             VALUES (?, ?, ?, ?, ?, 1, ?)' 
+        $insertSql = sprintf(
+            'INSERT INTO %s (ticket_ctime, ticket_crand, account_crand, assigned_by_crand, assigned_at, email_opt_in, unsubscribe_token)'
+            . ' VALUES (?, ?, ?, ?, ?, 1, ?)',
+            self::ASSIGNMENT_TABLE
         );
+        $insert = $conn->prepare($insertSql);
         if ($insert === false) {
             return [];
         }
@@ -782,9 +986,9 @@ class TicketController
         $assignments = [];
         foreach ($assignees as $assignee) {
             $token = bin2hex(random_bytes(16));
-            $insert->bind_param('siisss', $ticketCtime, $ticketCrand, $assignee, $actorCrand, $now, $token);
+            $insert->bind_param('siiiss', $ticketCtime, $ticketCrand, $assignee, $actorCrand, $now, $token);
             $insert->execute();
-            $assignments[] = new TicketAssignment($ticketCtime, $ticketCrand, $assignee, $actorCrand, $now, true, $token);
+            $assignments[] = new TicketAssignment($ticketCtime, $ticketCrand, $assignee, $actorCrand, $now, true, $token, null, null);
         }
         $insert->close();
 
@@ -797,7 +1001,13 @@ class TicketController
     private static function getAssignments(string $ticketCtime, int $ticketCrand): array
     {
         $conn = Database::getConnection();
-        $stmt = $conn->prepare('SELECT * FROM ' . self::ASSIGNMENT_TABLE . ' WHERE ticket_ctime = ? AND ticket_crand = ?');
+        $stmt = $conn->prepare(
+            'SELECT ta.*, a.Username AS account_username, ab.Username AS assigned_by_username'
+            . ' FROM ' . self::ASSIGNMENT_TABLE . ' ta'
+            . ' LEFT JOIN account a ON a.Id = ta.account_crand'
+            . ' LEFT JOIN account ab ON ab.Id = ta.assigned_by_crand'
+            . ' WHERE ta.ticket_ctime = ? AND ta.ticket_crand = ?'
+        );
         if ($stmt === false) {
             return [];
         }
@@ -824,7 +1034,7 @@ class TicketController
         }
 
         $conn = Database::getConnection();
-        $stmt = $conn->prepare('UPDATE ' . self::ASSIGNMENT_TABLE . ' SET email_opt_in = ? WHERE ticket_ctime = ? AND ticket_crand = ? AND created_by_crand = ?');
+        $stmt = $conn->prepare('UPDATE ' . self::ASSIGNMENT_TABLE . ' SET email_opt_in = ? WHERE ticket_ctime = ? AND ticket_crand = ? AND account_crand = ?');
         if ($stmt === false) {
             return;
         }
@@ -894,7 +1104,13 @@ class TicketController
     private static function getComments(string $ticketCtime, int $ticketCrand): array
     {
         $conn = Database::getConnection();
-        $stmt = $conn->prepare('SELECT * FROM ' . self::COMMENT_TABLE . ' WHERE ticket_ctime = ? AND ticket_crand = ? ORDER BY ctime ASC');
+        $stmt = $conn->prepare(
+            'SELECT tc.*, a.Username AS author_username'
+            . ' FROM ' . self::COMMENT_TABLE . ' tc'
+            . ' LEFT JOIN account a ON a.Id = tc.author_crand'
+            . ' WHERE tc.ticket_ctime = ? AND tc.ticket_crand = ?'
+            . ' ORDER BY tc.ctime ASC'
+        );
         if ($stmt === false) {
             return [];
         }
@@ -918,7 +1134,11 @@ class TicketController
     private static function fetchTicket(string $ctime, int $crand): ?Ticket
     {
         $conn = Database::getConnection();
-        $stmt = $conn->prepare('SELECT * FROM ' . self::TICKET_TABLE . ' WHERE ctime = ? AND crand = ?');
+        $stmt = $conn->prepare(
+            'SELECT t.*, acc.Username AS created_by_username FROM ' . self::TICKET_TABLE . ' t'
+            . ' LEFT JOIN account acc ON acc.Id = t.created_by_crand'
+            . ' WHERE t.ctime = ? AND t.crand = ?'
+        );
         if ($stmt === false) {
             return null;
         }
@@ -956,7 +1176,7 @@ class TicketController
     private static function isAssigned(string $ticketCtime, int $ticketCrand, int $accountCrand): bool
     {
         $conn = Database::getConnection();
-        $stmt = $conn->prepare('SELECT 1 FROM ' . self::ASSIGNMENT_TABLE . ' WHERE ticket_ctime = ? AND ticket_crand = ? AND created_by_crand = ? LIMIT 1');
+        $stmt = $conn->prepare('SELECT 1 FROM ' . self::ASSIGNMENT_TABLE . ' WHERE ticket_ctime = ? AND ticket_crand = ? AND account_crand = ? LIMIT 1');
         if ($stmt === false) {
             return false;
         }
@@ -1359,6 +1579,95 @@ class TicketController
         $stmt->close();
 
         return new Response(true, 'Category created.', new TicketCategory($recordId->ctime, $recordId->crand, $slug, $name));
+    }
+
+    /**
+     * @param array<string,mixed> $payload
+     */
+    public static function updateCategory(array $payload): Response
+    {
+        if (!self::canManageCategories()) {
+            return new Response(false, 'You do not have permission to update categories.', null);
+        }
+
+        $ctime = trim((string) ($payload['ctime'] ?? ''));
+        $crand = (int) ($payload['crand'] ?? 0);
+        $nameInput = trim((string) ($payload['name'] ?? ''));
+        $slugInput = trim((string) ($payload['slug'] ?? ''));
+
+        if ($ctime === '' || $crand <= 0) {
+            return new Response(false, 'A category identifier is required.', null);
+        }
+
+        $conn = Database::getConnection();
+        $selectStmt = $conn->prepare('SELECT slug, name FROM ' . self::CATEGORY_TABLE . ' WHERE ctime = ? AND crand = ? LIMIT 1');
+        if ($selectStmt === false) {
+            return new Response(false, 'Unable to load category for update.', null);
+        }
+
+        $selectStmt->bind_param('si', $ctime, $crand);
+        if (!$selectStmt->execute()) {
+            $selectStmt->close();
+            return new Response(false, 'Unable to load category for update.', null);
+        }
+
+        $result = $selectStmt->get_result();
+        if ($result === false || $result->num_rows === 0) {
+            $selectStmt->close();
+            return new Response(false, 'Category not found.', null);
+        }
+
+        $existing = $result->fetch_assoc();
+        $selectStmt->close();
+
+        $currentName = (string) ($existing['name'] ?? '');
+        $currentSlug = (string) ($existing['slug'] ?? '');
+
+        $newName = $nameInput !== '' ? $nameInput : $currentName;
+        $newSlug = $slugInput !== '' ? self::normalizeSlug($slugInput) : $currentSlug;
+
+        if ($newName === '') {
+            return new Response(false, 'Category name is required.', null);
+        }
+
+        if (strlen($newName) > 100) {
+            return new Response(false, 'Category name must be 100 characters or less.', null);
+        }
+
+        if ($newSlug === '') {
+            return new Response(false, 'Category slug is invalid.', null);
+        }
+
+        if (strlen($newSlug) > 100) {
+            return new Response(false, 'Category slug must be 100 characters or less.', null);
+        }
+
+        if ($newName === $currentName && $newSlug === $currentSlug) {
+            return new Response(true, 'No changes made.', new TicketCategory($ctime, $crand, $currentSlug, $currentName));
+        }
+
+        $updateStmt = $conn->prepare('UPDATE ' . self::CATEGORY_TABLE . ' SET slug = ?, name = ? WHERE ctime = ? AND crand = ?');
+        if ($updateStmt === false) {
+            return new Response(false, 'Unable to prepare category update.', null);
+        }
+
+        $updateStmt->bind_param('sssi', $newSlug, $newName, $ctime, $crand);
+        if (!$updateStmt->execute()) {
+            $message = 'Failed to update category.';
+            if ($updateStmt->errno === 1062) {
+                $constraint = (string) $updateStmt->error;
+                if (str_contains($constraint, 'slug')) {
+                    $message = 'A category with that slug already exists.';
+                } else {
+                    $message = 'A category with that name already exists.';
+                }
+            }
+            $updateStmt->close();
+            return new Response(false, $message, null);
+        }
+
+        $updateStmt->close();
+        return new Response(true, 'Category updated.', new TicketCategory($ctime, $crand, $newSlug, $newName));
     }
 
     /**

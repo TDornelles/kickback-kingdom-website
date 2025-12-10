@@ -129,7 +129,14 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                                 </select>
                             </div>
                             <div class="col-sm-6 col-lg-3">
-                                <label for="filterCategory" class="form-label">Category</label>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <label for="filterCategory" class="form-label mb-0">Category</label>
+                                    <?php if ($canManageTickets) { ?>
+                                        <button type="button" class="btn btn-link btn-sm text-decoration-none" data-bs-toggle="modal" data-bs-target="#categoryManagerModal">
+                                            <i class="fa-solid fa-gear me-1"></i>Manage
+                                        </button>
+                                    <?php } ?>
+                                </div>
                                 <select class="form-select" id="filterCategory">
                                     <option value="">Any</option>
                                 </select>
@@ -164,22 +171,6 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                                 <input type="text" class="form-control" id="filterSearch" placeholder="Subject, requester, tags">
                             </div>
                         </div>
-                        <div class="mt-4 border-top pt-3" id="categoryManagement">
-                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                                <div>
-                                    <div class="fw-semibold">Ticket Categories</div>
-                                    <div class="text-muted small">Manage reusable categories for filtering and ticket creation.</div>
-                                </div>
-                                <?php if ($canManageTickets) { ?>
-                                    <form class="d-flex gap-2" id="categoryCreateForm">
-                                        <input type="text" class="form-control" id="categoryNameInput" placeholder="New category name">
-                                        <button class="btn btn-outline-primary" type="submit"><i class="fa-solid fa-plus me-1"></i>Add</button>
-                                    </form>
-                                <?php } ?>
-                            </div>
-                            <div class="text-danger small mt-2" id="categoryError"></div>
-                            <div id="categoryList" class="d-flex flex-wrap gap-2 mt-2"></div>
-                        </div>
                         <div class="d-flex justify-content-end gap-2 mt-3">
                             <button class="btn btn-outline-secondary" id="resetFilters"><i class="fa-solid fa-rotate-left me-1"></i>Reset</button>
                             <button class="btn btn-primary" id="applyFilters"><i class="fa-solid fa-filter me-1"></i>Apply Filters</button>
@@ -212,17 +203,31 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                                 <thead>
                                     <tr>
                                         <th scope="col"></th>
-                                        <th scope="col">Ticket</th>
-                                        <th scope="col">Status</th>
-                                        <th scope="col">Priority</th>
-                                        <th scope="col">Category</th>
-                                        <th scope="col">Assignee</th>
-                                        <th scope="col">Guild</th>
-                                        <th scope="col">Updated</th>
+                                        <th scope="col" class="sortable" data-sort="ticket">Ticket <span class="sort-indicator"></span></th>
+                                        <th scope="col" class="sortable" data-sort="status">Status <span class="sort-indicator"></span></th>
+                                        <th scope="col" class="sortable" data-sort="priority">Priority <span class="sort-indicator"></span></th>
+                                        <th scope="col" class="sortable" data-sort="category">Category <span class="sort-indicator"></span></th>
+                                        <th scope="col" class="sortable" data-sort="assignee">Assignee <span class="sort-indicator"></span></th>
+                                        <th scope="col" class="sortable" data-sort="guild">Guild <span class="sort-indicator"></span></th>
+                                        <th scope="col" class="sortable" data-sort="updated">Updated <span class="sort-indicator"></span></th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
                             </table>
+                            <div class="d-flex flex-wrap justify-content-between align-items-center mt-3 gap-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <label for="pageSizeSelect" class="form-label mb-0 small">Rows per page</label>
+                                    <select id="pageSizeSelect" class="form-select form-select-sm" style="width: auto; min-width: 90px;">
+                                        <option value="5">5</option>
+                                        <option value="10" selected>10</option>
+                                        <option value="20">20</option>
+                                        <option value="50">50</option>
+                                    </select>
+                                </div>
+                                <nav>
+                                    <ul class="pagination pagination-sm mb-0" id="ticketPagination"></ul>
+                                </nav>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -231,6 +236,47 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
         </div>
         <?php require("../php-components/base-page-footer.php"); ?>
     </main>
+
+    <div class="modal fade" id="categoryManagerModal" tabindex="-1" aria-labelledby="categoryManagerModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="categoryManagerModalLabel">Manage Ticket Categories</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">Add, rename, or remove categories used for ticket submission and filtering.</p>
+                    <?php if ($canManageTickets) { ?>
+                        <form class="row g-2 align-items-end mb-3" id="categoryCreateForm">
+                            <div class="col-sm-8">
+                                <label for="categoryNameInput" class="form-label">Add a category</label>
+                                <input type="text" class="form-control" id="categoryNameInput" placeholder="New category name">
+                            </div>
+                            <div class="col-sm-4 text-sm-end">
+                                <button class="btn btn-primary w-100" type="submit"><i class="fa-solid fa-plus me-1"></i>Add Category</button>
+                            </div>
+                        </form>
+                    <?php } ?>
+                    <div id="categoryErrorAlert" class="alert alert-danger d-none" role="alert"></div>
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Name</th>
+                                    <th scope="col" class="d-none d-sm-table-cell">Slug</th>
+                                    <th scope="col" class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="categoryManagerTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <?php require("../php-components/base-page-javascript.php"); ?>
     <script>
@@ -242,22 +288,48 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
         let tickets = [];
         let filteredTickets = [];
         let notificationCount = 0;
+        let currentPage = 1;
+        let pageSize = 10;
+        let sortConfig = { column: 'priority', direction: 'desc' };
         let isLoading = false;
         let loadError = '';
         let categories = [];
         let isLoadingCategories = false;
         let categoryError = '';
+        let editingCategoryId = '';
+        let editingCategoryName = '';
         let assigneeOptions = [];
         let isLoadingAssignees = false;
         let assigneeLoadError = '';
         let pendingAssigneeValue = prefillFilters.assignee || '';
+
+        const normalizeValue = (value) => (value || '').toString().trim().toLowerCase();
+        const normalizeStatus = (value) => normalizeValue(value).replace('-', '_');
+        const normalizeDateInput = (value, endOfDay = false) => {
+            if (!value) return null;
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return null;
+            if (endOfDay) date.setHours(23, 59, 59, 999);
+            return date;
+        };
+
+        const buildDateTimeElement = (value, rawValue = '') => {
+            const date = value instanceof Date ? value : normalizeDateInput(value);
+            if (!date) return '<span class="text-muted">--</span>';
+            const basic = date.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+            const detailed = date.toUTCString();
+            const isoValue = date.toISOString();
+            const dbValue = rawValue || isoValue;
+
+            return `<span class="date" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="${detailed} UTC" data-datetime-utc="${isoValue}" data-db-value="${dbValue}">${basic}</span>`;
+        };
 
         function getFilterValues() {
             return {
                 status: document.getElementById('filterStatus').value,
                 priority: document.getElementById('filterPriority').value,
                 category: document.getElementById('filterCategory').value,
-                assignee: document.getElementById('filterAssignee').value.toLowerCase(),
+                assignee: normalizeValue(document.getElementById('filterAssignee').value),
                 guild: document.getElementById('filterGuild').value,
                 from: document.getElementById('filterFrom').value,
                 to: document.getElementById('filterTo').value,
@@ -384,39 +456,120 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
         }
 
         function renderCategoryManagement() {
-            const list = document.getElementById('categoryList');
-            const errorEl = document.getElementById('categoryError');
-            if (!list || !errorEl) return;
+            const tableBody = document.getElementById('categoryManagerTable');
+            const errorAlert = document.getElementById('categoryErrorAlert');
+            if (!tableBody) return;
 
-            list.innerHTML = '';
-            errorEl.textContent = categoryError;
+            if (errorAlert) {
+                if (categoryError) {
+                    errorAlert.textContent = categoryError;
+                    errorAlert.classList.remove('d-none');
+                } else {
+                    errorAlert.classList.add('d-none');
+                    errorAlert.textContent = '';
+                }
+            }
+
+            tableBody.innerHTML = '';
+
+            if (editingCategoryId) {
+                const editingCategory = categories.find(cat => `${cat.ctime || ''}-${cat.crand || ''}` === editingCategoryId);
+                if (!editingCategory) {
+                    editingCategoryId = '';
+                    editingCategoryName = '';
+                } else if (editingCategoryName === '') {
+                    editingCategoryName = editingCategory.name || '';
+                }
+            }
 
             if (isLoadingCategories) {
-                list.innerHTML = '<span class="text-muted">Loading categories...</span>';
+                tableBody.innerHTML = '<tr><td colspan="3" class="py-3 text-center text-muted">Loading categories...</td></tr>';
                 return;
             }
 
-            if (!categoryError && categories.length === 0) {
-                list.innerHTML = '<span class="text-muted">No categories yet.</span>';
+            if (categoryError) {
+                tableBody.innerHTML = '<tr><td colspan="3" class="py-3 text-danger">There was an issue loading categories.</td></tr>';
+                return;
+            }
+
+            if (categories.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="3" class="py-3 text-center text-muted">No categories yet. Add your first one to get started.</td></tr>';
                 return;
             }
 
             categories.forEach(category => {
-                const badge = document.createElement('div');
-                badge.className = 'badge text-bg-light text-dark d-inline-flex align-items-center gap-2 py-2 px-3';
-                badge.innerHTML = `<span>${category.name}</span>`;
+                const row = document.createElement('tr');
+                const categoryId = `${category.ctime || ''}-${category.crand || ''}`;
+                const isEditing = editingCategoryId === categoryId;
 
-                if (canManageTickets) {
-                    const deleteBtn = document.createElement('button');
-                    deleteBtn.type = 'button';
-                    deleteBtn.className = 'btn btn-sm btn-outline-danger';
-                    deleteBtn.setAttribute('data-category-ctime', category.ctime || '');
-                    deleteBtn.setAttribute('data-category-crand', category.crand || '');
-                    deleteBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
-                    badge.appendChild(deleteBtn);
+                const nameCell = document.createElement('td');
+                if (isEditing) {
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'form-control form-control-sm';
+                    input.value = editingCategoryName;
+                    input.setAttribute('data-edit-id', categoryId);
+                    nameCell.appendChild(input);
+
+                    const helper = document.createElement('div');
+                    helper.className = 'form-text';
+                    helper.textContent = `Slug: ${category.slug}`;
+                    nameCell.appendChild(helper);
+                } else {
+                    nameCell.innerHTML = `<div class="fw-semibold">${category.name}</div><div class="text-muted small">Slug: ${category.slug}</div>`;
                 }
 
-                list.appendChild(badge);
+                const slugCell = document.createElement('td');
+                slugCell.className = 'd-none d-sm-table-cell';
+                slugCell.textContent = category.slug;
+
+                const actionsCell = document.createElement('td');
+                actionsCell.className = 'text-end';
+
+                if (canManageTickets) {
+                    if (isEditing) {
+                        const saveBtn = document.createElement('button');
+                        saveBtn.type = 'button';
+                        saveBtn.className = 'btn btn-primary btn-sm me-2';
+                        saveBtn.setAttribute('data-action', 'save');
+                        saveBtn.setAttribute('data-category-ctime', category.ctime || '');
+                        saveBtn.setAttribute('data-category-crand', category.crand || '');
+                        saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk me-1"></i>Save';
+                        actionsCell.appendChild(saveBtn);
+
+                        const cancelBtn = document.createElement('button');
+                        cancelBtn.type = 'button';
+                        cancelBtn.className = 'btn btn-outline-secondary btn-sm me-2';
+                        cancelBtn.setAttribute('data-action', 'cancel');
+                        cancelBtn.innerHTML = 'Cancel';
+                        actionsCell.appendChild(cancelBtn);
+                    } else {
+                        const editBtn = document.createElement('button');
+                        editBtn.type = 'button';
+                        editBtn.className = 'btn btn-outline-primary btn-sm me-2';
+                        editBtn.setAttribute('data-action', 'edit');
+                        editBtn.setAttribute('data-category-ctime', category.ctime || '');
+                        editBtn.setAttribute('data-category-crand', category.crand || '');
+                        editBtn.setAttribute('data-category-name', category.name || '');
+                        editBtn.innerHTML = '<i class="fa-solid fa-pen me-1"></i>Rename';
+                        actionsCell.appendChild(editBtn);
+                    }
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.type = 'button';
+                    deleteBtn.className = 'btn btn-outline-danger btn-sm';
+                    deleteBtn.setAttribute('data-action', 'delete');
+                    deleteBtn.setAttribute('data-category-ctime', category.ctime || '');
+                    deleteBtn.setAttribute('data-category-crand', category.crand || '');
+                    deleteBtn.setAttribute('data-category-name', category.name || '');
+                    deleteBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+                    actionsCell.appendChild(deleteBtn);
+                }
+
+                row.appendChild(nameCell);
+                row.appendChild(slugCell);
+                row.appendChild(actionsCell);
+                tableBody.appendChild(row);
             });
         }
 
@@ -452,9 +605,44 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
             await fetchCategories();
         }
 
+        async function renameCategory(ctime, crand, name) {
+            if (!canManageTickets || !ctime || !crand || name.trim() === '') return;
+            categoryError = '';
+            renderCategoryManagement();
+
+            try {
+                const payload = new FormData();
+                payload.append('ctime', ctime);
+                payload.append('crand', String(crand));
+                payload.append('name', name.trim());
+
+                const response = await fetch('<?= Version::urlBetaPrefix(); ?>/api/v1/tickets/categories/update.php', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    body: payload
+                });
+
+                const result = await response.json();
+                if (!result.success) {
+                    categoryError = result.message || 'Unable to update category.';
+                }
+            } catch (error) {
+                console.error('Failed to update category', error);
+                categoryError = 'Failed to update category. Please try again.';
+            }
+
+            editingCategoryId = '';
+            editingCategoryName = '';
+            await fetchCategories();
+        }
+
         async function deleteCategory(ctime, crand) {
             if (!canManageTickets || !ctime || !crand) return;
             categoryError = '';
+            if (editingCategoryId === `${ctime}-${crand}`) {
+                editingCategoryId = '';
+                editingCategoryName = '';
+            }
             renderCategoryManagement();
 
             try {
@@ -521,8 +709,9 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
 
             assigneeOptions.forEach(option => {
                 const opt = document.createElement('option');
-                opt.value = (option.username || '').toLowerCase();
-                opt.textContent = option.username || `Account #${option.id}`;
+                const username = option.username || 'Unknown user';
+                opt.value = username.toLowerCase();
+                opt.textContent = username;
                 select.appendChild(opt);
             });
 
@@ -542,6 +731,8 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
             if (normalizedStatus) payload.append('status', normalizedStatus);
             if (filters.priority) payload.append('priority', filters.priority);
             if (filters.category) payload.append('category', filters.category);
+            if (filters.assignee) payload.append('assignee', filters.assignee);
+            if (filters.guild) payload.append('guild', filters.guild);
             if (filters.from) payload.append('from', filters.from);
             if (filters.to) payload.append('to', filters.to);
             if (filters.search) payload.append('search', filters.search);
@@ -559,18 +750,34 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
 
                         const result = await response.json();
                         if (result.success && Array.isArray(result.data)) {
-                            tickets = result.data.map((ticket) => ({
-                                ...ticket,
-                                id: `${ticket.ctime}-${ticket.crand}`,
-                                requester: ticket.createdByCrand ? `Account #${ticket.createdByCrand}` : 'Unknown',
-                                updated: ticket.updatedAt || '',
-                                assignee: ticket.assignee || '',
-                                category: ticket.category || '',
-                                guild: ticket.guild || '',
-                                status: ticket.status || '',
-                                priority: ticket.priority || '',
-                                comments: Array.isArray(ticket.comments) ? ticket.comments : [],
-                            }));
+                            tickets = result.data.map((ticket) => {
+                                const assignees = Array.isArray(ticket.assignees)
+                                    ? ticket.assignees.filter(name => !!name)
+                                    : [];
+                                const primaryAssignee = (ticket.assignee || assignees[0] || '').trim();
+                                const priorityLabel = (ticket.priority || '').toString();
+
+                                return {
+                                    ...ticket,
+                                    assignees,
+                                    assignee: primaryAssignee,
+                                    id: `${ticket.ctime}-${ticket.crand}`,
+                                    requester: ticket.createdByUsername || 'Unknown user',
+                                    updated: ticket.updatedAt || '',
+                                    category: ticket.category || '',
+                                    guild: ticket.guild || '',
+                                    status: ticket.status || '',
+                                    priority: priorityLabel,
+                                    normalizedStatus: normalizeStatus(ticket.status),
+                                    normalizedPriority: normalizeValue(priorityLabel),
+                                    normalizedAssignee: normalizeValue(primaryAssignee),
+                                    normalizedAssignees: assignees.map(normalizeValue).filter(Boolean),
+                                    normalizedCategory: normalizeValue(ticket.category),
+                                    normalizedGuild: normalizeValue(ticket.guild),
+                                    updatedDate: normalizeDateInput(ticket.updatedAt || ticket.updated),
+                                    comments: Array.isArray(ticket.comments) ? ticket.comments : [],
+                                };
+                            });
                 } else {
                     tickets = [];
                     loadError = result.message || 'Unable to load tickets.';
@@ -591,13 +798,24 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
             const openCount = filteredTickets.filter(t => t.status === 'open').length;
             const inProgressCount = filteredTickets.filter(t => t.status === 'in_progress').length;
             const highCount = filteredTickets.filter(t => t.priority === 'urgent' || t.priority === 'high').length;
-            const lastUpdated = filteredTickets.reduce((latest, ticket) => ticket.updated > latest ? ticket.updated : latest, '');
+            const lastUpdated = filteredTickets.reduce((latest, ticket) => {
+                const ticketTime = ticket.updatedDate ? ticket.updatedDate.getTime() : 0;
+                if (ticketTime > latest.time) {
+                    return { time: ticketTime, raw: ticket.updated || '' };
+                }
+                return latest;
+            }, { time: 0, raw: '' });
 
             document.getElementById('statTotal').textContent = total;
             document.getElementById('statOpen').textContent = openCount;
             document.getElementById('statInProgress').textContent = inProgressCount;
             document.getElementById('statHigh').textContent = highCount;
-            document.getElementById('statLastUpdated').textContent = lastUpdated ? `Updated ${lastUpdated}` : 'Updated --';
+            const statLastUpdated = document.getElementById('statLastUpdated');
+            if (lastUpdated.raw) {
+                statLastUpdated.innerHTML = `Updated ${buildDateTimeElement(lastUpdated.time, lastUpdated.raw)}`;
+            } else {
+                statLastUpdated.textContent = 'Updated --';
+            }
         }
 
         function applyPrefill() {
@@ -612,22 +830,124 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
 
         function ticketMatchesFilters(ticket) {
             const { status, priority, assignee, category, guild, search, from, to } = getFilterValues();
-            const normalizedStatus = status.replace('-', '_');
-            const searchTerm = (search || '').toLowerCase();
+            const normalizedStatus = normalizeStatus(status);
+            const normalizedPriority = normalizeValue(priority);
+            const normalizedCategory = normalizeValue(category);
+            const normalizedGuild = normalizeValue(guild);
+            const searchTerm = normalizeValue(search);
+            const fromDate = normalizeDateInput(from);
+            const toDate = normalizeDateInput(to, true);
+            const ticketDate = ticket.updatedDate;
 
-            if (normalizedStatus && ticket.status !== normalizedStatus) return false;
-            if (priority && ticket.priority !== priority) return false;
-            if (category && (ticket.category || '') !== category) return false;
-            if (guild && (ticket.guild || '') !== guild) return false;
-            if (assignee && (ticket.assignee || '').toLowerCase() !== assignee) return false;
-            if (from && ticket.updated < from) return false;
-            if (to && ticket.updated > to) return false;
+            if (normalizedStatus && ticket.normalizedStatus !== normalizedStatus) return false;
+            if (normalizedPriority && ticket.normalizedPriority !== normalizedPriority) return false;
+            if (normalizedCategory && ticket.normalizedCategory !== normalizedCategory) return false;
+            if (normalizedGuild && ticket.normalizedGuild !== normalizedGuild) return false;
+            if (assignee) {
+                const matchesAssignee = (ticket.normalizedAssignees || []).includes(assignee) || ticket.normalizedAssignee === assignee;
+                if (!matchesAssignee) return false;
+            }
+
+            if (fromDate && (!ticketDate || ticketDate < fromDate)) return false;
+            if (toDate && (!ticketDate || ticketDate > toDate)) return false;
+
             if (searchTerm) {
                 const haystack = `${ticket.subject || ''} ${ticket.description || ''} ${ticket.requester || ''} ${ticket.id || ''}`.toLowerCase();
                 if (!haystack.includes(searchTerm)) return false;
             }
             if (!canManageTickets && activeUser && ticket.requester !== activeUser && ticket.assignee !== activeUser) return false;
             return true;
+        }
+
+        function sortTickets(ticketsToSort) {
+            const sortedTickets = [...ticketsToSort];
+            const { column, direction } = sortConfig;
+            const directionMultiplier = direction === 'asc' ? 1 : -1;
+
+            const getSortValue = (ticket) => {
+                switch (column) {
+                    case 'ticket':
+                        return normalizeValue(ticket.subject);
+                    case 'status':
+                        return ticket.normalizedStatus;
+                    case 'priority':
+                        return ticket.normalizedPriority;
+                    case 'category':
+                        return ticket.normalizedCategory;
+                    case 'assignee':
+                        return ticket.normalizedAssignee;
+                    case 'guild':
+                        return ticket.normalizedGuild;
+                    case 'updated':
+                        return ticket.updatedDate ? ticket.updatedDate.getTime() : 0;
+                    default:
+                        return '';
+                }
+            };
+
+            sortedTickets.sort((a, b) => {
+                const valueA = getSortValue(a);
+                const valueB = getSortValue(b);
+
+                if (valueA === valueB) return 0;
+                if (valueA === undefined || valueA === null) return 1 * directionMultiplier;
+                if (valueB === undefined || valueB === null) return -1 * directionMultiplier;
+
+                if (typeof valueA === 'number' && typeof valueB === 'number') {
+                    return (valueA - valueB) * directionMultiplier;
+                }
+
+                return valueA > valueB ? directionMultiplier : -directionMultiplier;
+            });
+
+            return sortedTickets;
+        }
+
+        function renderPagination(totalPages) {
+            const pagination = document.getElementById('ticketPagination');
+            pagination.innerHTML = '';
+
+            if (totalPages <= 1) {
+                pagination.innerHTML = '<li class="page-item disabled"><span class="page-link">1</span></li>';
+                return;
+            }
+
+            const addPageItem = (page, label, disabled = false, active = false) => {
+                const li = document.createElement('li');
+                li.className = `page-item ${disabled ? 'disabled' : ''} ${active ? 'active' : ''}`;
+                const link = document.createElement('a');
+                link.className = 'page-link';
+                link.href = '#';
+                link.textContent = label;
+                link.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    if (disabled || page === currentPage) return;
+                    currentPage = page;
+                    renderTickets();
+                });
+                li.appendChild(link);
+                pagination.appendChild(li);
+            };
+
+            addPageItem(Math.max(1, currentPage - 1), '«', currentPage === 1);
+
+            for (let page = 1; page <= totalPages; page++) {
+                addPageItem(page, page, false, currentPage === page);
+            }
+
+            addPageItem(Math.min(totalPages, currentPage + 1), '»', currentPage === totalPages);
+        }
+
+        function updateSortIndicators() {
+            document.querySelectorAll('#ticketTable th[data-sort]').forEach((th) => {
+                const indicator = th.querySelector('.sort-indicator');
+                if (!indicator) return;
+                if (th.dataset.sort === sortConfig.column) {
+                    indicator.textContent = sortConfig.direction === 'asc' ? '▲' : '▼';
+                } else {
+                    indicator.textContent = '';
+                }
+            });
         }
 
         function renderTickets() {
@@ -638,6 +958,7 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                 tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4">Loading tickets...</td></tr>';
                 document.getElementById('listSummary').textContent = 'Loading...';
                 renderStats();
+                updateSortIndicators();
                 return;
             }
 
@@ -645,6 +966,7 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                 tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">${loadError}</td></tr>`;
                 document.getElementById('listSummary').textContent = '0 tickets';
                 renderStats();
+                updateSortIndicators();
                 return;
             }
 
@@ -652,11 +974,23 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                 tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4">No tickets match your filters yet.</td></tr>';
                 document.getElementById('listSummary').textContent = '0 tickets';
                 renderStats();
+                updateSortIndicators();
                 return;
             }
-            filteredTickets.forEach(ticket => {
+
+            const sortedTickets = sortTickets(filteredTickets);
+            const totalPages = Math.max(1, Math.ceil(sortedTickets.length / pageSize));
+            currentPage = Math.min(currentPage, totalPages);
+            const startIndex = (currentPage - 1) * pageSize;
+            const endIndex = startIndex + pageSize;
+            const pageTickets = sortedTickets.slice(startIndex, endIndex);
+
+            pageTickets.forEach(ticket => {
                 const row = document.createElement('tr');
                 const detailLink = `<?= Version::urlBetaPrefix(); ?>/tickets/view.php?ctime=${encodeURIComponent(ticket.ctime)}&crand=${encodeURIComponent(ticket.crand)}`;
+                const assigneeDisplay = ticket.assignees && ticket.assignees.length > 0
+                    ? ticket.assignees.join(', ')
+                    : 'Unassigned';
                 row.innerHTML = `
                     <td><input type="checkbox" class="form-check-input ticket-checkbox" data-id="${ticket.id}"></td>
                     <td class="ticket-subject position-relative" data-id="${ticket.id}">
@@ -668,15 +1002,21 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
                     <td><span class="badge status-pill status-${ticket.status}">${ticket.status.replace(/[_-]/g, ' ')}</span></td>
                     <td><span class="badge priority-pill priority-${ticket.priority}">${ticket.priority}</span></td>
                     <td>${ticket.category || 'Uncategorized'}</td>
-                    <td>${ticket.assignee || 'Unassigned'}</td>
+                    <td>${assigneeDisplay}</td>
                     <td>${ticket.guild}</td>
-                    <td>${ticket.updated}</td>
+                    <td>${buildDateTimeElement(ticket.updatedDate || ticket.updated, ticket.updated)}</td>
                 `;
                 tbody.appendChild(row);
             });
-            document.getElementById('listSummary').textContent = `${filteredTickets.length} ticket${filteredTickets.length === 1 ? '' : 's'}`;
+
+            const showingStart = startIndex + 1;
+            const showingEnd = Math.min(filteredTickets.length, endIndex);
+            const summaryText = `${showingStart}-${showingEnd} of ${filteredTickets.length} ticket${filteredTickets.length === 1 ? '' : 's'}`;
+            document.getElementById('listSummary').textContent = summaryText;
+            renderPagination(totalPages);
             bindTicketSelection();
             renderStats();
+            updateSortIndicators();
         }
 
         function bindTicketSelection() {
@@ -690,12 +1030,16 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
             });
         }
 
-        function applyFiltersAndRender(refetch = false) {
+        function applyFiltersAndRender(refetch = false, resetPage = false) {
             if (refetch) {
+                currentPage = 1;
                 fetchTickets(getFilterValues());
                 return;
             }
             filteredTickets = tickets.filter(ticketMatchesFilters);
+            if (resetPage) {
+                currentPage = 1;
+            }
             renderTickets();
         }
 
@@ -733,6 +1077,25 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
             applyFiltersAndRender(true);
         });
 
+        document.querySelectorAll('#ticketTable th[data-sort]').forEach((th) => {
+            th.addEventListener('click', () => {
+                const column = th.dataset.sort;
+                if (sortConfig.column === column) {
+                    sortConfig.direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    sortConfig = { column, direction: column === 'updated' ? 'desc' : 'asc' };
+                }
+                renderTickets();
+            });
+        });
+
+        document.getElementById('pageSizeSelect').addEventListener('change', (event) => {
+            const newSize = parseInt(event.target.value, 10);
+            pageSize = Number.isNaN(newSize) ? 10 : newSize;
+            currentPage = 1;
+            renderTickets();
+        });
+
         const categoryForm = document.getElementById('categoryCreateForm');
         if (categoryForm) {
             categoryForm.addEventListener('submit', (event) => {
@@ -745,18 +1108,60 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
             });
         }
 
-        const categoryListEl = document.getElementById('categoryList');
-        if (categoryListEl) {
-            categoryListEl.addEventListener('click', (event) => {
-                const button = event.target.closest('button[data-category-ctime][data-category-crand]');
+        const categoryTable = document.getElementById('categoryManagerTable');
+        if (categoryTable) {
+            categoryTable.addEventListener('click', (event) => {
+                const button = event.target.closest('button[data-action]');
                 if (!button) return;
 
-                event.preventDefault();
+                const action = button.getAttribute('data-action');
                 const ctime = button.getAttribute('data-category-ctime') || '';
                 const crand = parseInt(button.getAttribute('data-category-crand') || '0', 10);
-                if (!Number.isNaN(crand) && crand > 0 && ctime) {
-                    deleteCategory(ctime, crand);
+
+                if (action === 'delete') {
+                    const name = button.getAttribute('data-category-name') || 'this category';
+                    if (!Number.isNaN(crand) && crand > 0 && ctime && confirm(`Delete ${name}? This cannot be undone.`)) {
+                        deleteCategory(ctime, crand);
+                    }
+                    return;
                 }
+
+                if (action === 'edit') {
+                    editingCategoryId = `${ctime}-${crand}`;
+                    editingCategoryName = button.getAttribute('data-category-name') || '';
+                    renderCategoryManagement();
+                    return;
+                }
+
+                if (action === 'cancel') {
+                    editingCategoryId = '';
+                    editingCategoryName = '';
+                    renderCategoryManagement();
+                    return;
+                }
+
+                if (action === 'save' && !Number.isNaN(crand) && crand > 0 && ctime) {
+                    renameCategory(ctime, crand, editingCategoryName || '');
+                }
+            });
+
+            categoryTable.addEventListener('input', (event) => {
+                const input = event.target.closest('input[data-edit-id]');
+                if (!input) return;
+                editingCategoryName = input.value;
+            });
+        }
+
+        const categoryManagerModal = document.getElementById('categoryManagerModal');
+        if (categoryManagerModal) {
+            categoryManagerModal.addEventListener('show.bs.modal', () => {
+                renderCategoryManagement();
+            });
+
+            categoryManagerModal.addEventListener('hidden.bs.modal', () => {
+                editingCategoryId = '';
+                editingCategoryName = '';
+                renderCategoryManagement();
             });
         }
 
@@ -805,6 +1210,9 @@ $notificationEmail = isset($currentAccount->email) ? $currentAccount->email : ''
         .priority-low { background: #eef2ff; color: #4650dd; }
         .comment-thread .comment-internal { border-left: 4px solid #6c757d; background: #f8f9fa; }
         .comment-thread .comment { border: 1px solid #e9ecef; }
+        #ticketPagination .page-link { min-width: 2.25rem; text-align: center; }
+        th.sortable { cursor: pointer; user-select: none; }
+        th .sort-indicator { font-size: 0.75rem; }
     </style>
 </body>
 
