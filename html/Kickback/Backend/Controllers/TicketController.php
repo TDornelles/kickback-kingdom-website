@@ -532,7 +532,7 @@ class TicketController
         }
 
         $conn = Database::getConnection();
-        $query = 'SELECT Id AS id, COALESCE(NULLIF(Username, ''), ''Unknown steward'') AS username FROM account WHERE IsSteward = 1 ORDER BY username ASC';
+        $query = "SELECT Id AS id, COALESCE(NULLIF(Username, ''), 'Unknown steward') AS username FROM account WHERE IsSteward = 1 ORDER BY username ASC";
 
         $stmt = $conn->prepare($query);
         if ($stmt === false) {
