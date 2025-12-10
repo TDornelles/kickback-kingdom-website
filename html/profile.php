@@ -149,6 +149,26 @@ $itemInformationJSON = json_encode($itemInfos);
 $itemStackInformationJSON = json_encode($accountInventory);
 $activeTab = 'active';
 $activeTabPage = 'active show';
+
+$equippedAvatarLootId = '';
+$equippedAvatarIconPath = '/assets/media/menu/empty_slot.jpg';
+
+if (isset($profile) && isset($profile->avatar)) {
+    $equippedAvatarIconPath = $profile->avatar->getFullPath();
+}
+
+foreach ($accountInventory as $accountInventoryItemStack) {
+    if ($accountInventoryItemStack->item->equipable && $accountInventoryItemStack->item->equipmentSlot == ItemEquipmentSlot::AVATAR) {
+        if ($accountInventoryItemStack->item->iconSmall->getFullPath() === $equippedAvatarIconPath) {
+            if (isset($accountInventoryItemStack->nextLootId)) {
+                $equippedAvatarLootId = $accountInventoryItemStack->nextLootId->crand;
+            } elseif (isset($accountInventoryItemStack->itemLootId)) {
+                $equippedAvatarLootId = $accountInventoryItemStack->itemLootId->crand;
+            }
+            break;
+        }
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -209,7 +229,7 @@ $activeTabPage = 'active show';
     <form method="POST">
             
         <input id="equipment-account-id" type="hidden" name="equipment-account-id" required="" value="<?php echo $profile->crand; ?>"/>
-        <input id="equipment-avatar" type="hidden" name="equipment-avatar" required=""/>
+        <input id="equipment-avatar" type="hidden" name="equipment-avatar" required="" value="<?= htmlspecialchars((string)$equippedAvatarLootId); ?>"/>
         <input id="equipment-pc-card" type="hidden" name="equipment-pc-card" required=""/>
         <input id="equipment-banner" type="hidden" name="equipment-banner" required=""/>
         <input id="equipment-background" type="hidden" name="equipment-background" required=""/>
@@ -230,7 +250,7 @@ $activeTabPage = 'active show';
                                     
                                     <div class="row g-0">
                                         <div class="col-4">
-                                            <button type="button"  class="btn btn-dark p-0" data-bs-target="#selectAvatarModal" data-bs-toggle="modal"><img id="equipment-preview-avatar" src="/assets/media/menu/empty_slot.jpg" class="img-fluid"></button>
+                                            <button type="button"  class="btn btn-dark p-0" data-bs-target="#selectAvatarModal" data-bs-toggle="modal"><img id="equipment-preview-avatar" src="<?= htmlspecialchars($equippedAvatarIconPath); ?>" class="img-fluid"></button>
                                         </div>
                                         <div class="col-8">
                                             
