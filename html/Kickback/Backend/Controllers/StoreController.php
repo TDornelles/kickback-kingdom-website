@@ -407,6 +407,9 @@ class StoreController
             //transactions
             TransactionController::markTransactionAsComplete($transaction);
 
+            //sanit check
+            static::ensureLootsHaveTransacted($cart, $productLoots, $priceComponentLoots);
+
             $conn->commit();
 
             $resp->success = true;
@@ -422,6 +425,76 @@ class StoreController
         }
 
         return $resp;
+    }
+
+    /**
+     * Throws an exception if the loots provided are not in the excepted accounts inventories
+     */
+    private static function ensureLootsHaveTransacted(vCart $cart, array $productLoots, array $priceComponentLoots) : void
+    {
+        $accountThatShouldHaveProductLoots = $cart->account;
+        $accountThatShouldHavePriceComponentLoots = $cart->store->owner;
+
+        $params = [];
+        $selectTable = static::createSelectTableForEnsureLootsHaveTransacted($productLoots, $accountThatShouldHaveProductLoots, $params);
+        $sql = "SELECT * FROM ($selectTable) st LEFT JOIN loot l ON l.account_id = st.account_id AND l.id = st.loot_id WHERE l.id IS NULL";
+
+        $result = Database::executeSqlQuery($sql, $params);
+
+        /**
+         * if a row is returned it means that a loot was in the select table 
+         * that was not in the loot table and assigned to the account provided 
+         * to the select table creation function
+         */
+        if($result->num_rows > 0)
+        {
+            throw new Exception("Not All Product Loots Were Found In Cart Owners Account. Loots that were not found in cart owners account : ".json_encode(static::parseLootsNotFound($result)));  
+        } 
+
+        $params = [];
+        $selectTable = static::createSelectTableForEnsureLootsHaveTransacted($priceComponentLoots, $accountThatShouldHavePriceComponentLoots, $params);
+        $sql = "SELECT * FROM ($selectTable) st LEFT JOIN loot l ON l.account_id = st.account_id AND l.id = st.loot_id WHERE l.id IS NULL";
+
+        $result = Database::executeSqlQuery($sql, $params);
+        if($result->num_rows > 0)
+        {
+            throw new Exception("Not All Price Component Loots Were Found In Store Owners Account. Loots that were not found in store owners account : ".json_encode(static::parseLootsNotFound($result)));  
+        } 
+    }
+
+    private static function parseLootsNotFound(mysqli_result $result) : array
+    {
+        $loots = [];
+
+        while($row = $result->fetch_assoc())
+        {
+            $notFoundLootId = new vRecordId('', (int)$row["loot_id"]);
+            $loots[] = $notFoundLootId;
+        }
+
+        return $loots;
+    }
+
+    private static function createSelectTableForEnsureLootsHaveTransacted(array $loots, vRecordId $account, array &$params) : string
+    {
+        $selectTable = "";
+
+        for($i = 0; $i < count($loots); $i++)
+        {
+            $loot = $loots[$i];
+
+            array_push($params, $loot->crand, $account->crand);
+
+            if($i === 0)
+            {
+                $selectTable .= "SELECT ? as 'loot_id', ? as 'account_id'";
+                continue;
+            }
+
+            $selectTable .= " UNION ALL SELECT ?, ?";
+        }
+
+        return $selectTable;
     }
 
     private static function markCouponCartProductLinksAsCheckedOut(vCart $cart) : void
