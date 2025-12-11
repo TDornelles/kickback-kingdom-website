@@ -187,7 +187,7 @@ class ItemController
             $mediaIdBack = $item->mediaBack->crand;
         }
         $stmt->bind_param(
-            'iiiiissiiiiiiiiiii',
+            'iiiiissiiisiiiiiii',
             $typeValue,
             $rarityValue,
             $item->mediaLarge->crand,
@@ -269,7 +269,7 @@ class ItemController
         }
 
         $stmt->bind_param(
-            'iiiiissiiiiiiiiiiii',
+            'iiiiissiiisiiiiiiiii',
             $typeValue,
             $rarityValue,
             $item->mediaLarge->crand,
