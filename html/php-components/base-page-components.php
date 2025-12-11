@@ -1385,6 +1385,9 @@ if (!Session::isLoggedIn()) {
             <li class="nav-item">
                 <a class="nav-link mobile-menu-item" href="<?php echo Version::urlBetaPrefix(); ?>/admin-dashboard.php"><i class="nav-icon fa-solid fa-shield-halved"></i> Admin Dashboard <i class="fa-solid fa-chevron-right mobile-menu-item-arrow"></i></a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link mobile-menu-item" href="<?php echo Version::urlBetaPrefix(); ?>/admin-ability-manager.php"><i class="nav-icon fa-solid fa-wand-magic-sparkles"></i> Ability Manager <i class="fa-solid fa-chevron-right mobile-menu-item-arrow"></i></a>
+            </li>
             <?php } ?>
             <?php
 
@@ -1681,6 +1684,11 @@ if (!Session::isLoggedIn()) {
                         <li>
                             <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/admin-dashboard.php">
                                 <i class="nav-icon fa-solid fa-shield-halved"></i> Admin Dashboard
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/admin-ability-manager.php">
+                                <i class="nav-icon fa-solid fa-wand-magic-sparkles"></i> Ability Manager
                             </a>
                         </li>
                         <li>
