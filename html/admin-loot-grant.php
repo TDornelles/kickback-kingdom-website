@@ -263,15 +263,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
                         </div>
                     </div>
-                    <div class="card-footer">
-                        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 flex-wrap">
-                            <p class="text-body-secondary small flex-grow-1 text-wrap text-break mb-0">
-                                Grants are created immediately using LootController helpers based on the recipient selection.
-                            </p>
-                            <button type="submit" class="btn bg-ranked-1 text-white w-100 w-md-auto">
-                                <i class="fa-solid fa-paper-plane me-1"></i> Grant Loot
-                            </button>
+                    <div class="card-footer d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 flex-wrap">
+                        <div class="text-body-secondary small flex-grow-1 text-wrap">
+                            Grants are created immediately using LootController helpers based on the recipient selection.
                         </div>
+                        <button type="submit" class="btn bg-ranked-1 text-white">
+                            <i class="fa-solid fa-paper-plane me-1"></i> Grant Loot
+                        </button>
                     </div>
                 </form>
 
