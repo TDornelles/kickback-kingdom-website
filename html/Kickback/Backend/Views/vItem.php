@@ -8,6 +8,7 @@ use Kickback\Backend\Views\vMedia;
 use Kickback\Backend\Views\vQuest;
 use Kickback\Backend\Views\vAccount;
 use Kickback\Backend\Views\vCollection;
+use Kickback\Backend\Views\vAbility;
 use Kickback\Backend\Models\ItemType;
 use Kickback\Backend\Models\ItemRarity;
 use Kickback\Backend\Models\ItemEquipmentSlot;
@@ -44,6 +45,9 @@ class vItem extends vRecordId
     public ?ItemCategory $itemCategory = null;
     public ?vCollection $collection = null;
 
+    /** @var array<vAbility> */
+    public array $abilities;
+
     /** @var array<vLichCard> */
     public array $auxData;
 
@@ -65,6 +69,7 @@ class vItem extends vRecordId
         $this->useable = false;
         $this->isContainer = false;
         $this->containerSize = -1;
+        $this->abilities = [];
         $this->auxData = [];
     }
 

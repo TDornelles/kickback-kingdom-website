@@ -9,6 +9,7 @@ $session = require(\Kickback\SCRIPT_ROOT . "/api/v1/engine/session/verifySession
 require("php-components/base-page-pull-active-account-info.php");
 
 use Kickback\Backend\Controllers\ItemController;
+use Kickback\Backend\Controllers\AbilityController;
 use Kickback\Backend\Models\ForeignRecordId;
 use Kickback\Backend\Models\Item;
 use Kickback\Backend\Models\ItemCategory;
@@ -79,6 +80,11 @@ function buildItemFromPost(): Item
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
+    $selectedAbilities = array_values(array_unique(array_filter(
+        array_map('intval', $_POST['ability_ids'] ?? []),
+        fn($id) => (int)$id > 0
+    )));
+
     if ($action === 'create' || $action === 'update') {
         $item = buildItemFromPost();
 
@@ -89,6 +95,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $response = $action === 'create'
             ? ItemController::insertItem($item)
             : ItemController::updateItem($item);
+
+        if ($response->success) {
+            $itemId = $action === 'create'
+                ? $response->data
+                : new vRecordId('', (int)$item->crand);
+
+            $abilityResp = ItemController::updateItemAbilities($itemId, $selectedAbilities);
+            if (!$abilityResp->success) {
+                $response->success = false;
+                $response->message .= ' ' . $abilityResp->message;
+            } else {
+                $response->message .= ' ' . $abilityResp->message;
+            }
+        }
 
         $alertMessage = $response->message;
         $alertVariant = $response->success ? 'success' : 'danger';
@@ -103,6 +123,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $itemTableResp = ItemController::getItemTable();
 $itemRows = $itemTableResp->success ? $itemTableResp->data : [];
+$itemIds = array_map(fn($row) => $row->crand, $itemRows);
+
+$itemAbilitiesResp = ItemController::getItemAbilities($itemIds);
+$itemAbilityMap = $itemAbilitiesResp->success ? $itemAbilitiesResp->data : [];
+
+$abilityListResp = AbilityController::getAbilityTable();
+$abilityOptions = $abilityListResp->success ? $abilityListResp->data : [];
 
 $collectionOptions = [];
 foreach ($itemRows as $row) {
@@ -214,6 +241,7 @@ function enumLabel(string $value): string
                                     <th scope="col" class="sortable" data-sort-key="redeemable">Redeem <i class="fa-solid ms-1 sort-icon d-none"></i></th>
                                     <th scope="col" class="sortable" data-sort-key="useable">Use <i class="fa-solid ms-1 sort-icon d-none"></i></th>
                                     <th scope="col" class="sortable" data-sort-key="is_container">Container <i class="fa-solid ms-1 sort-icon d-none"></i></th>
+                                    <th scope="col" class="sortable" data-sort-key="abilities">Abilities <i class="fa-solid ms-1 sort-icon d-none"></i></th>
                                     <th scope="col" class="text-end">Actions</th>
                                 </tr>
                             </thead>
@@ -222,6 +250,8 @@ function enumLabel(string $value): string
                                     $type = $row->type;
                                     $rarity = $row->rarity;
                                     $category = $row->itemCategory;
+                                    $abilities = $itemAbilityMap[$row->crand] ?? [];
+                                    $abilityIds = array_map(fn($ability) => $ability->crand, $abilities);
                                     $mediaSmallId = $row->mediaIdSmall ?? $row->iconSmall->crand;
                                     $mediaLargeId = $row->mediaIdLarge ?? $row->iconBig->crand;
                                     $mediaBackId = $row->mediaIdBack ?? $row->iconBack->crand;
@@ -261,6 +291,7 @@ function enumLabel(string $value): string
                                         'useable' => $row->useable ? 1 : 0,
                                         'is_container' => $row->isContainer ? 1 : 0,
                                         'is_fungible' => $row->fungible ? 1 : 0,
+                                        'abilities' => $abilityIds,
                                     ];
                                 ?>
                                     <tr
@@ -273,6 +304,8 @@ function enumLabel(string $value): string
                                         data-item-redeemable="<?= $row->redeemable ? 1 : 0; ?>"
                                         data-item-useable="<?= $row->useable ? 1 : 0; ?>"
                                         data-item-container="<?= $row->isContainer ? 1 : 0; ?>"
+                                        data-item-abilities='<?= htmlspecialchars(json_encode($abilityIds), ENT_QUOTES); ?>'
+                                        data-item-abilities-count="<?= count($abilities); ?>"
                                         data-media-small-path="<?= htmlspecialchars($mediaSmallPath); ?>"
                                         data-media-large-path="<?= htmlspecialchars($mediaLargePath); ?>"
                                         data-media-back-path="<?= htmlspecialchars($mediaBackPath); ?>"
@@ -296,6 +329,20 @@ function enumLabel(string $value): string
                                         <td><?= $row->redeemable ? 'Yes' : 'No'; ?></td>
                                         <td><?= $row->useable ? 'Yes' : 'No'; ?></td>
                                         <td><?= $row->isContainer ? 'Yes' : 'No'; ?></td>
+                                        <td>
+                                            <?php if (!empty($abilities)) { ?>
+                                                <div class="d-flex flex-wrap gap-1">
+                                                    <?php foreach (array_slice($abilities, 0, 3) as $ability) { ?>
+                                                        <span class="badge text-bg-info bg-opacity-25 text-info-emphasis"><?= htmlspecialchars($ability->name); ?></span>
+                                                    <?php } ?>
+                                                    <?php if (count($abilities) > 3) { ?>
+                                                        <span class="badge text-bg-secondary">+<?= count($abilities) - 3; ?> more</span>
+                                                    <?php } ?>
+                                                </div>
+                                            <?php } else { ?>
+                                                <span class="text-body-secondary">—</span>
+                                            <?php } ?>
+                                        </td>
                                         <td class="text-end">
                                             <div class="btn-group" role="group">
                                                 <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#itemModal" data-mode="edit"
@@ -483,6 +530,36 @@ function enumLabel(string $value): string
                                         <label class="form-label">Container Size</label>
                                         <input type="number" class="form-control" name="container_size" id="container-size" value="-1">
                                         <div class="form-text">Use -1 to leave unset.</div>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label d-flex align-items-center justify-content-between">
+                                            <span>Abilities</span>
+                                            <span class="badge text-bg-secondary" id="ability-selected-count">0 selected</span>
+                                        </label>
+                                        <div class="input-group mb-2">
+                                            <span class="input-group-text"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
+                                            <input type="search" class="form-control" id="ability-search" placeholder="Search abilities">
+                                        </div>
+                                        <div class="border rounded p-3 bg-body-tertiary" style="max-height: 220px; overflow-y: auto;">
+                                            <?php if (!empty($abilityOptions)) { ?>
+                                                <div class="row g-2" id="ability-list">
+                                                    <?php foreach ($abilityOptions as $ability) { ?>
+                                                        <div class="col-md-6 ability-option" data-ability-name="<?= htmlspecialchars(strtolower($ability->name)); ?>">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input ability-checkbox" type="checkbox" value="<?= (int)$ability->crand; ?>" id="ability-<?= (int)$ability->crand; ?>" name="ability_ids[]">
+                                                                <label class="form-check-label" for="ability-<?= (int)$ability->crand; ?>">
+                                                                    <span class="fw-semibold"><?= htmlspecialchars($ability->name); ?></span>
+                                                                    <small class="d-block text-body-secondary">#<?= (int)$ability->crand; ?> • <?= htmlspecialchars($ability->description); ?></small>
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                    <?php } ?>
+                                                </div>
+                                            <?php } else { ?>
+                                                <p class="text-body-secondary mb-0">No abilities available.</p>
+                                            <?php } ?>
+                                        </div>
+                                        <div class="form-text" id="ability-helper-text">Choose zero or more abilities to attach to this item.</div>
                                     </div>
                                 </div>
                             </div>
@@ -755,6 +832,7 @@ function enumLabel(string $value): string
                 toggleEquipmentFields(itemData.equipable == 1);
                 toggleContainerFields(itemData.is_container == 1);
                 enforceUniquePairing();
+                setAbilitySelections(itemData.abilities ?? []);
             } else {
                 modalTitle.textContent = 'Create Item';
                 submitBtn.textContent = 'Create Item';
@@ -770,6 +848,7 @@ function enumLabel(string $value): string
                 toggleEquipmentFields(false);
                 toggleContainerFields(false);
                 enforceUniquePairing();
+                clearAbilitySelections();
             }
         });
 
@@ -778,6 +857,57 @@ function enumLabel(string $value): string
 
         const containerCheckbox = document.getElementById('is-container');
         containerCheckbox?.addEventListener('change', (event) => toggleContainerFields(event.target.checked));
+
+        const abilityCheckboxes = Array.from(document.querySelectorAll('.ability-checkbox'));
+        const abilitySearchInput = document.getElementById('ability-search');
+        const abilitySelectedCount = document.getElementById('ability-selected-count');
+        const abilityHelperText = document.getElementById('ability-helper-text');
+
+        function updateAbilitySelectionCount() {
+            if (!abilitySelectedCount) return;
+            const selected = abilityCheckboxes.filter((checkbox) => checkbox.checked);
+            const count = selected.length;
+            abilitySelectedCount.textContent = `${count} selected`;
+            if (abilityHelperText) {
+                abilityHelperText.textContent = count > 0
+                    ? 'Selected abilities will be attached to the item when saved.'
+                    : 'Choose zero or more abilities to attach to this item.';
+            }
+        }
+
+        function setAbilitySelections(selectedIds = []) {
+            abilityCheckboxes.forEach((checkbox) => {
+                const id = parseInt(checkbox.value, 10);
+                checkbox.checked = selectedIds.includes(id);
+            });
+            updateAbilitySelectionCount();
+        }
+
+        function clearAbilitySelections() {
+            setAbilitySelections([]);
+            if (abilitySearchInput) {
+                abilitySearchInput.value = '';
+                filterAbilityList();
+            }
+        }
+
+        function filterAbilityList() {
+            if (!abilitySearchInput) return;
+            const query = abilitySearchInput.value.toLowerCase();
+            const options = document.querySelectorAll('.ability-option');
+            options.forEach((option) => {
+                const abilityName = option.getAttribute('data-ability-name') || '';
+                option.classList.toggle('d-none', !abilityName.includes(query));
+            });
+        }
+
+        abilityCheckboxes.forEach((checkbox) => {
+            checkbox.addEventListener('change', updateAbilitySelectionCount);
+        });
+
+        abilitySearchInput?.addEventListener('input', filterAbilityList);
+
+        updateAbilitySelectionCount();
 
         const itemTypeSelect = document.getElementById('item-type');
         const itemRaritySelect = document.getElementById('item-rarity');
@@ -1040,6 +1170,7 @@ function enumLabel(string $value): string
             redeemable: 'itemRedeemable',
             useable: 'itemUseable',
             is_container: 'itemContainer',
+            abilities: 'itemAbilitiesCount',
         };
 
         let currentSort = { key: 'id', direction: 'asc' };
@@ -1047,7 +1178,7 @@ function enumLabel(string $value): string
         let pageSize = parseInt(pageSizeSelect?.value ?? '10', 10) || 10;
 
         function isNumericKey(key) {
-            return ['id', 'type', 'rarity', 'category', 'equipable', 'redeemable', 'useable', 'is_container'].includes(key);
+            return ['id', 'type', 'rarity', 'category', 'equipable', 'redeemable', 'useable', 'is_container', 'abilities'].includes(key);
         }
 
         function getSortableValue(row, key) {

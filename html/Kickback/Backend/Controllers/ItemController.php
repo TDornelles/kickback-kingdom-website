@@ -7,6 +7,7 @@ use Exception;
 use Kickback\Backend\Views\vItem;
 use Kickback\Backend\Views\vMedia;
 use Kickback\Backend\Views\vRecordId;
+use Kickback\Backend\Views\vAbility;
 use Kickback\Backend\Views\vCollection;
 use Kickback\Backend\Models\Response;
 use Kickback\Services\Database;
@@ -19,6 +20,9 @@ use Kickback\Backend\Models\ItemCategory;
 
 class ItemController
 {
+    /** @var array<int, array<vAbility>> */
+    private static array $abilityCache = [];
+
     public static function getAllItems(bool $excludeExistingUniques = false): Response
     {
         $conn = Database::getConnection();
@@ -54,6 +58,8 @@ class ItemController
         }
 
         $stmt->close();
+
+        self::hydrateItemAbilities($items);
 
         return new Response(true, "Items retrieved successfully", $items);
     }
@@ -150,7 +156,148 @@ class ItemController
 
         $stmt->close();
 
+        self::hydrateItemAbilities($items);
+
         return new Response(true, "Items retrieved successfully", $items);
+    }
+
+    /**
+     * Fetch abilities associated with the provided item ids.
+     *
+     * @param array<int> $itemIds
+     */
+    public static function getItemAbilities(array $itemIds): Response
+    {
+        $ids = array_values(array_unique(array_map('intval', array_filter($itemIds, fn($id) => (int)$id > 0))));
+
+        if (empty($ids)) {
+            return new Response(true, 'No items provided.', []);
+        }
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $types = str_repeat('i', count($ids));
+
+        $conn = Database::getConnection();
+        $sql = "SELECT ia.item_id, a.Id AS ability_id, a.ctime AS ability_ctime, a.name, a.`desc`,
+                a.prestige_gain, a.prestige_multiplier, a.exp_gain, a.exp_multiplier,
+                a.level_gain, a.level_multiplier, a.title_change
+            FROM item_ability ia
+            JOIN ability a ON ia.ability_id = a.Id
+            WHERE ia.item_id IN ({$placeholders})
+            ORDER BY a.name";
+
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            return new Response(false, 'Failed to load item abilities: ' . $conn->error);
+        }
+
+        $stmt->bind_param($types, ...$ids);
+
+        if (!$stmt->execute()) {
+            return new Response(false, 'Failed to load item abilities: ' . $stmt->error);
+        }
+
+        $result = $stmt->get_result();
+        $abilityMap = [];
+
+        while ($row = $result->fetch_assoc()) {
+            $itemId = (int)$row['item_id'];
+            $ability = new vAbility((string)($row['ability_ctime'] ?? ''), (int)$row['ability_id']);
+            $ability->name = (string)($row['name'] ?? '');
+            $ability->description = (string)($row['desc'] ?? '');
+            $ability->prestigeGain = (int)($row['prestige_gain'] ?? 0);
+            $ability->prestigeMultiplier = (float)($row['prestige_multiplier'] ?? 0.0);
+            $ability->expGain = (int)($row['exp_gain'] ?? 0);
+            $ability->expMultiplier = (float)($row['exp_multiplier'] ?? 0.0);
+            $ability->levelGain = (int)($row['level_gain'] ?? 0);
+            $ability->levelMultiplier = (float)($row['level_multiplier'] ?? 0.0);
+            $ability->titleChange = trim((string)($row['title_change'] ?? ''));
+            $abilityMap[$itemId][] = $ability;
+        }
+
+        $stmt->close();
+
+        return new Response(true, 'Item abilities retrieved successfully.', $abilityMap);
+    }
+
+    /**
+     * Update the abilities associated with an item by replacing existing rows.
+     *
+     * @param array<int> $abilityIds
+     */
+    public static function updateItemAbilities(vRecordId $itemId, array $abilityIds): Response
+    {
+        if ($itemId->crand <= 0) {
+            return new Response(false, 'A valid item id must be provided when assigning abilities.');
+        }
+
+        $normalizedIds = array_values(array_unique(array_map('intval', array_filter($abilityIds, fn($id) => (int)$id > 0))));
+
+        $conn = Database::getConnection();
+
+        // Validate ability ids exist
+        if (!empty($normalizedIds)) {
+            $placeholders = implode(',', array_fill(0, count($normalizedIds), '?'));
+            $types = str_repeat('i', count($normalizedIds));
+            $validateStmt = $conn->prepare("SELECT COUNT(*) AS count FROM ability WHERE Id IN ({$placeholders})");
+            if (!$validateStmt) {
+                return new Response(false, 'Failed to validate abilities: ' . $conn->error);
+            }
+
+            $validateStmt->bind_param($types, ...$normalizedIds);
+            if (!$validateStmt->execute()) {
+                return new Response(false, 'Failed to validate abilities: ' . $validateStmt->error);
+            }
+
+            $countRow = $validateStmt->get_result()->fetch_assoc();
+            $validateStmt->close();
+
+            if ((int)($countRow['count'] ?? 0) !== count($normalizedIds)) {
+                return new Response(false, 'One or more selected abilities are invalid.');
+            }
+        }
+
+        $conn->begin_transaction();
+
+        $deleteStmt = $conn->prepare('DELETE FROM item_ability WHERE item_id = ?');
+        if (!$deleteStmt) {
+            $conn->rollback();
+            return new Response(false, 'Failed to prepare ability removal: ' . $conn->error);
+        }
+
+        $deleteStmt->bind_param('i', $itemId->crand);
+        if (!$deleteStmt->execute()) {
+            $conn->rollback();
+            return new Response(false, 'Failed to clear existing abilities: ' . $deleteStmt->error);
+        }
+
+        if (!empty($normalizedIds)) {
+            $insertStmt = $conn->prepare('INSERT INTO item_ability (item_id, ability_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE ability_id = ability_id');
+            if (!$insertStmt) {
+                $conn->rollback();
+                return new Response(false, 'Failed to prepare ability assignment: ' . $conn->error);
+            }
+
+            foreach ($normalizedIds as $abilityId) {
+                $insertStmt->bind_param('ii', $itemId->crand, $abilityId);
+                if (!$insertStmt->execute()) {
+                    $insertStmt->close();
+                    $conn->rollback();
+                    return new Response(false, 'Failed to assign abilities: ' . $insertStmt->error);
+                }
+            }
+
+            $insertStmt->close();
+        }
+
+        $conn->commit();
+
+        $abilityCount = count($normalizedIds);
+        $message = $abilityCount > 0
+            ? "Attached {$abilityCount} " . ($abilityCount === 1 ? 'ability' : 'abilities') . ' to the item.'
+            : 'Removed all abilities from the item.';
+
+        return new Response(true, $message, $normalizedIds);
     }
 
     public static function insertItem(Item $item): Response {
@@ -400,11 +547,14 @@ class ItemController
         else
         {
             $row = mysqli_fetch_assoc($result);
-    
+
             // Free the statement
             mysqli_stmt_close($stmt);
-            
-            return (new Response(true, "Item information.",  self::row_to_vItem($row, $item_id) ));
+
+            $item = self::row_to_vItem($row, $item_id);
+            self::hydrateItemAbilities([$item]);
+
+            return (new Response(true, "Item information.",  $item ));
         }
     }
 
@@ -463,6 +613,8 @@ class ItemController
 
                 array_push($items, $item);
             }
+
+            self::hydrateItemAbilities($items);
 
             $resp->success = true;
             $resp->message = "items returned with name : $name";
@@ -643,7 +795,48 @@ class ItemController
 
         $item->applyMediaFallbacks();
 
+        if (array_key_exists($item->crand, self::$abilityCache)) {
+            $item->abilities = self::$abilityCache[$item->crand];
+        }
+
         return $item;
+    }
+
+    /**
+     * Populate the abilities property for each provided item, hydrating them in batches where possible.
+     *
+     * @param array<vItem> $items
+     */
+    public static function hydrateItemAbilities(array $items): void
+    {
+        $missingIds = [];
+
+        foreach ($items as $item) {
+            if ($item->crand > 0 && !array_key_exists($item->crand, self::$abilityCache)) {
+                $missingIds[] = $item->crand;
+            }
+        }
+
+        if (!empty($missingIds)) {
+            $abilityResp = self::getItemAbilities($missingIds);
+            if ($abilityResp->success && is_array($abilityResp->data)) {
+                foreach ($abilityResp->data as $itemId => $abilities) {
+                    self::$abilityCache[(int)$itemId] = $abilities;
+                }
+            }
+
+            foreach ($missingIds as $id) {
+                if (!array_key_exists($id, self::$abilityCache)) {
+                    self::$abilityCache[$id] = [];
+                }
+            }
+        }
+
+        foreach ($items as $item) {
+            $item->abilities = $item->crand > 0
+                ? (self::$abilityCache[$item->crand] ?? [])
+                : [];
+        }
     }
 
 }

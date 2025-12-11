@@ -713,8 +713,10 @@ class LootController
         
         $loot->dateObtained = vDateTime::fromDB($row["dateObtained"] ?? '');
 
-        if ($populateItem)
+        if ($populateItem) {
             $loot->item = ItemController::row_to_vItem($row);
+            ItemController::hydrateItemAbilities([$loot->item]);
+        }
 
         if (array_key_exists('container_loot_id', $row) && isset($row["container_loot_id"])) {
             $loot->containerLoot = new vLoot('', intval($row["container_loot_id"]));
@@ -736,6 +738,7 @@ class LootController
     public static function row_to_vItemStack(array $row) : vItemStack {
         $lootStack = new vItemStack();
         $lootStack->item = ItemController::row_to_vItem($row);
+        ItemController::hydrateItemAbilities([$lootStack->item]);
         $lootStack->isContainer = (bool)$row["is_container"];
 
 
