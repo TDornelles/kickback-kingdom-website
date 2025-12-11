@@ -64,7 +64,6 @@ class ItemController
 
         $sql = "SELECT
                 i.Id,
-                i.DateCreated,
                 i.name,
                 i.`desc`,
                 i.`type`,
@@ -106,7 +105,7 @@ class ItemController
         $items = [];
 
         while ($row = $result->fetch_assoc()) {
-            $itemId = new vRecordId($row['DateCreated'] ?? '', (int)$row['Id']);
+            $itemId = new vRecordId('', (int)$row['Id']);
             $item = self::row_to_vItem($row, $itemId);
 
             if (array_key_exists('media_id_small', $row) && $row['media_id_small'] !== null) {
