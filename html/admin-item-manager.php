@@ -411,8 +411,6 @@ function enumLabel(string $value): string
                                         <button class="nav-link" id="tab-abilities" data-bs-toggle="tab" data-bs-target="#pane-abilities" type="button" role="tab" aria-controls="pane-abilities" aria-selected="false">Abilities</button>
                                     </li>
                                 </ul>
-                            </div>
-                            <div class="col-12">
                                 <div class="tab-content" id="item-tabcontent">
                                     <div class="tab-pane fade show active" id="pane-basics" role="tabpanel" aria-labelledby="tab-basics" tabindex="0">
                                         <div class="d-flex align-items-center gap-2 mb-2">
