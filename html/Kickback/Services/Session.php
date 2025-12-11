@@ -373,6 +373,9 @@ class Session {
 
     public static function setSessionData(string $key, mixed $value) : void {
         $_SESSION[$key] = $value;
+        if ($key === 'vAccount') {
+            self::$currentAccount = $value instanceof vAccount ? $value : null;
+        }
     }
 
     public static function sessionDataInt(string $key) : ?int {
@@ -392,6 +395,9 @@ class Session {
     public static function removeSessionData(string $key) : void {
         if (isset($_SESSION[$key])) {
             unset($_SESSION[$key]);
+            if ($key === 'vAccount') {
+                self::$currentAccount = null;
+            }
         }
     }
 
