@@ -11,6 +11,12 @@ class Database {
     private static ?\mysqli $conn = null;
 
     public static function getConnection(): \mysqli {
+        // If a connection exists but has been closed (for example, by other code
+        // calling \mysqli::close()), clear it so a fresh connection can be created.
+        if (self::$conn !== null && !@self::$conn->ping()) {
+            self::$conn = null;
+        }
+
         if (self::$conn === null) {
             // Fetching credentials
             $servername = ServiceCredentials::get("sql_server_host");
