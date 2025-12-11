@@ -374,7 +374,7 @@ function enumLabel(string $value): string
                                         </div>
                                         <div class="form-text" id="collection-label">No collection selected.</div>
                                     </div>
-                                    <div class="col-md-4">
+                                    <div class="col-md-4" id="equipment-slot-group">
                                         <label class="form-label">Equipment Slot</label>
                                         <select class="form-select" name="equipment_slot" id="equipment-slot">
                                             <option value="">None</option>
@@ -383,7 +383,7 @@ function enumLabel(string $value): string
                                             <?php } ?>
                                         </select>
                                     </div>
-                                    <div class="col-md-4">
+                                    <div class="col-md-4" id="container-category-group">
                                         <label class="form-label">Container Category</label>
                                         <select class="form-select" name="container_item_category" id="container-item-category">
                                             <option value="">None</option>
@@ -392,7 +392,7 @@ function enumLabel(string $value): string
                                             <?php } ?>
                                         </select>
                                     </div>
-                                    <div class="col-md-4">
+                                    <div class="col-md-4" id="container-size-group">
                                         <label class="form-label">Container Size</label>
                                         <input type="number" class="form-control" name="container_size" id="container-size" value="-1">
                                         <div class="form-text">Use -1 to leave unset.</div>
@@ -536,6 +536,40 @@ function enumLabel(string $value): string
         const DEFAULT_MEDIA_SRC = '/assets/media/items/221.png';
         const DEFAULT_MEDIA_ID = '221';
 
+        function toggleEquipmentFields(isChecked) {
+            const equipmentGroup = document.getElementById('equipment-slot-group');
+            if (equipmentGroup) {
+                equipmentGroup.classList.toggle('d-none', !isChecked);
+            }
+
+            if (!isChecked) {
+                const equipmentSlot = document.getElementById('equipment-slot');
+                if (equipmentSlot) {
+                    equipmentSlot.value = '';
+                }
+            }
+        }
+
+        function toggleContainerFields(isChecked) {
+            const containerGroups = [
+                document.getElementById('container-category-group'),
+                document.getElementById('container-size-group'),
+            ];
+
+            containerGroups.forEach((group) => group?.classList.toggle('d-none', !isChecked));
+
+            if (!isChecked) {
+                const containerCategory = document.getElementById('container-item-category');
+                const containerSize = document.getElementById('container-size');
+                if (containerCategory) {
+                    containerCategory.value = '';
+                }
+                if (containerSize) {
+                    containerSize.value = -1;
+                }
+            }
+        }
+
         itemModal.addEventListener('show.bs.modal', (event) => {
             const trigger = event.relatedTarget;
 
@@ -583,6 +617,9 @@ function enumLabel(string $value): string
                 document.getElementById('useable').checked = itemData.useable == 1;
                 document.getElementById('is-container').checked = itemData.is_container == 1;
                 document.getElementById('is-fungible').checked = itemData.is_fungible == 1;
+
+                toggleEquipmentFields(itemData.equipable == 1);
+                toggleContainerFields(itemData.is_container == 1);
             } else {
                 modalTitle.textContent = 'Create Item';
                 submitBtn.textContent = 'Create Item';
@@ -594,8 +631,20 @@ function enumLabel(string $value): string
                 clearNominatedBy();
                 clearCollection();
                 clearMediaPreviews();
+
+                toggleEquipmentFields(false);
+                toggleContainerFields(false);
             }
         });
+
+        const equipableCheckbox = document.getElementById('equipable');
+        equipableCheckbox?.addEventListener('change', (event) => toggleEquipmentFields(event.target.checked));
+
+        const containerCheckbox = document.getElementById('is-container');
+        containerCheckbox?.addEventListener('change', (event) => toggleContainerFields(event.target.checked));
+
+        toggleEquipmentFields(equipableCheckbox?.checked ?? false);
+        toggleContainerFields(containerCheckbox?.checked ?? false);
 
         function openMediaPicker(inputId, previewId, labelId) {
             OpenSelectMediaModal('itemModal', previewId, inputId, () => updateMediaPreview(previewId, inputId, labelId));
