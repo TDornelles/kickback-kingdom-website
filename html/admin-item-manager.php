@@ -222,21 +222,21 @@ function enumLabel(string $value): string
                                     $type = $row->type;
                                     $rarity = $row->rarity;
                                     $category = $row->itemCategory;
-                                    $mediaSmallId = $row->iconSmall->crand;
-                                    $mediaLargeId = $row->iconBig->crand;
-                                    $mediaBackId = $row->iconBack->crand;
-                                    $mediaSmallPath = $row->iconSmall->isValid()
-                                        ? $row->iconSmall->getFullPath()
-                                        : '';
+                                    $mediaSmallId = $row->mediaIdSmall ?? $row->iconSmall->crand;
+                                    $mediaLargeId = $row->mediaIdLarge ?? $row->iconBig->crand;
+                                    $mediaBackId = $row->mediaIdBack ?? $row->iconBack->crand;
+                                    $mediaSmallPath = $row->mediaPathSmall
+                                        ? '/assets/media/' . ltrim($row->mediaPathSmall, '/')
+                                        : ($row->iconSmall->isValid() ? $row->iconSmall->getFullPath() : '');
                                     $smallMediaSrc = $row->iconSmall->isValid()
                                         ? $row->iconSmall->getFullPath()
                                         : $defaultMediaPath;
-                                    $mediaLargePath = $row->iconBig->isValid()
-                                        ? $row->iconBig->getFullPath()
-                                        : '';
-                                    $mediaBackPath = $row->iconBack->isValid()
-                                        ? $row->iconBack->getFullPath()
-                                        : '';
+                                    $mediaLargePath = $row->mediaPathLarge
+                                        ? '/assets/media/' . ltrim($row->mediaPathLarge, '/')
+                                        : ($row->iconBig->isValid() ? $row->iconBig->getFullPath() : '');
+                                    $mediaBackPath = $row->mediaPathBack
+                                        ? '/assets/media/' . ltrim($row->mediaPathBack, '/')
+                                        : ($row->iconBack->isValid() ? $row->iconBack->getFullPath() : '');
 
                                     $itemData = [
                                         'Id' => $row->crand,

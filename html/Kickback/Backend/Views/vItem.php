@@ -21,6 +21,12 @@ class vItem extends vRecordId
     public vMedia $iconBig;
     public vMedia $iconBack;
     public vMedia $icon;
+    public ?int $mediaIdSmall = null;
+    public ?int $mediaIdLarge = null;
+    public ?int $mediaIdBack = null;
+    public ?string $mediaPathSmall = null;
+    public ?string $mediaPathLarge = null;
+    public ?string $mediaPathBack = null;
     public ?vAccount $nominatedBy = null;
     public ItemType $type;
     public ItemRarity $rarity;
