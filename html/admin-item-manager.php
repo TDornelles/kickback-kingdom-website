@@ -103,7 +103,7 @@ $itemRows = $itemTableResp->success ? $itemTableResp->data : [];
 
 $collectionOptions = [];
 foreach ($itemRows as $row) {
-    $collectionId = isset($row['collection_id']) ? (int)$row['collection_id'] : 0;
+    $collectionId = $row->collection?->crand ?? 0;
     if ($collectionId > 0) {
         if (!isset($collectionOptions[$collectionId])) {
             $collectionOptions[$collectionId] = [
@@ -112,8 +112,8 @@ foreach ($itemRows as $row) {
             ];
         }
 
-        if (isset($row['name']) && $row['name'] !== '') {
-            $collectionOptions[$collectionId]['items'][] = $row['name'];
+        if (!empty($row->name)) {
+            $collectionOptions[$collectionId]['items'][] = $row->name;
         }
     }
 }
@@ -216,37 +216,72 @@ function enumLabel(string $value): string
                             </thead>
                             <tbody>
                                 <?php foreach ($itemRows as $row) {
-                                    $type = ItemType::from((int)$row['type']);
-                                    $rarity = ItemRarity::from((int)$row['rarity']);
-                                    $category = isset($row['item_category']) && $row['item_category'] !== null
-                                        ? ItemCategory::tryFrom((int)$row['item_category'])
-                                        : null;
-                                    $mediaSmallId = (int)($row['media_id_small'] ?? 0);
-                                    $mediaLargeId = (int)($row['media_id_large'] ?? 0);
-                                    $mediaBackId = (int)($row['media_id_back'] ?? 0);
-                                    $smallMediaSrc = $mediaSmallId > 0
-                                        ? "/assets/media/items/{$mediaSmallId}.png"
+                                    $type = $row->type;
+                                    $rarity = $row->rarity;
+                                    $category = $row->itemCategory;
+                                    $mediaSmallId = $row->iconSmall->crand;
+                                    $mediaLargeId = $row->iconBig->crand;
+                                    $mediaBackId = $row->iconBack->crand;
+                                    $mediaSmallPath = $row->iconSmall->isValid()
+                                        ? trim(str_replace('/assets/media/', '', $row->iconSmall->getFullPath()), '/')
+                                        : '';
+                                    $smallMediaSrc = $row->iconSmall->isValid()
+                                        ? $row->iconSmall->getFullPath()
                                         : "/assets/media/items/{$defaultMediaId}.png";
+                                    $mediaLargePath = $row->iconBig->isValid()
+                                        ? trim(str_replace('/assets/media/', '', $row->iconBig->getFullPath()), '/')
+                                        : '';
+                                    $mediaBackPath = $row->iconBack->isValid()
+                                        ? trim(str_replace('/assets/media/', '', $row->iconBack->getFullPath()), '/')
+                                        : '';
+
+                                    $itemData = [
+                                        'Id' => $row->crand,
+                                        'name' => $row->name,
+                                        'desc' => $row->description,
+                                        'type' => $type->value,
+                                        'rarity' => $rarity->value,
+                                        'item_category' => $category?->value,
+                                        'media_id_large' => $mediaLargeId,
+                                        'media_id_small' => $mediaSmallId,
+                                        'media_id_back' => $mediaBackId,
+                                        'media_path_large' => $mediaLargePath,
+                                        'media_path_small' => $mediaSmallPath,
+                                        'media_path_back' => $mediaBackPath,
+                                        'nominated_by_id' => $row->nominatedBy?->crand,
+                                        'collection_id' => $row->collection?->crand,
+                                        'equipment_slot' => $row->equipmentSlot?->value,
+                                        'container_item_category' => $row->containerItemCategory?->value,
+                                        'container_size' => $row->containerSize,
+                                        'equipable' => $row->equipable ? 1 : 0,
+                                        'redeemable' => $row->redeemable ? 1 : 0,
+                                        'useable' => $row->useable ? 1 : 0,
+                                        'is_container' => $row->isContainer ? 1 : 0,
+                                        'is_fungible' => $row->fungible ? 1 : 0,
+                                    ];
                                 ?>
                                     <tr
-                                        data-item-name="<?= htmlspecialchars($row['name']); ?>"
-                                        data-item-id="<?= (int)$row['Id']; ?>"
+                                        data-item-name="<?= htmlspecialchars($row->name); ?>"
+                                        data-item-id="<?= (int)$row->crand; ?>"
                                         data-item-type="<?= $type->value; ?>"
                                         data-item-rarity="<?= $rarity->value; ?>"
                                         data-item-category="<?= $category?->value ?? ''; ?>"
-                                        data-item-equipable="<?= (int)$row['equipable']; ?>"
-                                        data-item-redeemable="<?= (int)$row['redeemable']; ?>"
-                                        data-item-useable="<?= (int)$row['useable']; ?>"
-                                        data-item-container="<?= (int)$row['is_container']; ?>"
+                                        data-item-equipable="<?= $row->equipable ? 1 : 0; ?>"
+                                        data-item-redeemable="<?= $row->redeemable ? 1 : 0; ?>"
+                                        data-item-useable="<?= $row->useable ? 1 : 0; ?>"
+                                        data-item-container="<?= $row->isContainer ? 1 : 0; ?>"
+                                        data-media-small-path="<?= htmlspecialchars($mediaSmallPath); ?>"
+                                        data-media-large-path="<?= htmlspecialchars($mediaLargePath); ?>"
+                                        data-media-back-path="<?= htmlspecialchars($mediaBackPath); ?>"
                                     >
-                                        <td class="fw-semibold">#<?= (int)$row['Id']; ?></td>
+                                        <td class="fw-semibold">#<?= (int)$row->crand; ?></td>
                                         <td>
                                             <div class="d-flex align-items-center gap-3">
                                                 <div class="ratio ratio-1x1" style="width: 48px;">
-                                                    <img src="<?= htmlspecialchars($smallMediaSrc); ?>" alt="<?= htmlspecialchars($row['name']); ?> icon" class="w-100 h-100 object-fit-contain rounded border bg-body-secondary bg-opacity-25">
+                                                    <img src="<?= htmlspecialchars($smallMediaSrc); ?>" alt="<?= htmlspecialchars($row->name); ?> icon" class="w-100 h-100 object-fit-contain rounded border bg-body-secondary bg-opacity-25">
                                                 </div>
                                                 <div>
-                                                    <div class="fw-semibold mb-0"><?= htmlspecialchars($row['name']); ?></div>
+                                                    <div class="fw-semibold mb-0"><?= htmlspecialchars($row->name); ?></div>
                                                     <small class="text-body-secondary">Media: L<?= (int)$mediaLargeId; ?> / S<?= (int)$mediaSmallId; ?> / B<?= (int)$mediaBackId; ?></small>
                                                 </div>
                                             </div>
@@ -254,17 +289,17 @@ function enumLabel(string $value): string
                                         <td><span class="badge text-bg-secondary"><?= enumLabel($type->name); ?></span></td>
                                         <td><span class="badge text-bg-primary"><?= enumLabel($rarity->name); ?></span></td>
                                         <td><?= $category ? enumLabel($category->name) : '—'; ?></td>
-                                        <td><?= ((int)$row['equipable']) === 1 ? 'Yes' : 'No'; ?></td>
-                                        <td><?= ((int)$row['redeemable']) === 1 ? 'Yes' : 'No'; ?></td>
-                                        <td><?= ((int)$row['useable']) === 1 ? 'Yes' : 'No'; ?></td>
-                                        <td><?= ((int)$row['is_container']) === 1 ? 'Yes' : 'No'; ?></td>
+                                        <td><?= $row->equipable ? 'Yes' : 'No'; ?></td>
+                                        <td><?= $row->redeemable ? 'Yes' : 'No'; ?></td>
+                                        <td><?= $row->useable ? 'Yes' : 'No'; ?></td>
+                                        <td><?= $row->isContainer ? 'Yes' : 'No'; ?></td>
                                         <td class="text-end">
                                             <div class="btn-group" role="group">
                                                 <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#itemModal" data-mode="edit"
-                                                    data-item='<?= htmlspecialchars(json_encode($row), ENT_QUOTES); ?>'>
+                                                    data-item='<?= htmlspecialchars(json_encode($itemData), ENT_QUOTES); ?>'>
                                                     <i class="fa-solid fa-pen"></i> Edit
                                                 </button>
-                                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal" data-item-id="<?= (int)$row['Id']; ?>" data-item-name="<?= htmlspecialchars($row['name']); ?>">
+                                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal" data-item-id="<?= (int)$row->crand; ?>" data-item-name="<?= htmlspecialchars($row->name); ?>">
                                                     <i class="fa-solid fa-trash"></i>
                                                 </button>
                                             </div>
@@ -690,9 +725,9 @@ function enumLabel(string $value): string
                 document.getElementById('item-rarity').value = itemData.rarity ?? '';
                 document.getElementById('item-category').value = itemData.item_category ?? '';
 
-                setMediaSelection('media-large', 'media-large-preview', 'media-large-label', itemData.media_id_large);
-                setMediaSelection('media-small', 'media-small-preview', 'media-small-label', itemData.media_id_small);
-                setMediaSelection('media-back', 'media-back-preview', 'media-back-label', itemData.media_id_back);
+                setMediaSelection('media-large', 'media-large-preview', 'media-large-label', itemData.media_id_large, itemData.media_path_large);
+                setMediaSelection('media-small', 'media-small-preview', 'media-small-label', itemData.media_id_small, itemData.media_path_small);
+                setMediaSelection('media-back', 'media-back-preview', 'media-back-label', itemData.media_id_back, itemData.media_path_back);
 
                 document.getElementById('nominated-by').value = itemData.nominated_by_id ?? '';
                 updateNominatedByLabel();
@@ -745,15 +780,24 @@ function enumLabel(string $value): string
         toggleContainerFields(containerCheckbox?.checked ?? false);
 
         function openMediaPicker(inputId, previewId, labelId) {
-            OpenSelectMediaModal('itemModal', previewId, inputId, () => updateMediaPreview(previewId, inputId, labelId));
+            OpenSelectMediaModal('itemModal', previewId, inputId, (mediaId, mediaPath) => {
+                updateMediaPreview(previewId, inputId, labelId, mediaId, mediaPath);
+            });
         }
 
-        function getMediaSrc(mediaId) {
+        function getMediaSrc(mediaId, mediaPath = '') {
+            const normalizedPath = (mediaPath ?? '').toString().trim();
+            if (normalizedPath) {
+                return normalizedPath.startsWith('/') || normalizedPath.startsWith('http')
+                    ? normalizedPath
+                    : `/assets/media/${normalizedPath}`;
+            }
+
             const trimmedId = (mediaId ?? '').toString().trim();
             return trimmedId ? `/assets/media/items/${trimmedId}.png` : DEFAULT_MEDIA_SRC;
         }
 
-        function updateMediaPreview(previewId, inputId, labelId, displayMediaId = null) {
+        function updateMediaPreview(previewId, inputId, labelId, displayMediaId = null, mediaPath = '') {
             const preview = document.getElementById(previewId);
             const input = document.getElementById(inputId);
             const label = document.getElementById(labelId);
@@ -761,7 +805,8 @@ function enumLabel(string $value): string
 
             const mediaId = displayMediaId ?? input.value?.trim();
             const hasSelection = !!mediaId;
-            const previewSrc = getMediaSrc(input.value?.trim());
+            const previewSrc = getMediaSrc(input.value?.trim(), mediaPath || preview.dataset.mediaPath || '');
+            preview.dataset.mediaPath = mediaPath || '';
             preview.dataset.selectedSrc = previewSrc;
             preview.src = previewSrc;
 
@@ -772,13 +817,13 @@ function enumLabel(string $value): string
             }
         }
 
-        function setMediaSelection(inputId, previewId, labelId, mediaId) {
+        function setMediaSelection(inputId, previewId, labelId, mediaId, mediaPath = '') {
             const input = document.getElementById(inputId);
             if (!input) return;
 
             const selectionId = mediaId && mediaId !== '0' ? mediaId.toString() : '';
             input.value = selectionId || DEFAULT_MEDIA_ID;
-            updateMediaPreview(previewId, inputId, labelId, selectionId);
+            updateMediaPreview(previewId, inputId, labelId, selectionId, mediaPath);
         }
 
         function clearMediaPreviews() {

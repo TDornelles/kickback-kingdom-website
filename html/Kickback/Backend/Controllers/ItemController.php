@@ -7,6 +7,7 @@ use Exception;
 use Kickback\Backend\Views\vItem;
 use Kickback\Backend\Views\vMedia;
 use Kickback\Backend\Views\vRecordId;
+use Kickback\Backend\Views\vCollection;
 use Kickback\Backend\Models\Response;
 use Kickback\Services\Database;
 use Kickback\Backend\Views\vAccount;
@@ -61,7 +62,35 @@ class ItemController
     {
         $conn = Database::getConnection();
 
-        $sql = "SELECT Id, name, `desc`, type, rarity, media_id_large, media_id_small, media_id_back, nominated_by_id, collection_id, equipable, equipment_slot, redeemable, useable, is_container, container_size, container_item_category, item_category, is_fungible FROM item ORDER BY name";
+        $sql = "SELECT
+                i.Id,
+                i.DateCreated,
+                i.name,
+                i.`desc`,
+                i.`type`,
+                i.rarity,
+                i.media_id_large,
+                i.media_id_small,
+                i.media_id_back,
+                CONCAT(ml.Directory, '/', ml.Id, '.', ml.extension) AS media_path_large,
+                CONCAT(ms.Directory, '/', ms.Id, '.', ms.extension) AS media_path_small,
+                CONCAT(mb.Directory, '/', mb.Id, '.', mb.extension) AS media_path_back,
+                i.nominated_by_id,
+                i.collection_id,
+                i.equipable,
+                i.equipment_slot,
+                i.redeemable,
+                i.useable,
+                i.is_container,
+                i.container_size,
+                i.container_item_category,
+                i.item_category,
+                i.is_fungible
+            FROM item i
+            LEFT JOIN Media ml ON i.media_id_large = ml.Id
+            LEFT JOIN Media ms ON i.media_id_small = ms.Id
+            LEFT JOIN Media mb ON i.media_id_back = mb.Id
+            ORDER BY i.name";
 
         $stmt = $conn->prepare($sql);
 
@@ -77,7 +106,31 @@ class ItemController
         $items = [];
 
         while ($row = $result->fetch_assoc()) {
-            $items[] = $row;
+            $itemId = new vRecordId($row['DateCreated'] ?? '', (int)$row['Id']);
+            $item = self::row_to_vItem($row, $itemId);
+
+            if (array_key_exists('media_id_small', $row) && $row['media_id_small'] !== null) {
+                $item->iconSmall->crand = (int)$row['media_id_small'];
+            }
+            if (array_key_exists('media_path_small', $row) && $row['media_path_small'] !== null) {
+                $item->iconSmall->setMediaPath($row['media_path_small']);
+            }
+
+            if (array_key_exists('media_id_large', $row) && $row['media_id_large'] !== null) {
+                $item->iconBig->crand = (int)$row['media_id_large'];
+            }
+            if (array_key_exists('media_path_large', $row) && $row['media_path_large'] !== null) {
+                $item->iconBig->setMediaPath($row['media_path_large']);
+            }
+
+            if (array_key_exists('media_id_back', $row) && $row['media_id_back'] !== null) {
+                $item->iconBack->crand = (int)$row['media_id_back'];
+            }
+            if (array_key_exists('media_path_back', $row) && $row['media_path_back'] !== null) {
+                $item->iconBack->setMediaPath($row['media_path_back']);
+            }
+
+            $items[] = $item;
         }
 
         $stmt->close();
@@ -563,10 +616,14 @@ class ItemController
             $category = (int)$row["container_item_category"];
             $item->containerItemCategory = ItemCategory::tryFrom($category);
         }
-    
+
         if (array_key_exists("item_category", $row) && $row["item_category"] !== null) {
             $category = (int)$row["item_category"];
             $item->itemCategory = ItemCategory::tryFrom($category);
+        }
+
+        if (array_key_exists("collection_id", $row) && $row["collection_id"] !== null) {
+            $item->collection = new vCollection('', (int)$row["collection_id"]);
         }
 
         return $item;

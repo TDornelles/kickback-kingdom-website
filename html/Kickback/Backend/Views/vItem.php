@@ -7,6 +7,7 @@ use Kickback\Backend\Views\vRecordId;
 use Kickback\Backend\Views\vMedia;
 use Kickback\Backend\Views\vQuest;
 use Kickback\Backend\Views\vAccount;
+use Kickback\Backend\Views\vCollection;
 use Kickback\Backend\Models\ItemType;
 use Kickback\Backend\Models\ItemRarity;
 use Kickback\Backend\Models\ItemEquipmentSlot;
@@ -34,6 +35,7 @@ class vItem extends vRecordId
     public int $containerSize; // -1 = infinite
     public ?ItemCategory $containerItemCategory = null;
     public ?ItemCategory $itemCategory = null;
+    public ?vCollection $collection = null;
 
     /** @var array<vLichCard> */
     public array $auxData;
