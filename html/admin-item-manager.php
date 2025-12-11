@@ -18,6 +18,7 @@ use Kickback\Backend\Models\ItemType;
 use Kickback\Backend\Views\vRecordId;
 use Kickback\Common\Version;
 use Kickback\Services\Session;
+use Kickback\Backend\Views\vMedia;
 
 if (!Session::isAdmin()) {
     header('Location: index.php');
@@ -26,7 +27,9 @@ if (!Session::isAdmin()) {
 
 $alertMessage = '';
 $alertVariant = '';
-$defaultMediaId = 221;
+$defaultMedia = vMedia::defaultIcon();
+$defaultMediaId = $defaultMedia->crand;
+$defaultMediaPath = $defaultMedia->getFullPath();
 
 function buildItemFromPost(): Item
 {
@@ -227,7 +230,7 @@ function enumLabel(string $value): string
                                         : '';
                                     $smallMediaSrc = $row->iconSmall->isValid()
                                         ? $row->iconSmall->getFullPath()
-                                        : "/assets/media/items/{$defaultMediaId}.png";
+                                        : $defaultMediaPath;
                                     $mediaLargePath = $row->iconBig->isValid()
                                         ? $row->iconBig->getFullPath()
                                         : '';
@@ -396,7 +399,7 @@ function enumLabel(string $value): string
                                         <input type="hidden" name="media_id_large" id="media-large" value="<?= $defaultMediaId; ?>" required>
                                         <div class="card shadow-sm border" role="button" style="cursor: pointer;" onclick="openMediaPicker('media-large', 'media-large-preview', 'media-large-label')">
                                             <div class="ratio ratio-1x1 bg-body-secondary bg-opacity-25">
-                                                <img src="/assets/media/items/<?= $defaultMediaId; ?>.png" alt="Large preview" id="media-large-preview" class="object-fit-contain w-100 h-100">
+                                                <img src="<?= htmlspecialchars($defaultMediaPath); ?>" alt="Large preview" id="media-large-preview" class="object-fit-contain w-100 h-100">
                                             </div>
                                         </div>
                                         <div class="form-text" id="media-large-label">Default preview shown. Click to select.</div>
@@ -406,7 +409,7 @@ function enumLabel(string $value): string
                                         <input type="hidden" name="media_id_small" id="media-small" value="<?= $defaultMediaId; ?>" required>
                                         <div class="card shadow-sm border" role="button" style="cursor: pointer;" onclick="openMediaPicker('media-small', 'media-small-preview', 'media-small-label')">
                                             <div class="ratio ratio-1x1 bg-body-secondary bg-opacity-25">
-                                                <img src="/assets/media/items/<?= $defaultMediaId; ?>.png" alt="Small preview" id="media-small-preview" class="object-fit-contain w-100 h-100">
+                                                <img src="<?= htmlspecialchars($defaultMediaPath); ?>" alt="Small preview" id="media-small-preview" class="object-fit-contain w-100 h-100">
                                             </div>
                                         </div>
                                         <div class="form-text" id="media-small-label">Default preview shown. Click to select.</div>
@@ -416,7 +419,7 @@ function enumLabel(string $value): string
                                         <input type="hidden" name="media_id_back" id="media-back" value="<?= $defaultMediaId; ?>" required>
                                         <div class="card shadow-sm border" role="button" style="cursor: pointer;" onclick="openMediaPicker('media-back', 'media-back-preview', 'media-back-label')">
                                             <div class="ratio ratio-1x1 bg-body-secondary bg-opacity-25">
-                                                <img src="/assets/media/items/<?= $defaultMediaId; ?>.png" alt="Back preview" id="media-back-preview" class="object-fit-contain w-100 h-100">
+                                                <img src="<?= htmlspecialchars($defaultMediaPath); ?>" alt="Back preview" id="media-back-preview" class="object-fit-contain w-100 h-100">
                                             </div>
                                         </div>
                                         <div class="form-text" id="media-back-label">Default preview shown. Click to select.</div>
@@ -618,7 +621,7 @@ function enumLabel(string $value): string
         const collectionOptions = <?= json_encode(array_values($collectionOptions)); ?>;
         const itemModal = document.getElementById('itemModal');
         const DEFAULT_MEDIA_ID = '<?= $defaultMediaId; ?>';
-        const DEFAULT_MEDIA_SRC = `/assets/media/items/${DEFAULT_MEDIA_ID}.png`;
+        const DEFAULT_MEDIA_SRC = <?= json_encode($defaultMediaPath); ?>;
         const ITEM_TYPE_UNIQUE = '<?= ItemType::Unique->value; ?>';
         const ITEM_TYPE_STANDARD = '<?= ItemType::Standard->value; ?>';
         const ITEM_RARITY_UNIQUE = '<?= ItemRarity::Unique->value; ?>';
