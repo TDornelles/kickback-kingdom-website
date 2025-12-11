@@ -118,6 +118,15 @@ foreach ($itemRows as $row) {
 }
 
 $itemTypes = ItemType::cases();
+$restrictedItemTypes = [
+    ItemType::RaffleTicket,
+    ItemType::PrestigeToken,
+    ItemType::WritOfPassage,
+];
+$itemTypeOptions = array_values(array_filter(
+    $itemTypes,
+    fn(ItemType $type) => !in_array($type, $restrictedItemTypes, true)
+));
 $itemRarities = ItemRarity::cases();
 $equipmentSlots = ItemEquipmentSlot::cases();
 $itemCategories = ItemCategory::cases();
@@ -279,7 +288,7 @@ function enumLabel(string $value): string
                                     <div class="col-md-4">
                                         <label class="form-label">Type</label>
                                         <select class="form-select" name="type" id="item-type">
-                                            <?php foreach ($itemTypes as $type) { ?>
+                                            <?php foreach ($itemTypeOptions as $type) { ?>
                                                 <option value="<?= $type->value; ?>"><?= enumLabel($type->name); ?></option>
                                             <?php } ?>
                                         </select>
@@ -535,6 +544,8 @@ function enumLabel(string $value): string
         const itemModal = document.getElementById('itemModal');
         const DEFAULT_MEDIA_SRC = '/assets/media/items/221.png';
         const DEFAULT_MEDIA_ID = '221';
+        const ITEM_TYPE_UNIQUE = '<?= ItemType::Unique->value; ?>';
+        const ITEM_RARITY_UNIQUE = '<?= ItemRarity::Unique->value; ?>';
 
         function toggleEquipmentFields(isChecked) {
             const equipmentGroup = document.getElementById('equipment-slot-group');
@@ -566,6 +577,23 @@ function enumLabel(string $value): string
                 }
                 if (containerSize) {
                     containerSize.value = -1;
+                }
+            }
+        }
+
+        function enforceUniquePairing() {
+            const typeSelect = document.getElementById('item-type');
+            const raritySelect = document.getElementById('item-rarity');
+            if (!typeSelect || !raritySelect) return;
+
+            const shouldBeUnique = typeSelect.value === ITEM_TYPE_UNIQUE || raritySelect.value === ITEM_RARITY_UNIQUE;
+
+            if (shouldBeUnique) {
+                if (typeSelect.value !== ITEM_TYPE_UNIQUE) {
+                    typeSelect.value = ITEM_TYPE_UNIQUE;
+                }
+                if (raritySelect.value !== ITEM_RARITY_UNIQUE) {
+                    raritySelect.value = ITEM_RARITY_UNIQUE;
                 }
             }
         }
@@ -620,6 +648,7 @@ function enumLabel(string $value): string
 
                 toggleEquipmentFields(itemData.equipable == 1);
                 toggleContainerFields(itemData.is_container == 1);
+                enforceUniquePairing();
             } else {
                 modalTitle.textContent = 'Create Item';
                 submitBtn.textContent = 'Create Item';
@@ -634,6 +663,7 @@ function enumLabel(string $value): string
 
                 toggleEquipmentFields(false);
                 toggleContainerFields(false);
+                enforceUniquePairing();
             }
         });
 
@@ -642,6 +672,11 @@ function enumLabel(string $value): string
 
         const containerCheckbox = document.getElementById('is-container');
         containerCheckbox?.addEventListener('change', (event) => toggleContainerFields(event.target.checked));
+
+        const itemTypeSelect = document.getElementById('item-type');
+        const itemRaritySelect = document.getElementById('item-rarity');
+        itemTypeSelect?.addEventListener('change', enforceUniquePairing);
+        itemRaritySelect?.addEventListener('change', enforceUniquePairing);
 
         toggleEquipmentFields(equipableCheckbox?.checked ?? false);
         toggleContainerFields(containerCheckbox?.checked ?? false);
