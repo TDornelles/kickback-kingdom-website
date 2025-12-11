@@ -178,7 +178,7 @@ class ItemController
         $types = str_repeat('i', count($ids));
 
         $conn = Database::getConnection();
-        $sql = "SELECT ia.item_id, a.Id AS ability_id, a.ctime AS ability_ctime, a.name, a.`desc`,
+        $sql = "SELECT ia.item_id, a.Id AS ability_id, a.name, a.`desc`,
                 a.prestige_gain, a.prestige_multiplier, a.exp_gain, a.exp_multiplier,
                 a.level_gain, a.level_multiplier, a.title_change
             FROM item_ability ia
@@ -202,7 +202,7 @@ class ItemController
 
         while ($row = $result->fetch_assoc()) {
             $itemId = (int)$row['item_id'];
-            $ability = new vAbility((string)($row['ability_ctime'] ?? ''), (int)$row['ability_id']);
+            $ability = new vAbility('', (int)$row['ability_id']);
             $ability->name = (string)($row['name'] ?? '');
             $ability->description = (string)($row['desc'] ?? '');
             $ability->prestigeGain = (int)($row['prestige_gain'] ?? 0);
