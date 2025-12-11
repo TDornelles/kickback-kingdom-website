@@ -26,6 +26,7 @@ if (!Session::isAdmin()) {
 
 $alertMessage = '';
 $alertVariant = '';
+$defaultMediaId = 221;
 
 function buildItemFromPost(): Item
 {
@@ -201,15 +202,15 @@ function enumLabel(string $value): string
                         <table class="table table-hover align-middle" id="item-table">
                             <thead class="table-light">
                                 <tr>
-                                    <th scope="col">ID</th>
-                                    <th scope="col">Name</th>
-                                    <th scope="col">Type</th>
-                                    <th scope="col">Rarity</th>
-                                    <th scope="col">Category</th>
-                                    <th scope="col">Equip</th>
-                                    <th scope="col">Redeem</th>
-                                    <th scope="col">Use</th>
-                                    <th scope="col">Container</th>
+                                    <th scope="col" class="sortable" data-sort-key="id">ID <i class="fa-solid fa-sort ms-1"></i></th>
+                                    <th scope="col" class="sortable" data-sort-key="name">Name <i class="fa-solid fa-sort ms-1"></i></th>
+                                    <th scope="col" class="sortable" data-sort-key="type">Type <i class="fa-solid fa-sort ms-1"></i></th>
+                                    <th scope="col" class="sortable" data-sort-key="rarity">Rarity <i class="fa-solid fa-sort ms-1"></i></th>
+                                    <th scope="col" class="sortable" data-sort-key="category">Category <i class="fa-solid fa-sort ms-1"></i></th>
+                                    <th scope="col" class="sortable" data-sort-key="equipable">Equip <i class="fa-solid fa-sort ms-1"></i></th>
+                                    <th scope="col" class="sortable" data-sort-key="redeemable">Redeem <i class="fa-solid fa-sort ms-1"></i></th>
+                                    <th scope="col" class="sortable" data-sort-key="useable">Use <i class="fa-solid fa-sort ms-1"></i></th>
+                                    <th scope="col" class="sortable" data-sort-key="is_container">Container <i class="fa-solid fa-sort ms-1"></i></th>
                                     <th scope="col" class="text-end">Actions</th>
                                 </tr>
                             </thead>
@@ -220,12 +221,35 @@ function enumLabel(string $value): string
                                     $category = isset($row['item_category']) && $row['item_category'] !== null
                                         ? ItemCategory::tryFrom((int)$row['item_category'])
                                         : null;
+                                    $mediaSmallId = (int)($row['media_id_small'] ?? 0);
+                                    $mediaLargeId = (int)($row['media_id_large'] ?? 0);
+                                    $mediaBackId = (int)($row['media_id_back'] ?? 0);
+                                    $smallMediaSrc = $mediaSmallId > 0
+                                        ? "/assets/media/items/{$mediaSmallId}.png"
+                                        : "/assets/media/items/{$defaultMediaId}.png";
                                 ?>
-                                    <tr data-item-name="<?= htmlspecialchars($row['name']); ?>" data-item-id="<?= (int)$row['Id']; ?>">
+                                    <tr
+                                        data-item-name="<?= htmlspecialchars($row['name']); ?>"
+                                        data-item-id="<?= (int)$row['Id']; ?>"
+                                        data-item-type="<?= $type->value; ?>"
+                                        data-item-rarity="<?= $rarity->value; ?>"
+                                        data-item-category="<?= $category?->value ?? ''; ?>"
+                                        data-item-equipable="<?= (int)$row['equipable']; ?>"
+                                        data-item-redeemable="<?= (int)$row['redeemable']; ?>"
+                                        data-item-useable="<?= (int)$row['useable']; ?>"
+                                        data-item-container="<?= (int)$row['is_container']; ?>"
+                                    >
                                         <td class="fw-semibold">#<?= (int)$row['Id']; ?></td>
                                         <td>
-                                            <div class="fw-semibold mb-0"><?= htmlspecialchars($row['name']); ?></div>
-                                            <small class="text-body-secondary">Media: L<?= (int)$row['media_id_large']; ?> / S<?= (int)$row['media_id_small']; ?> / B<?= (int)$row['media_id_back']; ?></small>
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div class="ratio ratio-1x1" style="width: 48px;">
+                                                    <img src="<?= htmlspecialchars($smallMediaSrc); ?>" alt="<?= htmlspecialchars($row['name']); ?> icon" class="w-100 h-100 object-fit-contain rounded border bg-body-secondary bg-opacity-25">
+                                                </div>
+                                                <div>
+                                                    <div class="fw-semibold mb-0"><?= htmlspecialchars($row['name']); ?></div>
+                                                    <small class="text-body-secondary">Media: L<?= (int)$mediaLargeId; ?> / S<?= (int)$mediaSmallId; ?> / B<?= (int)$mediaBackId; ?></small>
+                                                </div>
+                                            </div>
                                         </td>
                                         <td><span class="badge text-bg-secondary"><?= enumLabel($type->name); ?></span></td>
                                         <td><span class="badge text-bg-primary"><?= enumLabel($rarity->name); ?></span></td>
@@ -249,6 +273,19 @@ function enumLabel(string $value): string
                                 <?php } ?>
                             </tbody>
                         </table>
+                    </div>
+                    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mt-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <label for="item-page-size" class="form-label mb-0 small text-body-secondary">Rows per page</label>
+                            <select class="form-select form-select-sm" id="item-page-size" style="width: auto; min-width: 90px;">
+                                <option value="10" selected>10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                            </select>
+                        </div>
+                        <nav aria-label="Item pagination">
+                            <ul class="pagination pagination-sm mb-0" id="item-pagination"></ul>
+                        </nav>
                     </div>
                 <?php } ?>
             </div>
@@ -321,30 +358,33 @@ function enumLabel(string $value): string
                                 <div class="row g-3">
                                     <div class="col-md-4">
                                         <label class="form-label">Media (Large)</label>
-                                        <input type="hidden" name="media_id_large" id="media-large" value="221" required>
+                                        <input type="hidden" name="media_id_large" id="media-large" value="<?= $defaultMediaId; ?>" required>
                                         <div class="card shadow-sm border" role="button" style="cursor: pointer;" onclick="openMediaPicker('media-large', 'media-large-preview', 'media-large-label')">
                                             <div class="ratio ratio-1x1 bg-body-secondary bg-opacity-25">
-                                                <img src="/assets/media/items/221.png" alt="Large preview" id="media-large-preview" class="object-fit-contain w-100 h-100">
+                                                <img src="/assets/media/items/<?= $defaultMediaId; ?>.png" alt="Large preview" id="media-large-preview" class="object-fit-contain w-100 h-100">
                                             </div>
                                         </div>
+                                        <div class="form-text" id="media-large-label">Default preview shown. Click to select.</div>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Media (Small)</label>
-                                        <input type="hidden" name="media_id_small" id="media-small" value="221" required>
+                                        <input type="hidden" name="media_id_small" id="media-small" value="<?= $defaultMediaId; ?>" required>
                                         <div class="card shadow-sm border" role="button" style="cursor: pointer;" onclick="openMediaPicker('media-small', 'media-small-preview', 'media-small-label')">
                                             <div class="ratio ratio-1x1 bg-body-secondary bg-opacity-25">
-                                                <img src="/assets/media/items/221.png" alt="Small preview" id="media-small-preview" class="object-fit-contain w-100 h-100">
+                                                <img src="/assets/media/items/<?= $defaultMediaId; ?>.png" alt="Small preview" id="media-small-preview" class="object-fit-contain w-100 h-100">
                                             </div>
                                         </div>
+                                        <div class="form-text" id="media-small-label">Default preview shown. Click to select.</div>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Media (Back)</label>
-                                        <input type="hidden" name="media_id_back" id="media-back" value="221" required>
+                                        <input type="hidden" name="media_id_back" id="media-back" value="<?= $defaultMediaId; ?>" required>
                                         <div class="card shadow-sm border" role="button" style="cursor: pointer;" onclick="openMediaPicker('media-back', 'media-back-preview', 'media-back-label')">
                                             <div class="ratio ratio-1x1 bg-body-secondary bg-opacity-25">
-                                                <img src="/assets/media/items/221.png" alt="Back preview" id="media-back-preview" class="object-fit-contain w-100 h-100">
+                                                <img src="/assets/media/items/<?= $defaultMediaId; ?>.png" alt="Back preview" id="media-back-preview" class="object-fit-contain w-100 h-100">
                                             </div>
                                         </div>
+                                        <div class="form-text" id="media-back-label">Default preview shown. Click to select.</div>
                                     </div>
                                 </div>
                             </div>
@@ -542,8 +582,8 @@ function enumLabel(string $value): string
     <script>
         const collectionOptions = <?= json_encode(array_values($collectionOptions)); ?>;
         const itemModal = document.getElementById('itemModal');
-        const DEFAULT_MEDIA_SRC = '/assets/media/items/221.png';
-        const DEFAULT_MEDIA_ID = '221';
+        const DEFAULT_MEDIA_ID = '<?= $defaultMediaId; ?>';
+        const DEFAULT_MEDIA_SRC = `/assets/media/items/${DEFAULT_MEDIA_ID}.png`;
         const ITEM_TYPE_UNIQUE = '<?= ItemType::Unique->value; ?>';
         const ITEM_TYPE_STANDARD = '<?= ItemType::Standard->value; ?>';
         const ITEM_RARITY_UNIQUE = '<?= ItemRarity::Unique->value; ?>';
@@ -650,12 +690,9 @@ function enumLabel(string $value): string
                 document.getElementById('item-rarity').value = itemData.rarity ?? '';
                 document.getElementById('item-category').value = itemData.item_category ?? '';
 
-                document.getElementById('media-large').value = itemData.media_id_large ?? '';
-                document.getElementById('media-small').value = itemData.media_id_small ?? '';
-                document.getElementById('media-back').value = itemData.media_id_back ?? '';
-                updateMediaPreview('media-large-preview', 'media-large', 'media-large-label');
-                updateMediaPreview('media-small-preview', 'media-small', 'media-small-label');
-                updateMediaPreview('media-back-preview', 'media-back', 'media-back-label');
+                setMediaSelection('media-large', 'media-large-preview', 'media-large-label', itemData.media_id_large);
+                setMediaSelection('media-small', 'media-small-preview', 'media-small-label', itemData.media_id_small);
+                setMediaSelection('media-back', 'media-back-preview', 'media-back-label', itemData.media_id_back);
 
                 document.getElementById('nominated-by').value = itemData.nominated_by_id ?? '';
                 updateNominatedByLabel();
@@ -711,16 +748,22 @@ function enumLabel(string $value): string
             OpenSelectMediaModal('itemModal', previewId, inputId, () => updateMediaPreview(previewId, inputId, labelId));
         }
 
-        function updateMediaPreview(previewId, inputId, labelId) {
+        function getMediaSrc(mediaId) {
+            const trimmedId = (mediaId ?? '').toString().trim();
+            return trimmedId ? `/assets/media/items/${trimmedId}.png` : DEFAULT_MEDIA_SRC;
+        }
+
+        function updateMediaPreview(previewId, inputId, labelId, displayMediaId = null) {
             const preview = document.getElementById(previewId);
             const input = document.getElementById(inputId);
             const label = document.getElementById(labelId);
             if (!preview || !input) return;
 
-            const mediaId = input.value?.trim();
+            const mediaId = displayMediaId ?? input.value?.trim();
             const hasSelection = !!mediaId;
-            preview.dataset.selectedSrc = preview.src;
-            preview.src = hasSelection && preview.dataset.selectedSrc ? preview.dataset.selectedSrc : DEFAULT_MEDIA_SRC;
+            const previewSrc = getMediaSrc(input.value?.trim());
+            preview.dataset.selectedSrc = previewSrc;
+            preview.src = previewSrc;
 
             if (label) {
                 label.textContent = hasSelection
@@ -729,22 +772,18 @@ function enumLabel(string $value): string
             }
         }
 
+        function setMediaSelection(inputId, previewId, labelId, mediaId) {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+
+            const selectionId = mediaId && mediaId !== '0' ? mediaId.toString() : '';
+            input.value = selectionId || DEFAULT_MEDIA_ID;
+            updateMediaPreview(previewId, inputId, labelId, selectionId);
+        }
+
         function clearMediaPreviews() {
             ['media-large', 'media-small', 'media-back'].forEach((inputId) => {
-                const input = document.getElementById(inputId);
-                const preview = document.getElementById(`${inputId}-preview`);
-                const label = document.getElementById(`${inputId}-label`);
-
-                if (input) {
-                    input.value = DEFAULT_MEDIA_ID;
-                }
-                if (preview) {
-                    preview.dataset.selectedSrc = '';
-                    preview.src = DEFAULT_MEDIA_SRC;
-                }
-                if (label) {
-                    label.textContent = 'Default preview shown. Click to select.';
-                }
+                setMediaSelection(inputId, `${inputId}-preview`, `${inputId}-label`, '');
             });
         }
 
@@ -939,20 +978,154 @@ function enumLabel(string $value): string
 
         const searchInput = document.getElementById('item-search');
         const tableBody = document.querySelector('#item-table tbody');
+        const tableHeaders = document.querySelectorAll('#item-table thead th[data-sort-key]');
+        const paginationContainer = document.getElementById('item-pagination');
+        const pageSizeSelect = document.getElementById('item-page-size');
+        const allRows = tableBody ? Array.from(tableBody.querySelectorAll('tr')) : [];
 
-        if (searchInput && tableBody) {
-            searchInput.addEventListener('input', (event) => {
-                const query = event.target.value.toLowerCase();
-                const rows = tableBody.querySelectorAll('tr');
+        const DATASET_KEYS = {
+            id: 'itemId',
+            name: 'itemName',
+            type: 'itemType',
+            rarity: 'itemRarity',
+            category: 'itemCategory',
+            equipable: 'itemEquipable',
+            redeemable: 'itemRedeemable',
+            useable: 'itemUseable',
+            is_container: 'itemContainer',
+        };
 
-                rows.forEach((row) => {
-                    const id = row.getAttribute('data-item-id');
-                    const name = (row.getAttribute('data-item-name') || '').toLowerCase();
-                    const matches = id?.includes(query) || name.includes(query);
-                    row.classList.toggle('d-none', !matches);
-                });
+        let currentSort = { key: 'id', direction: 'asc' };
+        let currentPage = 1;
+        let pageSize = parseInt(pageSizeSelect?.value ?? '10', 10) || 10;
+
+        function isNumericKey(key) {
+            return ['id', 'type', 'rarity', 'category', 'equipable', 'redeemable', 'useable', 'is_container'].includes(key);
+        }
+
+        function getSortableValue(row, key) {
+            const datasetKey = DATASET_KEYS[key] ?? key;
+            const value = row.dataset[datasetKey] ?? '';
+            if (isNumericKey(key)) {
+                return parseInt(value, 10) || 0;
+            }
+
+            return value.toString().toLowerCase();
+        }
+
+        function sortRows(rowsToSort) {
+            return [...rowsToSort].sort((a, b) => {
+                const valA = getSortableValue(a, currentSort.key);
+                const valB = getSortableValue(b, currentSort.key);
+
+                if (valA < valB) return currentSort.direction === 'asc' ? -1 : 1;
+                if (valA > valB) return currentSort.direction === 'asc' ? 1 : -1;
+                return 0;
             });
         }
+
+        function renderPagination(totalPages) {
+            if (!paginationContainer) return;
+            paginationContainer.innerHTML = '';
+
+            const createPageItem = (page, label, disabled = false, active = false) => {
+                const li = document.createElement('li');
+                li.className = `page-item${disabled ? ' disabled' : ''}${active ? ' active' : ''}`;
+                const link = document.createElement('button');
+                link.className = 'page-link';
+                link.type = 'button';
+                link.textContent = label;
+                link.addEventListener('click', () => {
+                    if (disabled || page === currentPage) return;
+                    currentPage = page;
+                    renderTable();
+                });
+                li.appendChild(link);
+                return li;
+            };
+
+            const prevDisabled = currentPage === 1;
+            paginationContainer.appendChild(createPageItem(currentPage - 1, 'Prev', prevDisabled));
+
+            for (let page = 1; page <= totalPages; page += 1) {
+                paginationContainer.appendChild(createPageItem(page, page, false, page === currentPage));
+            }
+
+            const nextDisabled = currentPage === totalPages;
+            paginationContainer.appendChild(createPageItem(currentPage + 1, 'Next', nextDisabled));
+        }
+
+        function updateSortIcons() {
+            tableHeaders.forEach((header) => {
+                const icon = header.querySelector('i');
+                const sortKey = header.getAttribute('data-sort-key');
+                header.classList.toggle('text-ranked', sortKey === currentSort.key);
+                if (!icon) return;
+
+                icon.classList.remove('fa-sort', 'fa-sort-up', 'fa-sort-down');
+                if (sortKey === currentSort.key) {
+                    icon.classList.add(currentSort.direction === 'asc' ? 'fa-sort-up' : 'fa-sort-down');
+                } else {
+                    icon.classList.add('fa-sort');
+                }
+            });
+        }
+
+        function renderTable() {
+            if (!tableBody) return;
+
+            const query = (searchInput?.value || '').toLowerCase();
+            const filteredRows = allRows.filter((row) => {
+                const id = (row.dataset.itemId || '').toLowerCase();
+                const name = (row.dataset.itemName || '').toLowerCase();
+                return id.includes(query) || name.includes(query);
+            });
+
+            const sortedRows = sortRows(filteredRows);
+            const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
+            currentPage = Math.min(currentPage, totalPages);
+
+            tableBody.innerHTML = '';
+            const startIndex = (currentPage - 1) * pageSize;
+            const paginatedRows = sortedRows.slice(startIndex, startIndex + pageSize);
+            paginatedRows.forEach((row) => tableBody.appendChild(row));
+
+            renderPagination(totalPages);
+            updateSortIcons();
+        }
+
+        tableHeaders.forEach((header) => {
+            header.style.cursor = 'pointer';
+            header.addEventListener('click', () => {
+                const sortKey = header.getAttribute('data-sort-key');
+                if (!sortKey) return;
+
+                if (currentSort.key === sortKey) {
+                    currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    currentSort = { key: sortKey, direction: 'asc' };
+                }
+                currentPage = 1;
+                renderTable();
+            });
+        });
+
+        if (searchInput) {
+            searchInput.addEventListener('input', () => {
+                currentPage = 1;
+                renderTable();
+            });
+        }
+
+        if (pageSizeSelect) {
+            pageSizeSelect.addEventListener('change', (event) => {
+                pageSize = parseInt(event.target.value, 10) || 10;
+                currentPage = 1;
+                renderTable();
+            });
+        }
+
+        renderTable();
     </script>
 
 </body>
