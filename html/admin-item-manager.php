@@ -785,16 +785,9 @@ function enumLabel(string $value): string
             });
         }
 
-        function getMediaSrc(mediaId, mediaPath = '') {
+        function getMediaSrc(mediaPath = '') {
             const normalizedPath = (mediaPath ?? '').toString().trim();
-            if (normalizedPath) {
-                return normalizedPath.startsWith('/') || normalizedPath.startsWith('http')
-                    ? normalizedPath
-                    : `/assets/media/${normalizedPath}`;
-            }
-
-            const trimmedId = (mediaId ?? '').toString().trim();
-            return trimmedId ? `/assets/media/items/${trimmedId}.png` : DEFAULT_MEDIA_SRC;
+            return normalizedPath || DEFAULT_MEDIA_SRC;
         }
 
         function updateMediaPreview(previewId, inputId, labelId, displayMediaId = null, mediaPath = '') {
@@ -805,8 +798,9 @@ function enumLabel(string $value): string
 
             const mediaId = displayMediaId ?? input.value?.trim();
             const hasSelection = !!mediaId;
-            const previewSrc = getMediaSrc(input.value?.trim(), mediaPath || preview.dataset.mediaPath || '');
-            preview.dataset.mediaPath = mediaPath || '';
+            const resolvedPath = mediaPath || preview.dataset.mediaPath || '';
+            const previewSrc = getMediaSrc(resolvedPath);
+            preview.dataset.mediaPath = resolvedPath;
             preview.dataset.selectedSrc = previewSrc;
             preview.src = previewSrc;
 
