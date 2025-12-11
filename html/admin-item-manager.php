@@ -223,16 +223,16 @@ function enumLabel(string $value): string
                                     $mediaLargeId = $row->iconBig->crand;
                                     $mediaBackId = $row->iconBack->crand;
                                     $mediaSmallPath = $row->iconSmall->isValid()
-                                        ? trim(str_replace('/assets/media/', '', $row->iconSmall->getFullPath()), '/')
+                                        ? $row->iconSmall->getFullPath()
                                         : '';
                                     $smallMediaSrc = $row->iconSmall->isValid()
                                         ? $row->iconSmall->getFullPath()
                                         : "/assets/media/items/{$defaultMediaId}.png";
                                     $mediaLargePath = $row->iconBig->isValid()
-                                        ? trim(str_replace('/assets/media/', '', $row->iconBig->getFullPath()), '/')
+                                        ? $row->iconBig->getFullPath()
                                         : '';
                                     $mediaBackPath = $row->iconBack->isValid()
-                                        ? trim(str_replace('/assets/media/', '', $row->iconBack->getFullPath()), '/')
+                                        ? $row->iconBack->getFullPath()
                                         : '';
 
                                     $itemData = [
