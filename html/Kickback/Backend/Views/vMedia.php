@@ -46,9 +46,7 @@ class vMedia extends vRecordId
         $this->url = $fullPath;
         $this->mediaPath = str_replace("/assets/media/", '', $fullPath);
 
-        if (!$this->isDefaultMediaPath($this->mediaPath)) {
-            $this->_valid = true;
-        }
+        $this->_valid = !$this->isDefaultMediaPath($this->mediaPath);
     }
 
 
@@ -57,9 +55,7 @@ class vMedia extends vRecordId
         $this->mediaPath = $path;
         $this->url = $this->getFullPath();
 
-        if (!$this->isDefaultMediaPath($path)) {
-            $this->_valid = true;
-        }
+        $this->_valid = !$this->isDefaultMediaPath($path);
     }
 
     
