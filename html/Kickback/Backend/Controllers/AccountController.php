@@ -143,6 +143,42 @@ class AccountController
         }
     }
 
+    public static function getAccountCount() : Response {
+        $conn = Database::getConnection();
+
+        $result = $conn->query("SELECT COUNT(*) AS total FROM account");
+        if (!$result) {
+            return new Response(false, "Failed to retrieve account count: " . $conn->error);
+        }
+
+        $row = $result->fetch_assoc();
+        $count = (int)($row['total'] ?? 0);
+
+        $result->free();
+        $conn->close();
+
+        return new Response(true, "Account count", $count);
+    }
+
+    public static function getAllAccountIds() : Response {
+        $conn = Database::getConnection();
+
+        $result = $conn->query("SELECT Id FROM account");
+        if (!$result) {
+            return new Response(false, "Failed to retrieve account ids: " . $conn->error);
+        }
+
+        $accountIds = [];
+        while ($row = $result->fetch_assoc()) {
+            $accountIds[] = (int)($row['Id'] ?? 0);
+        }
+
+        $result->free();
+        $conn->close();
+
+        return new Response(true, "Account ids", $accountIds);
+    }
+
     public static function getAccountInventory(vRecordId $recordId) : Response {
         
         return LootController::getLootByAccountId($recordId);

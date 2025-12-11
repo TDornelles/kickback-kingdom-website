@@ -936,12 +936,138 @@ class LootController
          {
              throw new Exception("Exception caught while giving item array to account : ".$e);
          }
-         
- 
+
+
          return $resp;
      }
- 
-     public static function getTotalsInLoot(array $totalsItemIdArray, vRecordId $accountId, ?string $databaseName = null) : Response
+
+    /**
+     * Grants an identical loot payload to multiple accounts in one operation.
+     *
+     * @param vRecordId[] $accountIds List of account identifiers to receive the loot items.
+     * @param array $items Array of items to grant in the same format as giveLootArray.
+     * @param string|null $databaseName Optional target database name.
+     */
+    public static function giveLootArrayToAccounts(array $accountIds, array $items, ?string $databaseName = null) : Response
+    {
+        $resp = new Response(false, "unkown error in giving loot array to accounts", null);
+
+        $normalizedAccounts = array_values(array_filter(array_map(function($accountId) {
+            if ($accountId instanceof vRecordId) {
+                return $accountId;
+            }
+
+            if (is_int($accountId)) {
+                return new vRecordId('', $accountId);
+            }
+
+            return null;
+        }, $accountIds)));
+
+        if (empty($normalizedAccounts)) {
+            $resp->message = "No valid accounts provided.";
+            return $resp;
+        }
+
+        if (empty($items)) {
+            $resp->message = "No items provided to grant.";
+            return $resp;
+        }
+
+        $query = "INSERT INTO loot (item_id, opened, account_id, dateObtained) VALUES ";
+        $params = [];
+        $valueParts = [];
+
+        foreach ($normalizedAccounts as $accountId) {
+            foreach ($items as $item) {
+                $dateObtained = $item["DateObtained"] ?? null;
+                if ($dateObtained === null) {
+                    $dateObtained = date('Y-m-d H:i:s');
+                }
+
+                $itemId = $item['Id'] instanceof vRecordId ? $item['Id']->crand : (int)$item['Id'];
+
+                $valueParts[] = "(?,0,?,?)";
+                array_push($params, $itemId, $accountId->crand, $dateObtained);
+            }
+        }
+
+        $query .= implode(',', $valueParts) . ';';
+
+        try {
+            $executeResp = DatabaseController::executeQuery($query, $params, $databaseName);
+
+            if ($executeResp->success) {
+                $resp->success = true;
+                $resp->message = "Successfully gave item array to " . count($normalizedAccounts) . " account(s).";
+                $resp->data = [
+                    'accounts' => array_map(fn(vRecordId $acc) => $acc->crand, $normalizedAccounts),
+                    'rowsInserted' => count($valueParts),
+                ];
+            } else {
+                $resp->message = "Failed to execute query to give item array to accounts : " . $executeResp->message;
+            }
+        }
+        catch(Exception $e)
+        {
+            throw new Exception("Exception caught while giving item array to accounts : " . $e);
+        }
+
+        return $resp;
+    }
+
+    /**
+     * Grants an identical loot payload to every account without loading all IDs into PHP.
+     *
+     * @param array $items Array of items to grant in the same format as giveLootArray.
+     * @param string|null $databaseName Optional target database name.
+     */
+    public static function giveLootArrayToAllAccounts(array $items, ?string $databaseName = null) : Response
+    {
+        $resp = new Response(false, "unkown error in giving loot array to all accounts", null);
+
+        if (empty($items)) {
+            $resp->message = "No items provided to grant.";
+            return $resp;
+        }
+
+        try {
+            $rowsInserted = 0;
+
+            foreach ($items as $item) {
+                $dateObtained = $item["DateObtained"] ?? null;
+                if ($dateObtained === null) {
+                    $dateObtained = date('Y-m-d H:i:s');
+                }
+
+                $itemId = $item['Id'] instanceof vRecordId ? $item['Id']->crand : (int)$item['Id'];
+
+                $query = "INSERT INTO loot (item_id, opened, account_id, dateObtained) SELECT ?, 0, account.Id, ? FROM account";
+
+                $executeResp = DatabaseController::executeQuery($query, [$itemId, $dateObtained], $databaseName);
+
+                if (!$executeResp->success) {
+                    $resp->message = "Failed to execute query to give item array to all accounts : " . $executeResp->message;
+                    return $resp;
+                }
+
+                $rowsInserted += (int)($executeResp->data['affectedRows'] ?? 0);
+            }
+
+            $resp->success = true;
+            $resp->message = "Successfully gave item array to all accounts.";
+            $resp->data = [
+                'rowsInserted' => $rowsInserted,
+            ];
+        }
+        catch(Exception $e)
+        {
+            throw new Exception("Exception caught while giving item array to all accounts : " . $e);
+        }
+
+        return $resp;
+    }
+    public static function getTotalsInLoot(array $totalsItemIdArray, vRecordId $accountId, ?string $databaseName = null) : Response
      {
          if($databaseName != null)
          {
