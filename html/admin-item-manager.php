@@ -545,7 +545,9 @@ function enumLabel(string $value): string
         const DEFAULT_MEDIA_SRC = '/assets/media/items/221.png';
         const DEFAULT_MEDIA_ID = '221';
         const ITEM_TYPE_UNIQUE = '<?= ItemType::Unique->value; ?>';
+        const ITEM_TYPE_STANDARD = '<?= ItemType::Standard->value; ?>';
         const ITEM_RARITY_UNIQUE = '<?= ItemRarity::Unique->value; ?>';
+        const ITEM_RARITY_LEGENDARY = '<?= ItemRarity::Legendary->value; ?>';
 
         function toggleEquipmentFields(isChecked) {
             const equipmentGroup = document.getElementById('equipment-slot-group');
@@ -596,6 +598,30 @@ function enumLabel(string $value): string
                     raritySelect.value = ITEM_RARITY_UNIQUE;
                 }
             }
+        }
+
+        function handleRarityChange() {
+            const typeSelect = document.getElementById('item-type');
+            const raritySelect = document.getElementById('item-rarity');
+            if (!typeSelect || !raritySelect) return;
+
+            if (raritySelect.value !== ITEM_RARITY_UNIQUE && typeSelect.value === ITEM_TYPE_UNIQUE) {
+                typeSelect.value = ITEM_TYPE_STANDARD;
+            }
+
+            enforceUniquePairing();
+        }
+
+        function handleTypeChange() {
+            const typeSelect = document.getElementById('item-type');
+            const raritySelect = document.getElementById('item-rarity');
+            if (!typeSelect || !raritySelect) return;
+
+            if (typeSelect.value !== ITEM_TYPE_UNIQUE && raritySelect.value === ITEM_RARITY_UNIQUE) {
+                raritySelect.value = ITEM_RARITY_LEGENDARY;
+            }
+
+            enforceUniquePairing();
         }
 
         itemModal.addEventListener('show.bs.modal', (event) => {
@@ -675,8 +701,8 @@ function enumLabel(string $value): string
 
         const itemTypeSelect = document.getElementById('item-type');
         const itemRaritySelect = document.getElementById('item-rarity');
-        itemTypeSelect?.addEventListener('change', enforceUniquePairing);
-        itemRaritySelect?.addEventListener('change', enforceUniquePairing);
+        itemTypeSelect?.addEventListener('change', handleTypeChange);
+        itemRaritySelect?.addEventListener('change', handleRarityChange);
 
         toggleEquipmentFields(equipableCheckbox?.checked ?? false);
         toggleContainerFields(containerCheckbox?.checked ?? false);
