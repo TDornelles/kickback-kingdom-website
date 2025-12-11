@@ -250,7 +250,7 @@ function enumLabel(string $value): string
 
     <!-- Create / Edit Modal -->
     <div class="modal fade" id="itemModal" tabindex="-1" aria-labelledby="itemModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-scrollable modal-xl modal-fullscreen-sm-down">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="itemModalLabel">Create Item</h5>
@@ -313,36 +313,27 @@ function enumLabel(string $value): string
                                     <div class="col-md-4">
                                         <label class="form-label">Media (Large)</label>
                                         <input type="hidden" name="media_id_large" id="media-large" value="221" required>
-                                        <div class="card h-100 shadow-sm border" role="button" style="cursor: pointer;" onclick="openMediaPicker('media-large', 'media-large-preview', 'media-large-label')">
+                                        <div class="card shadow-sm border" role="button" style="cursor: pointer;" onclick="openMediaPicker('media-large', 'media-large-preview', 'media-large-label')">
                                             <div class="ratio ratio-1x1 bg-body-secondary bg-opacity-25">
                                                 <img src="/assets/media/items/221.png" alt="Large preview" id="media-large-preview" class="object-fit-contain w-100 h-100">
-                                            </div>
-                                            <div class="card-body py-3">
-                                                <p class="card-text small mb-0" id="media-large-label">Default preview shown. Click to select a different image.</p>
                                             </div>
                                         </div>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Media (Small)</label>
                                         <input type="hidden" name="media_id_small" id="media-small" value="221" required>
-                                        <div class="card h-100 shadow-sm border" role="button" style="cursor: pointer;" onclick="openMediaPicker('media-small', 'media-small-preview', 'media-small-label')">
+                                        <div class="card shadow-sm border" role="button" style="cursor: pointer;" onclick="openMediaPicker('media-small', 'media-small-preview', 'media-small-label')">
                                             <div class="ratio ratio-1x1 bg-body-secondary bg-opacity-25">
                                                 <img src="/assets/media/items/221.png" alt="Small preview" id="media-small-preview" class="object-fit-contain w-100 h-100">
-                                            </div>
-                                            <div class="card-body py-3">
-                                                <p class="card-text small mb-0" id="media-small-label">Default preview shown. Click to select a different image.</p>
                                             </div>
                                         </div>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Media (Back)</label>
                                         <input type="hidden" name="media_id_back" id="media-back" value="221" required>
-                                        <div class="card h-100 shadow-sm border" role="button" style="cursor: pointer;" onclick="openMediaPicker('media-back', 'media-back-preview', 'media-back-label')">
+                                        <div class="card shadow-sm border" role="button" style="cursor: pointer;" onclick="openMediaPicker('media-back', 'media-back-preview', 'media-back-label')">
                                             <div class="ratio ratio-1x1 bg-body-secondary bg-opacity-25">
                                                 <img src="/assets/media/items/221.png" alt="Back preview" id="media-back-preview" class="object-fit-contain w-100 h-100">
-                                            </div>
-                                            <div class="card-body py-3">
-                                                <p class="card-text small mb-0" id="media-back-label">Default preview shown. Click to select a different image.</p>
                                             </div>
                                         </div>
                                     </div>
