@@ -172,7 +172,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <div class="border-top flex-grow-1 opacity-25"></div>
                                 </div>
                                 <input type="hidden" name="item_id" id="item-id" value="<?= $selectedItemId > 0 ? $selectedItemId : ''; ?>">
-                                <div class="p-3 border rounded bg-body-tertiary h-100">
+                                <div class="p-3 border rounded bg-body-tertiary">
                                     <div class="d-flex align-items-start gap-3">
                                         <div class="rounded bg-body-secondary d-flex align-items-center justify-content-center" style="width:72px;height:72px;">
                                             <i class="fa-solid fa-gift text-muted fs-3" id="item-preview-icon"></i>
@@ -204,7 +204,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <span class="text-uppercase small fw-semibold text-body-secondary">Recipients</span>
                                     <div class="border-top flex-grow-1 opacity-25"></div>
                                 </div>
-                                <div class="p-3 border rounded bg-body-tertiary h-100">
+                                <div class="p-3 border rounded bg-body-tertiary">
                                     <div class="form-check mb-3">
                                         <input class="form-check-input" type="radio" name="recipient_mode" id="recipient-single" value="single" <?= $recipientMode === 'single' ? 'checked' : ''; ?>>
                                         <label class="form-check-label" for="recipient-single">
