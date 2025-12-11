@@ -108,6 +108,19 @@ class ItemController
             $itemId = new vRecordId('', (int)$row['Id']);
             $item = self::row_to_vItem($row, $itemId);
 
+            $item->mediaIdSmall = array_key_exists('media_id_small', $row) && $row['media_id_small'] !== null
+                ? (int)$row['media_id_small']
+                : null;
+            $item->mediaIdLarge = array_key_exists('media_id_large', $row) && $row['media_id_large'] !== null
+                ? (int)$row['media_id_large']
+                : null;
+            $item->mediaIdBack = array_key_exists('media_id_back', $row) && $row['media_id_back'] !== null
+                ? (int)$row['media_id_back']
+                : null;
+            $item->mediaPathSmall = $row['media_path_small'] ?? null;
+            $item->mediaPathLarge = $row['media_path_large'] ?? null;
+            $item->mediaPathBack = $row['media_path_back'] ?? null;
+
             if (array_key_exists('media_id_small', $row) && $row['media_id_small'] !== null) {
                 $item->iconSmall->crand = (int)$row['media_id_small'];
             }
@@ -128,6 +141,9 @@ class ItemController
             if (array_key_exists('media_path_back', $row) && $row['media_path_back'] !== null) {
                 $item->iconBack->setMediaPath($row['media_path_back']);
             }
+
+            // Ensure all media fields have sensible fallbacks so the admin UI can display previews
+            $item->applyMediaFallbacks();
 
             $items[] = $item;
         }
