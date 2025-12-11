@@ -728,9 +728,14 @@ function enumLabel(string $value): string
                 document.getElementById('item-rarity').value = itemData.rarity ?? '';
                 document.getElementById('item-category').value = itemData.item_category ?? '';
 
-                setMediaSelection('media-large', 'media-large-preview', 'media-large-label', itemData.media_id_large, itemData.media_path_large);
-                setMediaSelection('media-small', 'media-small-preview', 'media-small-label', itemData.media_id_small, itemData.media_path_small);
-                setMediaSelection('media-back', 'media-back-preview', 'media-back-label', itemData.media_id_back, itemData.media_path_back);
+                const rowElement = trigger.closest('tr');
+                const mediaLargePath = itemData.media_path_large || rowElement?.dataset.mediaLargePath || '';
+                const mediaSmallPath = itemData.media_path_small || rowElement?.dataset.mediaSmallPath || '';
+                const mediaBackPath = itemData.media_path_back || rowElement?.dataset.mediaBackPath || '';
+
+                setMediaSelection('media-large', 'media-large-preview', 'media-large-label', itemData.media_id_large, mediaLargePath);
+                setMediaSelection('media-small', 'media-small-preview', 'media-small-label', itemData.media_id_small, mediaSmallPath);
+                setMediaSelection('media-back', 'media-back-preview', 'media-back-label', itemData.media_id_back, mediaBackPath);
 
                 document.getElementById('nominated-by').value = itemData.nominated_by_id ?? '';
                 updateNominatedByLabel();
