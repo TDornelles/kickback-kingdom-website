@@ -912,13 +912,13 @@ class LichCardController
                 $item = new vItem('', $row['item_id']);
                 $lichCard->item = $item;
             } else {
-                $response = self::linkLichCardToNewItem($lichCard);
+                $response = self::linkvLichCardToNewItem($lichCard);
                 if ($response->success) {
                     $item = new vItem('', $response->data->crand);
                     $lichCard->item = $item;
                 }
                 else{
-                    
+
                     throw new \Exception("Failed to insert item for Lich Card: " . $response->message);
                 }
             }
