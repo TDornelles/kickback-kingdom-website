@@ -328,6 +328,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         (function() {
             const selectorId = 'lootGrantItemSelector';
             const itemSelectorModal = ItemSelector.init(selectorId);
+            const itemSelectorInstance = itemSelectorModal
+                ? bootstrap.Modal.getOrCreateInstance(itemSelectorModal)
+                : null;
             const itemIdInput = document.getElementById('item-id');
             const itemTitle = document.getElementById('item-title');
             const itemMeta = document.getElementById('item-meta');
@@ -413,7 +416,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             document.querySelector('[data-open-item-selector]')?.addEventListener('click', () => {
-                itemSelectorModal?.show();
+                itemSelectorInstance?.show();
             });
 
             document.querySelector('[data-open-account-single]')?.addEventListener('click', () => {
@@ -443,8 +446,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             document.addEventListener('item-selector:selected', (event) => {
                 const item = event.detail?.item;
+                if (event.detail?.selectorId && event.detail.selectorId !== selectorId) {
+                    return;
+                }
+
                 updateItemPreview(item);
-                itemSelectorModal?.hide();
+                itemSelectorInstance?.hide();
             });
 
             window.selectSingleAccount = function(accountId) {
