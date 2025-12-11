@@ -41,12 +41,14 @@ class vMedia extends vRecordId
     {
         $this->url = $fullPath;
         $this->mediaPath = str_replace("/assets/media/", '', $fullPath);
+        $this->_valid = true;
     }
 
     public function setMediaPath(string $path) : void
     {
         $this->mediaPath = $path;
         $this->url = $this->getFullPath();
+        $this->_valid = true;
     }
     
     public static function fromUrl(string $url): vMedia {
