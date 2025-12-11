@@ -180,9 +180,9 @@ function enumLabel(string $value): string
                             <h5 class="mb-1">Item Table</h5>
                             <p class="text-body-secondary mb-0">View, create, edit, or delete items directly from the item table.</p>
                         </div>
-                        <div class="d-flex gap-2 align-items-center">
-                            <input type="search" class="form-control" id="item-search" placeholder="Search by name or ID">
-                            <button class="btn bg-ranked-1" data-bs-toggle="modal" data-bs-target="#itemModal" data-mode="create">
+                        <div class="d-flex flex-column flex-sm-row gap-2 align-items-stretch align-items-sm-center">
+                            <input type="search" class="form-control flex-grow-1" id="item-search" placeholder="Search by name or ID">
+                            <button class="btn bg-ranked-1 flex-shrink-0 text-nowrap" data-bs-toggle="modal" data-bs-target="#itemModal" data-mode="create">
                                 <i class="fa-solid fa-plus"></i> New Item
                             </button>
                         </div>
