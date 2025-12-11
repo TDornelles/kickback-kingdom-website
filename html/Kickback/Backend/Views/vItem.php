@@ -20,6 +20,7 @@ class vItem extends vRecordId
     public vMedia $iconSmall;
     public vMedia $iconBig;
     public vMedia $iconBack;
+    public vMedia $icon;
     public ?vAccount $nominatedBy = null;
     public ItemType $type;
     public ItemRarity $rarity;
@@ -48,6 +49,8 @@ class vItem extends vRecordId
         $this->description = '';
         $this->iconSmall = vMedia::defaultIcon();
         $this->iconBig = vMedia::defaultIcon();
+        $this->iconBack = vMedia::defaultIcon();
+        $this->icon = vMedia::defaultIcon();
         $this->type = ItemType::Standard;
         $this->rarity = ItemRarity::Common;
         $this->dateCreated = new vDateTime();
@@ -61,6 +64,42 @@ class vItem extends vRecordId
 
     public function isWritOfPassage() : bool {
         return $this->crand == 14;
+    }
+
+    public function applyMediaFallbacks() : void {
+        $iconSmallValid = $this->iconSmall->isValid();
+        $iconBigValid = $this->iconBig->isValid();
+        $iconBackValid = $this->iconBack->isValid();
+
+        if (!$iconSmallValid && $iconBigValid) {
+            $this->iconSmall = $this->iconBig;
+            $iconSmallValid = true;
+        }
+
+        if (!$iconBigValid && $iconSmallValid) {
+            $this->iconBig = $this->iconSmall;
+            $iconBigValid = true;
+        }
+
+        if (!$iconBackValid) {
+            if ($iconBigValid) {
+                $this->iconBack = $this->iconBig;
+                $iconBackValid = true;
+            } elseif ($iconSmallValid) {
+                $this->iconBack = $this->iconSmall;
+                $iconBackValid = true;
+            }
+        }
+
+        if ($iconSmallValid) {
+            $this->icon = $this->iconSmall;
+        } elseif ($iconBigValid) {
+            $this->icon = $this->iconBig;
+        } elseif ($iconBackValid) {
+            $this->icon = $this->iconBack;
+        } else {
+            $this->icon = vMedia::defaultIcon();
+        }
     }
 }
 

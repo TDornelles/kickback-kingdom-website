@@ -1410,6 +1410,8 @@ class QuestController
 
         $item->iconBack = $item->iconBig;
 
+        $item->applyMediaFallbacks();
+
         return $questReward;
     }
 

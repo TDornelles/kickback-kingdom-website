@@ -3550,6 +3550,8 @@ private static function interpolateSql(string $sql, array $params): string
             $item->iconBig = $largeMedia;
             $item->iconBack = $backMedia;
 
+            $item->applyMediaFallbacks();
+
             $item->fungible = boolval($row["price_component_item_is_fungible"]);
 
             $priceComponent->item = $item;
@@ -5087,6 +5089,7 @@ private static function interpolateSql(string $sql, array $params): string
             $item->iconSmall = $iconSmall;
             $item->iconBig = $iconLarge;
             $item->iconBack = $iconBack;
+            $item->applyMediaFallbacks();
             $item->fungible = boolval($row["item_is_fungible"]);
 
         $currencyCode = $row["currency_code"] != null ? CurrencyCode::from($row["currency_code"]) : null;
@@ -5493,6 +5496,7 @@ private static function interpolateSql(string $sql, array $params): string
             $item->iconSmall = $iconSmall;
             $item->iconBig = $iconBig;
             $item->iconBack = $iconBack;
+            $item->applyMediaFallbacks();
         $priceComponent->item = $item;
         
         return $priceComponent;

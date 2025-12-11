@@ -625,6 +625,8 @@ class ItemController
             $item->collection = new vCollection('', (int)$row["collection_id"]);
         }
 
+        $item->applyMediaFallbacks();
+
         return $item;
     }
 
