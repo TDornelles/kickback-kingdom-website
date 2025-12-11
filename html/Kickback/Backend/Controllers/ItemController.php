@@ -269,7 +269,7 @@ class ItemController
         }
 
         $stmt->bind_param(
-            'iiiiissiiisiiiiiiiii',
+            'iiiiissiiisiiiiiiii',
             $typeValue,
             $rarityValue,
             $item->mediaLarge->crand,
