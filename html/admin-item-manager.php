@@ -202,15 +202,15 @@ function enumLabel(string $value): string
                         <table class="table table-hover align-middle" id="item-table">
                             <thead class="table-light">
                                 <tr>
-                                    <th scope="col" class="sortable" data-sort-key="id">ID <i class="fa-solid fa-sort ms-1"></i></th>
-                                    <th scope="col" class="sortable" data-sort-key="name">Name <i class="fa-solid fa-sort ms-1"></i></th>
-                                    <th scope="col" class="sortable" data-sort-key="type">Type <i class="fa-solid fa-sort ms-1"></i></th>
-                                    <th scope="col" class="sortable" data-sort-key="rarity">Rarity <i class="fa-solid fa-sort ms-1"></i></th>
-                                    <th scope="col" class="sortable" data-sort-key="category">Category <i class="fa-solid fa-sort ms-1"></i></th>
-                                    <th scope="col" class="sortable" data-sort-key="equipable">Equip <i class="fa-solid fa-sort ms-1"></i></th>
-                                    <th scope="col" class="sortable" data-sort-key="redeemable">Redeem <i class="fa-solid fa-sort ms-1"></i></th>
-                                    <th scope="col" class="sortable" data-sort-key="useable">Use <i class="fa-solid fa-sort ms-1"></i></th>
-                                    <th scope="col" class="sortable" data-sort-key="is_container">Container <i class="fa-solid fa-sort ms-1"></i></th>
+                                    <th scope="col" class="sortable" data-sort-key="id">ID <i class="fa-solid ms-1 sort-icon d-none"></i></th>
+                                    <th scope="col" class="sortable" data-sort-key="name">Name <i class="fa-solid ms-1 sort-icon d-none"></i></th>
+                                    <th scope="col" class="sortable" data-sort-key="type">Type <i class="fa-solid ms-1 sort-icon d-none"></i></th>
+                                    <th scope="col" class="sortable" data-sort-key="rarity">Rarity <i class="fa-solid ms-1 sort-icon d-none"></i></th>
+                                    <th scope="col" class="sortable" data-sort-key="category">Category <i class="fa-solid ms-1 sort-icon d-none"></i></th>
+                                    <th scope="col" class="sortable" data-sort-key="equipable">Equip <i class="fa-solid ms-1 sort-icon d-none"></i></th>
+                                    <th scope="col" class="sortable" data-sort-key="redeemable">Redeem <i class="fa-solid ms-1 sort-icon d-none"></i></th>
+                                    <th scope="col" class="sortable" data-sort-key="useable">Use <i class="fa-solid ms-1 sort-icon d-none"></i></th>
+                                    <th scope="col" class="sortable" data-sort-key="is_container">Container <i class="fa-solid ms-1 sort-icon d-none"></i></th>
                                     <th scope="col" class="text-end">Actions</th>
                                 </tr>
                             </thead>
@@ -1031,15 +1031,19 @@ function enumLabel(string $value): string
             const createPageItem = (page, label, disabled = false, active = false) => {
                 const li = document.createElement('li');
                 li.className = `page-item${disabled ? ' disabled' : ''}${active ? ' active' : ''}`;
-                const link = document.createElement('button');
+                const link = document.createElement(disabled ? 'span' : 'button');
                 link.className = 'page-link';
-                link.type = 'button';
-                link.textContent = label;
-                link.addEventListener('click', () => {
-                    if (disabled || page === currentPage) return;
-                    currentPage = page;
-                    renderTable();
-                });
+                if (!disabled) {
+                    link.type = 'button';
+                    link.textContent = label;
+                    link.addEventListener('click', () => {
+                        if (page === currentPage) return;
+                        currentPage = page;
+                        renderTable();
+                    });
+                } else {
+                    link.textContent = label;
+                }
                 li.appendChild(link);
                 return li;
             };
@@ -1047,9 +1051,36 @@ function enumLabel(string $value): string
             const prevDisabled = currentPage === 1;
             paginationContainer.appendChild(createPageItem(currentPage - 1, 'Prev', prevDisabled));
 
-            for (let page = 1; page <= totalPages; page += 1) {
-                paginationContainer.appendChild(createPageItem(page, page, false, page === currentPage));
+            let pagesToShow = [];
+            if (totalPages <= 7) {
+                pagesToShow = Array.from({ length: totalPages }, (_, idx) => idx + 1);
+            } else {
+                const startPage = Math.max(2, currentPage - 1);
+                const endPage = Math.min(totalPages - 1, currentPage + 1);
+
+                pagesToShow.push(1);
+                if (startPage > 2) {
+                    pagesToShow.push('ellipsis');
+                }
+
+                for (let page = startPage; page <= endPage; page += 1) {
+                    pagesToShow.push(page);
+                }
+
+                if (endPage < totalPages - 1) {
+                    pagesToShow.push('ellipsis');
+                }
+
+                pagesToShow.push(totalPages);
             }
+
+            pagesToShow.forEach((page) => {
+                if (page === 'ellipsis') {
+                    paginationContainer.appendChild(createPageItem(currentPage, '...', true));
+                } else {
+                    paginationContainer.appendChild(createPageItem(page, page, false, page === currentPage));
+                }
+            });
 
             const nextDisabled = currentPage === totalPages;
             paginationContainer.appendChild(createPageItem(currentPage + 1, 'Next', nextDisabled));
@@ -1062,11 +1093,11 @@ function enumLabel(string $value): string
                 header.classList.toggle('text-ranked', sortKey === currentSort.key);
                 if (!icon) return;
 
+                icon.classList.add('d-none');
                 icon.classList.remove('fa-sort', 'fa-sort-up', 'fa-sort-down');
                 if (sortKey === currentSort.key) {
+                    icon.classList.remove('d-none');
                     icon.classList.add(currentSort.direction === 'asc' ? 'fa-sort-up' : 'fa-sort-down');
-                } else {
-                    icon.classList.add('fa-sort');
                 }
             });
         }
