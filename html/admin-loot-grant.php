@@ -151,7 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <p class="text-body-secondary mb-0">Quickly add loot entries for one account, a curated list, or the entire realm.</p>
                         </div>
                         <div class="d-flex align-items-center gap-2 text-body-secondary small">
-                            <i class="bi bi-shield-lock"></i>
+                            <i class="fa-solid fa-shield-halved"></i>
                             <span>Admin-only utility</span>
                         </div>
                     </div>
@@ -175,7 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <div class="p-3 border rounded bg-body-tertiary h-100">
                                     <div class="d-flex align-items-start gap-3">
                                         <div class="rounded bg-body-secondary d-flex align-items-center justify-content-center" style="width:72px;height:72px;">
-                                            <i class="bi bi-gift text-muted fs-3" id="item-preview-icon"></i>
+                                            <i class="fa-solid fa-gift text-muted fs-3" id="item-preview-icon"></i>
                                             <img src="" alt="Selected item" id="item-preview-image" class="img-fluid rounded d-none" style="width:72px;height:72px;object-fit:contain;">
                                         </div>
                                         <div class="flex-grow-1">
@@ -183,10 +183,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                             <div class="text-body-secondary small" id="item-meta"><?= htmlspecialchars($selectedItemMeta); ?></div>
                                             <div class="mt-3 d-flex flex-wrap gap-2">
                                                 <button type="button" class="btn btn-outline-primary btn-sm" data-open-item-selector>
-                                                    <i class="bi bi-search me-1"></i> Browse Items
+                                                    <i class="fa-solid fa-magnifying-glass me-1"></i> Browse Items
                                                 </button>
                                                 <a class="btn btn-outline-secondary btn-sm" href="admin-item-manager.php" target="_blank">
-                                                    <i class="bi bi-box-seam me-1"></i> Manage Items
+                                                    <i class="fa-solid fa-box-open me-1"></i> Manage Items
                                                 </a>
                                             </div>
                                         </div>
@@ -216,10 +216,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         <div class="input-group mb-2">
                                             <input type="text" class="form-control" id="single-account-display" placeholder="No account selected" value="<?= $singleAccountId > 0 ? "Account #{$singleAccountId}" : ''; ?>" readonly>
                                             <button class="btn btn-outline-secondary" type="button" data-open-account-single>
-                                                <i class="bi bi-search"></i>
+                                                <i class="fa-solid fa-magnifying-glass"></i>
                                             </button>
                                             <button class="btn btn-outline-danger" type="button" id="clear-single-account" title="Clear selection">
-                                                <i class="bi bi-x-lg"></i>
+                                                <i class="fa-solid fa-xmark"></i>
                                             </button>
                                         </div>
                                         <div class="form-text" id="single-account-label">Pick an account to grant loot.</div>
@@ -236,10 +236,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         <textarea class="form-control" id="account-ids" name="account_ids" rows="4" placeholder="123, 456, 789"><?= htmlspecialchars($accountIdListRaw); ?></textarea>
                                         <div class="d-flex flex-wrap gap-2 mt-2">
                                             <button type="button" class="btn btn-outline-secondary btn-sm" data-open-account-list>
-                                                <i class="bi bi-person-plus me-1"></i> Add from search
+                                                <i class="fa-solid fa-user-plus me-1"></i> Add from search
                                             </button>
                                             <button type="button" class="btn btn-outline-danger btn-sm" id="clear-list-accounts">
-                                                <i class="bi bi-eraser me-1"></i> Clear list
+                                                <i class="fa-solid fa-eraser me-1"></i> Clear list
                                             </button>
                                         </div>
                                         <div class="form-text">Use the account search modal to append IDs without leaving this page.</div>
@@ -253,7 +253,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     </div>
                                     <div class="ps-4" id="all-recipient-fields">
                                         <div class="alert alert-warning d-flex align-items-start gap-2 mb-0" role="alert">
-                                            <i class="bi bi-exclamation-triangle-fill"></i>
+                                            <i class="fa-solid fa-triangle-exclamation"></i>
                                             <div>
                                                 Grants will be created for every account currently in the database. Double-check the item and quantity before submitting.
                                             </div>
@@ -263,12 +263,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
                         </div>
                     </div>
-                    <div class="card-footer d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
-                        <div class="text-body-secondary small">
+                    <div class="card-footer d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 flex-wrap">
+                        <div class="text-body-secondary small flex-grow-1 text-wrap">
                             Grants are created immediately using LootController helpers based on the recipient selection.
                         </div>
                         <button type="submit" class="btn bg-ranked-1 text-white">
-                            <i class="bi bi-send-fill me-1"></i> Grant Loot
+                            <i class="fa-solid fa-paper-plane me-1"></i> Grant Loot
                         </button>
                     </div>
                 </form>
