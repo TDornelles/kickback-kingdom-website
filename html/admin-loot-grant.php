@@ -445,11 +445,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             });
 
             document.addEventListener('item-selector:selected', (event) => {
-                const item = event.detail?.item;
                 if (event.detail?.selectorId && event.detail.selectorId !== selectorId) {
                     return;
                 }
 
+                const item = event.detail;
                 updateItemPreview(item);
                 itemSelectorInstance?.hide();
             });
