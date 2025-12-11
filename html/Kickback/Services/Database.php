@@ -13,8 +13,16 @@ class Database {
     public static function getConnection(): \mysqli {
         // If a connection exists but has been closed (for example, by other code
         // calling \mysqli::close()), clear it so a fresh connection can be created.
-        if (self::$conn !== null && !@self::$conn->ping()) {
-            self::$conn = null;
+        if (self::$conn !== null) {
+            try {
+                if (!@self::$conn->ping()) {
+                    self::$conn = null;
+                }
+            } catch (\Throwable $e) {
+                // Certain operations on closed mysqli objects throw Errors instead of warnings.
+                // Reset the connection so a new one can be created safely.
+                self::$conn = null;
+            }
         }
 
         if (self::$conn === null) {
