@@ -963,8 +963,10 @@ class StoreService
             $vItem->iconBig = static::vMediaFromJson_FullURL($item->iconBig["url"]);
             $vItem->iconBack = static::vMediaFromJson_FullURL($item->iconBack["url"]);
         }
-        
+
         $vItem->fungible = $item->fungible;
+
+        $vItem->applyMediaFallbacks();
 
         return $vItem;
     }
