@@ -8,6 +8,7 @@ use Kickback\Common\Version;
 
 var selectAccountModalCallerId = -1;
 var selectAccountResultsById = {};
+var selectAccountSearchOptionsByForm = {};
 
 function OpenSelectAccountModal(prevModal = null, clickableFunction = null) {
 
@@ -30,15 +31,30 @@ function ReopenSelectAccountModal(formId, clickableFunction = null) {
 
 function SearchForAccount(formId, pageIndex = 1, clickableFunction = null, filters = {})
 {
+    if (!selectAccountSearchOptionsByForm[formId]) {
+        selectAccountSearchOptionsByForm[formId] = { clickableFunction: null, filters: {} };
+    }
+
+    const activeClickableFunction = clickableFunction !== null
+        ? clickableFunction
+        : selectAccountSearchOptionsByForm[formId].clickableFunction;
+
+    const activeFilters = (filters && Object.keys(filters).length > 0)
+        ? filters
+        : selectAccountSearchOptionsByForm[formId].filters;
+
+    selectAccountSearchOptionsByForm[formId].clickableFunction = activeClickableFunction;
+    selectAccountSearchOptionsByForm[formId].filters = activeFilters;
+
     var usersPerPage = $('#'+formId+'selectAccountSearchResults').data('users-per-page');
 
-    ClearSearchAccountResults(formId); 
+    ClearSearchAccountResults(formId);
     const data = {
         searchTerm: $("#"+formId+"selectAccountSearchTerm").val(),
         sessionToken: "<?php echo $_SESSION["sessionToken"] ?? ""; ?>",
         page: pageIndex,
         itemsPerPage: usersPerPage,
-        filters: filters
+        filters: activeFilters
     };
 
     const params = new URLSearchParams();
@@ -59,7 +75,7 @@ function SearchForAccount(formId, pageIndex = 1, clickableFunction = null, filte
             'Content-Type': 'application/x-www-form-urlencoded'
         },
         body: params
-    }).then(response=>response.text()).then(data=>LoadSearchAccountResults(formId, data, usersPerPage, pageIndex, clickableFunction));
+    }).then(response=>response.text()).then(data=>LoadSearchAccountResults(formId, data, usersPerPage, pageIndex, activeClickableFunction));
 }
 
 
@@ -140,7 +156,8 @@ function generatePaginationSelectAccount(formId, totalItems, itemsPerPage, curre
 }
 
 function onPaginationClickSelectAccount(formId, pageNumber) {
-    SearchForAccount(formId, pageNumber);
+    const savedOptions = selectAccountSearchOptionsByForm[formId] ?? { clickableFunction: null, filters: {} };
+    SearchForAccount(formId, pageNumber, savedOptions.clickableFunction, savedOptions.filters);
 }
 
 
