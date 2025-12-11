@@ -182,7 +182,7 @@ function enumLabel(string $value): string
                         </div>
                         <div class="d-flex gap-2 align-items-center">
                             <input type="search" class="form-control" id="item-search" placeholder="Search by name or ID">
-                            <button class="btn btn-ranked" data-bs-toggle="modal" data-bs-target="#itemModal" data-mode="create">
+                            <button class="btn bg-ranked-1" data-bs-toggle="modal" data-bs-target="#itemModal" data-mode="create">
                                 <i class="fa-solid fa-plus"></i> New Item
                             </button>
                         </div>
@@ -300,7 +300,7 @@ function enumLabel(string $value): string
                                             <div class="btn-group" role="group">
                                                 <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#itemModal" data-mode="edit"
                                                     data-item='<?= htmlspecialchars(json_encode($itemData), ENT_QUOTES); ?>'>
-                                                    <i class="fa-solid fa-pen"></i> Edit
+                                                    <i class="fa-solid fa-pen"></i>
                                                 </button>
                                                 <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal" data-item-id="<?= (int)$row->crand; ?>" data-item-name="<?= htmlspecialchars($row->name); ?>">
                                                     <i class="fa-solid fa-trash"></i>
@@ -352,7 +352,7 @@ function enumLabel(string $value): string
                                     <div class="border-top flex-grow-1 opacity-25"></div>
                                 </div>
                                 <div class="row g-3">
-                                    <div class="col-md-6">
+                                    <div class="col-12">
                                         <label class="form-label">Name</label>
                                         <input type="text" class="form-control" name="name" id="item-name" required>
                                     </div>
@@ -554,7 +554,7 @@ function enumLabel(string $value): string
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-ranked" id="item-submit">Create Item</button>
+                        <button type="submit" class="btn bg-ranked-1" id="item-submit">Create Item</button>
                     </div>
                 </form>
             </div>
