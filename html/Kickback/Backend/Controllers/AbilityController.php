@@ -18,6 +18,7 @@ class AbilityController
 
         $ability->name = $row['name'] ?? '';
         $ability->description = $row['desc'] ?? '';
+        $ability->icon = trim((string)($row['icon'] ?? ''));
         $ability->prestigeGain = (int)($row['prestige_gain'] ?? 0);
         $ability->prestigeMultiplier = (float)($row['prestige_multiplier'] ?? 0.0);
         $ability->expGain = (int)($row['exp_gain'] ?? 0);
@@ -37,6 +38,10 @@ class AbilityController
 
         if (trim($ability->desc) === '') {
             return 'Ability description is required.';
+        }
+
+        if (trim($ability->icon) === '') {
+            return 'Ability icon is required.';
         }
 
         $numericFields = [
@@ -62,6 +67,10 @@ class AbilityController
             return 'Title change cannot exceed 45 characters.';
         }
 
+        if (strlen($ability->icon) > 64) {
+            return 'Icon class cannot exceed 64 characters.';
+        }
+
         return null;
     }
 
@@ -69,7 +78,7 @@ class AbilityController
     {
         $conn = Database::getConnection();
 
-        $sql = 'SELECT Id, name, `desc`, prestige_gain, prestige_multiplier, exp_gain, exp_multiplier, level_gain, level_multiplier, title_change FROM ability ORDER BY name';
+        $sql = 'SELECT Id, name, icon, `desc`, prestige_gain, prestige_multiplier, exp_gain, exp_multiplier, level_gain, level_multiplier, title_change FROM ability ORDER BY name';
         $stmt = $conn->prepare($sql);
 
         if (!$stmt) {
@@ -100,7 +109,7 @@ class AbilityController
         }
 
         $conn = Database::getConnection();
-        $stmt = $conn->prepare('SELECT Id, name, `desc`, prestige_gain, prestige_multiplier, exp_gain, exp_multiplier, level_gain, level_multiplier, title_change FROM ability WHERE Id = ?');
+        $stmt = $conn->prepare('SELECT Id, name, icon, `desc`, prestige_gain, prestige_multiplier, exp_gain, exp_multiplier, level_gain, level_multiplier, title_change FROM ability WHERE Id = ?');
 
         if (!$stmt) {
             return new Response(false, 'Failed to load ability: ' . $conn->error);
@@ -135,7 +144,7 @@ class AbilityController
 
         $conn = Database::getConnection();
 
-        $sql = 'INSERT INTO ability (name, `desc`, prestige_gain, prestige_multiplier, exp_gain, exp_multiplier, level_gain, level_multiplier, title_change) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
+        $sql = 'INSERT INTO ability (name, icon, `desc`, prestige_gain, prestige_multiplier, exp_gain, exp_multiplier, level_gain, level_multiplier, title_change) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
         $stmt = $conn->prepare($sql);
 
         if (!$stmt) {
@@ -143,8 +152,9 @@ class AbilityController
         }
 
         $stmt->bind_param(
-            'ssididids',
+            'sssididids',
             $ability->name,
+            $ability->icon,
             $ability->desc,
             $ability->prestigeGain,
             $ability->prestigeMultiplier,
@@ -167,6 +177,7 @@ class AbilityController
         $abilityView = new vAbility('', $newId);
         $abilityView->name = $ability->name;
         $abilityView->description = $ability->desc;
+        $abilityView->icon = $ability->icon;
         $abilityView->prestigeGain = $ability->prestigeGain;
         $abilityView->prestigeMultiplier = $ability->prestigeMultiplier;
         $abilityView->expGain = $ability->expGain;
@@ -191,7 +202,7 @@ class AbilityController
 
         $conn = Database::getConnection();
 
-        $sql = 'UPDATE ability SET name = ?, `desc` = ?, prestige_gain = ?, prestige_multiplier = ?, exp_gain = ?, exp_multiplier = ?, level_gain = ?, level_multiplier = ?, title_change = ? WHERE Id = ?';
+        $sql = 'UPDATE ability SET name = ?, icon = ?, `desc` = ?, prestige_gain = ?, prestige_multiplier = ?, exp_gain = ?, exp_multiplier = ?, level_gain = ?, level_multiplier = ?, title_change = ? WHERE Id = ?';
         $stmt = $conn->prepare($sql);
 
         if (!$stmt) {
@@ -199,8 +210,9 @@ class AbilityController
         }
 
         $stmt->bind_param(
-            'ssidididsi',
+            'sssidididsi',
             $ability->name,
+            $ability->icon,
             $ability->desc,
             $ability->prestigeGain,
             $ability->prestigeMultiplier,

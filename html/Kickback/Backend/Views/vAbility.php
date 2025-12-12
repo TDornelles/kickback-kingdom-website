@@ -8,6 +8,7 @@ class vAbility extends vRecordId
 {
     public string $name;
     public string $description;
+    public string $icon;
     public int $prestigeGain;
     public float $prestigeMultiplier;
     public int $expGain;
@@ -22,6 +23,7 @@ class vAbility extends vRecordId
 
         $this->name = '';
         $this->description = '';
+        $this->icon = '';
         $this->prestigeGain = 0;
         $this->prestigeMultiplier = 0.0;
         $this->expGain = 0;
