@@ -149,20 +149,18 @@ foreach ($abilities as $ability) {
                             <thead class="table-light">
                                 <tr>
                                     <th scope="col" class="sortable" data-sort-key="id">ID <i class="fa-solid ms-1 sort-icon d-none"></i></th>
-                                    <th scope="col">Icon</th>
                                     <th scope="col" class="sortable" data-sort-key="name">Name <i class="fa-solid ms-1 sort-icon d-none"></i></th>
                                     <th scope="col" class="sortable" data-sort-key="prestige_gain">Prestige Gain <i class="fa-solid ms-1 sort-icon d-none"></i></th>
                                     <th scope="col" class="sortable" data-sort-key="exp_gain">EXP Gain <i class="fa-solid ms-1 sort-icon d-none"></i></th>
                                     <th scope="col" class="sortable" data-sort-key="level_gain">Level Gain <i class="fa-solid ms-1 sort-icon d-none"></i></th>
+                                    <th scope="col">Modifiers</th>
                                     <th scope="col">Title Change</th>
-                                    <th scope="col">Description</th>
                                     <th scope="col" class="text-end">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php foreach ($abilities as $ability) {
                                     /** @var vAbility $ability */
-                                    $iconClass = htmlspecialchars($ability->icon ?: $defaultIconClass);
                                     $abilityData = [
                                         'id' => $ability->crand,
                                         'name' => $ability->name,
@@ -185,25 +183,16 @@ foreach ($abilities as $ability) {
                                         data-ability-level-gain="<?= (int)$ability->levelGain; ?>"
                                     >
                                         <td class="fw-semibold">#<?= (int)$ability->crand; ?></td>
-                                        <td>
-                                            <div class="d-flex align-items-center gap-2">
-                                                <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-ranked-1 bg-opacity-10 text-ranked" style="width: 40px; height: 40px;">
-                                                    <i class="fa-solid <?= $iconClass; ?>"></i>
-                                                </span>
-                                                <div class="small text-body-secondary text-truncate" style="max-width: 140px;">
-                                                    <?= $iconClass; ?>
-                                                </div>
-                                            </div>
-                                        </td>
                                         <td class="fw-semibold"><?= htmlspecialchars($ability->name); ?></td>
                                         <td><?= (int)$ability->prestigeGain; ?></td>
                                         <td><?= (int)$ability->expGain; ?></td>
                                         <td><?= (int)$ability->levelGain; ?></td>
-                                        <td><?= htmlspecialchars($ability->titleChange ?: '—'); ?></td>
-                                        <td class="text-break" style="max-width: 320px;">
-                                            <div class="small mb-0">Multiplier P/E/L: <?= $ability->prestigeMultiplier; ?> / <?= $ability->expMultiplier; ?> / <?= $ability->levelMultiplier; ?></div>
-                                            <div><?= htmlspecialchars($ability->description); ?></div>
+                                        <td class="small">
+                                            <div class="text-body-secondary">Prestige: <?= $ability->prestigeMultiplier; ?></div>
+                                            <div class="text-body-secondary">EXP: <?= $ability->expMultiplier; ?></div>
+                                            <div class="text-body-secondary">Level: <?= $ability->levelMultiplier; ?></div>
                                         </td>
+                                        <td><?= htmlspecialchars($ability->titleChange ?: '—'); ?></td>
                                         <td class="text-end">
                                             <div class="btn-group" role="group">
                                                 <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#abilityModal" data-mode="edit" data-ability='<?= htmlspecialchars(json_encode($abilityData), ENT_QUOTES); ?>'>
@@ -271,6 +260,7 @@ foreach ($abilities as $ability) {
                                 <div class="input-group">
                                     <span class="input-group-text bg-body-secondary" id="icon-preview"><i class="fa-solid <?= htmlspecialchars($defaultIconClass); ?>"></i></span>
                                     <input type="text" class="form-control" id="ability-icon" name="icon" list="icon-options" placeholder="e.g., fa-wand-sparkles" required>
+                                    <a class="btn btn-outline-secondary" href="https://fontawesome.com/icons" target="_blank" rel="noreferrer noopener">Browse</a>
                                 </div>
                                 <div class="form-text">Use any Font Awesome class. Start typing to search common options.</div>
                                 <datalist id="icon-options">
