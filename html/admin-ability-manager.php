@@ -151,9 +151,11 @@ foreach ($abilities as $ability) {
                                     <th scope="col" class="sortable" data-sort-key="id">ID <i class="fa-solid ms-1 sort-icon d-none"></i></th>
                                     <th scope="col" class="sortable" data-sort-key="name">Name <i class="fa-solid ms-1 sort-icon d-none"></i></th>
                                     <th scope="col" class="sortable" data-sort-key="prestige_gain">Prestige Gain <i class="fa-solid ms-1 sort-icon d-none"></i></th>
+                                    <th scope="col" class="sortable" data-sort-key="prestige_multiplier">Prestige Multiplier <i class="fa-solid ms-1 sort-icon d-none"></i></th>
                                     <th scope="col" class="sortable" data-sort-key="exp_gain">EXP Gain <i class="fa-solid ms-1 sort-icon d-none"></i></th>
+                                    <th scope="col" class="sortable" data-sort-key="exp_multiplier">EXP Multiplier <i class="fa-solid ms-1 sort-icon d-none"></i></th>
                                     <th scope="col" class="sortable" data-sort-key="level_gain">Level Gain <i class="fa-solid ms-1 sort-icon d-none"></i></th>
-                                    <th scope="col">Modifiers</th>
+                                    <th scope="col" class="sortable" data-sort-key="level_multiplier">Level Multiplier <i class="fa-solid ms-1 sort-icon d-none"></i></th>
                                     <th scope="col">Title Change</th>
                                     <th scope="col" class="text-end">Actions</th>
                                 </tr>
@@ -179,19 +181,25 @@ foreach ($abilities as $ability) {
                                         data-ability-id="<?= (int)$ability->crand; ?>"
                                         data-ability-name="<?= htmlspecialchars(strtolower($ability->name)); ?>"
                                         data-ability-prestige-gain="<?= (int)$ability->prestigeGain; ?>"
+                                        data-ability-prestige-multiplier="<?= htmlspecialchars($ability->prestigeMultiplier); ?>"
                                         data-ability-exp-gain="<?= (int)$ability->expGain; ?>"
+                                        data-ability-exp-multiplier="<?= htmlspecialchars($ability->expMultiplier); ?>"
                                         data-ability-level-gain="<?= (int)$ability->levelGain; ?>"
+                                        data-ability-level-multiplier="<?= htmlspecialchars($ability->levelMultiplier); ?>"
                                     >
                                         <td class="fw-semibold">#<?= (int)$ability->crand; ?></td>
-                                        <td class="fw-semibold"><?= htmlspecialchars($ability->name); ?></td>
-                                        <td><?= (int)$ability->prestigeGain; ?></td>
-                                        <td><?= (int)$ability->expGain; ?></td>
-                                        <td><?= (int)$ability->levelGain; ?></td>
-                                        <td class="small">
-                                            <div class="text-body-secondary">Prestige: <?= $ability->prestigeMultiplier; ?></div>
-                                            <div class="text-body-secondary">EXP: <?= $ability->expMultiplier; ?></div>
-                                            <div class="text-body-secondary">Level: <?= $ability->levelMultiplier; ?></div>
+                                        <td class="fw-semibold">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span class="text-body-secondary"><i class="fa-solid <?= htmlspecialchars($ability->icon ?: $defaultIconClass); ?>"></i></span>
+                                                <span><?= htmlspecialchars($ability->name); ?></span>
+                                            </div>
                                         </td>
+                                        <td><?= (int)$ability->prestigeGain; ?></td>
+                                        <td><?= htmlspecialchars($ability->prestigeMultiplier); ?></td>
+                                        <td><?= (int)$ability->expGain; ?></td>
+                                        <td><?= htmlspecialchars($ability->expMultiplier); ?></td>
+                                        <td><?= (int)$ability->levelGain; ?></td>
+                                        <td><?= htmlspecialchars($ability->levelMultiplier); ?></td>
                                         <td><?= htmlspecialchars($ability->titleChange ?: '—'); ?></td>
                                         <td class="text-end">
                                             <div class="btn-group" role="group">
@@ -417,8 +425,11 @@ foreach ($abilities as $ability) {
             id: 'abilityId',
             name: 'abilityName',
             prestige_gain: 'abilityPrestigeGain',
+            prestige_multiplier: 'abilityPrestigeMultiplier',
             exp_gain: 'abilityExpGain',
+            exp_multiplier: 'abilityExpMultiplier',
             level_gain: 'abilityLevelGain',
+            level_multiplier: 'abilityLevelMultiplier',
         };
 
         let currentSort = { key: 'id', direction: 'asc' };
@@ -426,14 +437,14 @@ foreach ($abilities as $ability) {
         let pageSize = parseInt(pageSizeSelect?.value ?? '10', 10) || 10;
 
         function isNumericKey(key) {
-            return ['id', 'prestige_gain', 'exp_gain', 'level_gain'].includes(key);
+            return ['id', 'prestige_gain', 'prestige_multiplier', 'exp_gain', 'exp_multiplier', 'level_gain', 'level_multiplier'].includes(key);
         }
 
         function getSortableValue(row, key) {
             const datasetKey = DATASET_KEYS[key] ?? key;
             const value = row.dataset[datasetKey] ?? '';
             if (isNumericKey(key)) {
-                return parseInt(value, 10) || 0;
+                return parseFloat(value) || 0;
             }
 
             return value.toString().toLowerCase();
