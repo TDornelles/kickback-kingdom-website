@@ -55,6 +55,7 @@ DROP TABLE IF EXISTS `ability`;
 CREATE TABLE `ability` (
   `Id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(45) NOT NULL,
+  `icon` varchar(64) DEFAULT NULL,
   `desc` varchar(255) NOT NULL,
   `prestige_gain` int(11) NOT NULL DEFAULT 0,
   `prestige_multiplier` decimal(10,2) NOT NULL DEFAULT 0.00,
@@ -63,7 +64,8 @@ CREATE TABLE `ability` (
   `level_gain` int(11) NOT NULL DEFAULT 0,
   `level_multiplier` decimal(10,2) NOT NULL DEFAULT 0.00,
   `title_change` varchar(45) NOT NULL DEFAULT '',
-  PRIMARY KEY (`Id`)
+  PRIMARY KEY (`Id`),
+  UNIQUE KEY `ability_icon_uq` (`icon`)
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
