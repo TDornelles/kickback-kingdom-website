@@ -31,6 +31,13 @@ $alertVariant = '';
 $defaultMedia = vMedia::defaultIcon();
 $defaultMediaId = $defaultMedia->crand;
 $defaultMediaPath = $defaultMedia->getFullPath();
+$defaultAbilityIcon = 'fa-wand-sparkles';
+
+function sanitizeIconClass(string $icon, string $defaultIcon): string
+{
+    $normalized = preg_replace('/[^a-z0-9\-\s]/i', '', trim($icon));
+    return $normalized === '' ? $defaultIcon : $normalized;
+}
 
 function buildItemFromPost(): Item
 {
@@ -130,6 +137,9 @@ $itemAbilityMap = $itemAbilitiesResp->success ? $itemAbilitiesResp->data : [];
 
 $abilityListResp = AbilityController::getAbilityTable();
 $abilityOptions = $abilityListResp->success ? $abilityListResp->data : [];
+foreach ($abilityOptions as $ability) {
+    $ability->icon = sanitizeIconClass($ability->icon ?? '', $defaultAbilityIcon);
+}
 
 $collectionOptions = [];
 foreach ($itemRows as $row) {
@@ -634,20 +644,57 @@ function enumLabel(string $value): string
                                                     <span class="input-group-text"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
                                                     <input type="search" class="form-control" id="ability-search" placeholder="Search abilities">
                                                 </div>
-                                                <div class="border rounded p-3 bg-body-tertiary" style="max-height: 220px; overflow-y: auto;">
+                                                <div class="border rounded p-3 bg-body-tertiary" style="max-height: 280px; overflow-y: auto;">
                                                     <?php if (!empty($abilityOptions)) { ?>
-                                                        <div class="row g-2" id="ability-list">
-                                                            <?php foreach ($abilityOptions as $ability) { ?>
-                                                                <div class="col-md-6 ability-option" data-ability-name="<?= htmlspecialchars(strtolower($ability->name)); ?>">
-                                                                    <div class="form-check">
-                                                                        <input class="form-check-input ability-checkbox" type="checkbox" value="<?= (int)$ability->crand; ?>" id="ability-<?= (int)$ability->crand; ?>" name="ability_ids[]">
-                                                                        <label class="form-check-label" for="ability-<?= (int)$ability->crand; ?>">
-                                                                            <span class="fw-semibold"><?= htmlspecialchars($ability->name); ?></span>
-                                                                            <small class="d-block text-body-secondary">#<?= (int)$ability->crand; ?> • <?= htmlspecialchars($ability->description); ?></small>
-                                                                        </label>
-                                                                    </div>
-                                                                </div>
-                                                            <?php } ?>
+                                                        <div class="table-responsive mb-0">
+                                                            <table class="table table-hover align-middle mb-0" id="ability-selection-table">
+                                                                <thead class="table-light">
+                                                                    <tr>
+                                                                        <th scope="col" style="width: 48px;" class="text-center">Select</th>
+                                                                        <th scope="col">ID</th>
+                                                                        <th scope="col">Name</th>
+                                                                        <th scope="col">Prestige</th>
+                                                                        <th scope="col">EXP</th>
+                                                                        <th scope="col">Level</th>
+                                                                        <th scope="col">Title</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody id="ability-list">
+                                                                    <?php foreach ($abilityOptions as $ability) { ?>
+                                                                        <tr class="ability-option" data-ability-name="<?= htmlspecialchars(strtolower($ability->name)); ?>" data-ability-id="<?= (int)$ability->crand; ?>" data-ability-desc="<?= htmlspecialchars(strtolower($ability->description)); ?>">
+                                                                            <td class="text-center">
+                                                                                <div class="form-check m-0 d-inline-block">
+                                                                                    <input class="form-check-input ability-checkbox" type="checkbox" value="<?= (int)$ability->crand; ?>" id="ability-<?= (int)$ability->crand; ?>" name="ability_ids[]">
+                                                                                    <label class="visually-hidden" for="ability-<?= (int)$ability->crand; ?>">Select ability <?= htmlspecialchars($ability->name); ?></label>
+                                                                                </div>
+                                                                            </td>
+                                                                            <td class="fw-semibold">#<?= (int)$ability->crand; ?></td>
+                                                                            <td>
+                                                                                <div class="d-flex align-items-center gap-2">
+                                                                                    <span class="text-body-secondary"><i class="fa-solid <?= htmlspecialchars($ability->icon ?: $defaultAbilityIcon); ?>"></i></span>
+                                                                                    <div>
+                                                                                        <div class="fw-semibold mb-0"><?= htmlspecialchars($ability->name); ?></div>
+                                                                                        <small class="text-body-secondary">ID #<?= (int)$ability->crand; ?></small>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </td>
+                                                                            <td>
+                                                                                <div class="small">Gain: <?= (int)$ability->prestigeGain; ?></div>
+                                                                                <div class="text-body-secondary small">Mult: <?= htmlspecialchars($ability->prestigeMultiplier); ?></div>
+                                                                            </td>
+                                                                            <td>
+                                                                                <div class="small">Gain: <?= (int)$ability->expGain; ?></div>
+                                                                                <div class="text-body-secondary small">Mult: <?= htmlspecialchars($ability->expMultiplier); ?></div>
+                                                                            </td>
+                                                                            <td>
+                                                                                <div class="small">Gain: <?= (int)$ability->levelGain; ?></div>
+                                                                                <div class="text-body-secondary small">Mult: <?= htmlspecialchars($ability->levelMultiplier); ?></div>
+                                                                            </td>
+                                                                            <td class="text-nowrap"><?= htmlspecialchars($ability->titleChange ?: '—'); ?></td>
+                                                                        </tr>
+                                                                    <?php } ?>
+                                                                </tbody>
+                                                            </table>
                                                         </div>
                                                     <?php } else { ?>
                                                         <p class="text-body-secondary mb-0">No abilities available.</p>
@@ -929,7 +976,10 @@ function enumLabel(string $value): string
             const options = document.querySelectorAll('.ability-option');
             options.forEach((option) => {
                 const abilityName = option.getAttribute('data-ability-name') || '';
-                option.classList.toggle('d-none', !abilityName.includes(query));
+                const abilityId = option.getAttribute('data-ability-id') || '';
+                const abilityDesc = option.getAttribute('data-ability-desc') || '';
+                const matchesQuery = [abilityName, abilityId, abilityDesc].some((value) => value.includes(query));
+                option.classList.toggle('d-none', !matchesQuery);
             });
         }
 
