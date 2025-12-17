@@ -28,6 +28,7 @@ use Kickback\Backend\Models\Trade;
 use Kickback\Backend\Models\CouponPriceComponentLink;
 
 use Kickback\Backend\Models\Enums\CurrencyCode;
+use Kickback\Backend\Models\ForeignRecordId;
 use Kickback\Backend\Models\ProductPriceComponentLink;
 use Kickback\Backend\Models\Transaction;
 use Kickback\Backend\Models\TransactionComponent;
@@ -969,32 +970,57 @@ class StoreController
     {
         $resp = new Response(false, "unkown error in materializing product reservations", null);
 
+        $insertedLootReservations = [];
         try
         {   
             $params = [];
             $valueClause = static::createValueClauseForMaterializeProductReservations($productReservations, $productLootReservations, $params);
             $sql = "INSERT INTO loot_reservation (ctime, crand, ref_loot_ctime, ref_loot_crand, quantity, expiry_time, close_time) $valueClause";
 
-            //throw new Exception(static::interpolateSql($sql, $params));
+            $lootReservationSelectResult = Database::executeSqlQuery($valueClause, $params);
+            if(!$lootReservationSelectResult) throw new Exception("result returned false while attempting to select the inserted reservations for the root products in cart");
+
+            $insertedLootReservations = static::lootReservationsFromResultForMaterializeProductReservations($lootReservationSelectResult);
+
+            static::reserveDescendantLootFromBaseRows($insertedLootReservations);
 
             $result = Database::executeSqlQuery($sql, $params);
 
             if(!$result) throw new Exception("result returned false while attempting to insert loot reservations from materialized product reservations");
+            
+            throw new Exception(json_encode($insertedLootReservations));
+            $materializedLoots = static::getLootFromMaterializedLootReservations($insertedLootReservations);
 
-            static::reserveDescendantLootFromBaseRows($productLootReservations);
-
-            $materializedLoots = static::getLootFromMaterializedLootReservations($productLootReservations);
-
+            throw new Exception("objects : ".json_encode($materializedLoots));
             $resp->success = true;
             $resp->message = "returned materialized loots from product reservations";
             $resp->data = $materializedLoots;
         }
         catch(Exception $e)
         {
+            if(count($insertedLootReservations) > 0) static::removeLootReservations($insertedLootReservations);
+
             throw new Exception("exception caught while materializing product reseravations : $e");
         }
 
         return $resp;
+    }
+
+    private static function lootReservationsFromResultForMaterializeProductReservations(mysqli_result $lootReservationsResult) : array
+    {
+        $lootReservations = [];
+
+        while($row = $lootReservationsResult->fetch_assoc())
+        {
+            $lootReservation = new vLootReservation($row["ctime"], (int)$row["crand"]);
+            $lootReservation->lootId = new ForeignRecordId($row["ref_loot_ctime"], $row["ref_loot_crand"]);
+            $lootReservation->quantity = (int)$row["quantity"];
+            $lootReservation->expiryTime = DateTime::createFromFormat('Y-m-d H:i:s.u', $row['expiry_time']);
+
+            $lootReservations[] = $lootReservation;
+        }
+
+        return $lootReservations;
     }
 
     /**
@@ -1011,8 +1037,9 @@ class StoreController
      *     ...
      *   ]
      */
-    private function reserveDescendantLootFromBaseRows(array &$baseLootReservations) : void
+    private static function reserveDescendantLootFromBaseRows(array &$baseLootReservations) : void
     {
+        
         if (empty($baseLootReservations)) {
             return;
         }
@@ -1030,25 +1057,46 @@ class StoreController
         foreach ($baseLootReservations as $lr) {
             // Expected object shape:
             // $lr->id->ctime, $lr->id->crand, $lr->lootId->crand, $lr->expiryTime (DateTime)
-            if (
-                !isset($lr->id, $lr->id->ctime, $lr->id->crand) ||
-                !isset($lr->lootId, $lr->lootId->crand) ||
-                !($lr->expiryTime instanceof DateTime)
-            ) {
-                throw new InvalidArgumentException("LootReservation missing required fields (id, lootId, expiryTime).");
+            $errors = [];
+
+            if (!isset($lr->ctime)) {
+                $errors[] = 'ctime';
             }
+
+            if (!isset($lr->crand)) {
+                $errors[] = 'crand';
+            }
+
+            if (!isset($lr->lootId)) {
+                $errors[] = 'lootId';
+            } elseif (!isset($lr->lootId->crand)) {
+                $errors[] = 'lootId->crand';
+            }
+
+            if (!($lr->expiryTime instanceof DateTime)) {
+                $errors[] = 'expiryTime (must be DateTime)';
+            }
+
+            if (!empty($errors)) {
+                throw new InvalidArgumentException(
+                    'LootReservation missing or invalid fields: ' . implode(', ', $errors)
+                );
+            }
+
 
             $seedSelects[] = "SELECT ? AS ctime, ? AS crand, ? AS ref_loot_crand, ? AS expiry_time";
 
             // ctime (s), crand (i), ref_loot_crand (i), expiry_time (s)
             // If your crand can exceed PHP int on 32-bit, switch to strings ("ssss") and cast in SQL.
             $types .= "siis";
-            $params[] = (string)$lr->id->ctime;
-            $params[] = (int)$lr->id->crand;
+
+            $id = new RecordId();
+            $params[] = (string)$id->ctime;
+            $params[] = (int)$id->crand;
             $params[] = (int)$lr->lootId->crand;
             $params[] = $lr->expiryTime->format("Y-m-d H:i:s.u");
 
-            $existingKeys[$lr->id->ctime . '|' . $lr->id->crand . '|' . $lr->lootId->crand] = true;
+            $existingKeys[$id->ctime . '|' . $id->crand . '|' . $lr->lootId->crand] = true;
         }
 
         if (empty($seedSelects)) {
@@ -1085,7 +1133,6 @@ class StoreController
                 FROM tree t
                 JOIN loot child
                 ON child.container_loot_id = t.ref_loot_crand
-                WHERE child.removed = 0
                 AND FIND_IN_SET(child.Id, t.path) = 0
             )
             SELECT
@@ -1130,6 +1177,8 @@ class StoreController
             throw new RuntimeException("bind_param failed: " . $stmt->error);
         }
 
+        throw new Exception(static::interpolateSql($insertSql, $params));
+
         if (!$stmt->execute()) {
             throw new RuntimeException("Execute failed: " . $stmt->error);
         }
@@ -1170,18 +1219,9 @@ class StoreController
                 continue; // already in array
             }
 
-            $new = new lootReservation();
+            $new = new vlootReservation($row['ctime'], (int)$row['crand']);
 
-            // IMPORTANT: adjust these field names to match your class.
-            // I'm assuming lootReservation has:
-            // - $new->id (RecordId) for (ctime, crand)
-            // - $new->lootId (RecordId or similar) and you only use ->crand for loot.Id
-            // - $new->expiryTime (DateTime)
-            $new->id = new RecordId();
-            $new->id->ctime = $row['ctime'];
-            $new->id->crand = (int)$row['crand'];
-
-            $new->lootId = new RecordId();
+            $new->lootId = new ForeignRecordId();
             $new->lootId->ctime = '0000-00-00 00:00:00';
             $new->lootId->crand = (int)$row['ref_loot_crand'];
 
@@ -1193,7 +1233,8 @@ class StoreController
                 $new->quantity = 1;
             }
 
-            $baseLootReservations[] = $new;
+            array_push($baseLootReservations, $new);
+            
             $existingKeys[$key] = true;
         }
 
@@ -1279,7 +1320,7 @@ private static function interpolateSql(string $sql, array $params): string
 
     private static function createWhereClauseForGetLootFromMaterializedLootReservations(array $reservations, array &$params) : string
     {
-        if(count($reservations) < 0) throw new InvalidArgumentException("\$reservations array must contain at least one element");
+        if(count($reservations) <= 0) throw new InvalidArgumentException("\$reservations array must contain at least one element");
 
         $whereClause = "";
 
