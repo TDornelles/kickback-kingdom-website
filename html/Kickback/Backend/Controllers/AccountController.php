@@ -1277,7 +1277,7 @@ class AccountController
                 return (new Response(false, 'The host of the quest you are joining ran out of Writs of Passage. Please contact '.$quest->host1->username.'.', null));
             }
 
-            $writ_item_id = $writ['next_item_id'];
+            $writ_item_id = (string)$writ['next_item_id'];
             assert(is_string($writ_item_id));
         }
 
