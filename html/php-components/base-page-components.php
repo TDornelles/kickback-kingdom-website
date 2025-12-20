@@ -995,7 +995,7 @@ if (!Session::isLoggedIn()) {
             </ul>
         </div>
         <!-- Proceed to Checkout Button -->
-        <a class="btn btn-primary w-100" id="offcanvasCheckoutButton" href="<?php echo Version::urlBetaPrefix(); ?>/checkout.php?store-locator=kickback-market">Proceed to Checkout</a>
+        <a class="btn btn-primary w-100" id="offcanvasCheckoutButton" href="<?php echo Version::urlBetaPrefix(); ?>/checkout.php?store-locator=emberwood-market">Proceed to Checkout</a>
     </div>
 
 </div>
@@ -1588,7 +1588,7 @@ if (!Session::isLoggedIn()) {
                             aria-label="Toggle navigation"
                             style="background-color: transparent !important; border-color: transparent;"
                             id="navbarCartButton"
-                            data-store-locator="kickback-market"
+                            data-store-locator="emberwood-market"
                         >
                             <i class="fa-solid fa-cart-shopping"></i>
                             <span
@@ -1770,7 +1770,7 @@ if (!Session::isLoggedIn()) {
 
         const queryParams = new URLSearchParams(window.location.search);
         const storeLocatorQueryParam = queryParams.get('store-locator');
-        const navbarStoreLocator = storeLocatorQueryParam || navbarCartButtonElement?.dataset.storeLocator || 'kickback-market';
+        const navbarStoreLocator = storeLocatorQueryParam || navbarCartButtonElement?.dataset.storeLocator || 'emberwood-market';
 
         if (offcanvasCheckoutButton) {
             const checkoutBaseUrl = `<?= Version::urlBetaPrefix(); ?>/checkout.php`;

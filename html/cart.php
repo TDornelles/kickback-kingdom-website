@@ -7,7 +7,7 @@ require("php-components/base-page-pull-active-account-info.php");
 use \Kickback\Common\Version;
 use \Kickback\Services\Session;
 
-$locator = $_GET["store-locator"] ?? "kickback-market";
+$locator = $_GET["store-locator"] ?? "emberwood-market";
 $isLoggedIn = Session::isLoggedIn();
 ?>
 

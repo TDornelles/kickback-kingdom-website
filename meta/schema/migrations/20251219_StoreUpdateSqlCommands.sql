@@ -35,8 +35,8 @@ select
     account_nominator.Id AS nominator_id,
     large_image.DateCreated AS DateCreated 
 from item i 
-left join media large_image on(i.media_id_large = large_image.Id)
-left join media small_image on(i.media_id_small = small_image.Id)
+left join Media large_image on(i.media_id_large = large_image.Id)
+left join Media small_image on(i.media_id_small = small_image.Id)
 left join account account_artist on(large_image.author_id = account_artist.Id) 
 left join account account_nominator on(i.nominated_by_id = account_nominator.Id);
 
@@ -206,9 +206,9 @@ CREATE TABLE IF NOT EXISTS product
     PRIMARY KEY (ctime, crand),
     
     CONSTRAINT fk_product_ref_store_ctime_crand_store_ctime_crand FOREIGN KEY (ref_store_ctime, ref_store_crand) REFERENCES store(ctime, crand),
-    CONSTRAINT fk_product_ref_media_id_large_media_id FOREIGN KEY (ref_media_id_large) REFERENCES media(id),
-    CONSTRAINT fk_product_ref_media_id_small_media_id FOREIGN KEY (ref_media_id_small) REFERENCES media(id),
-    CONSTRAINT fk_product_ref_media_id_back_media_id FOREIGN KEY (ref_media_id_back) REFERENCES media(id)
+    CONSTRAINT fk_product_ref_media_id_large_media_id FOREIGN KEY (ref_media_id_large) REFERENCES Media(id),
+    CONSTRAINT fk_product_ref_media_id_small_media_id FOREIGN KEY (ref_media_id_small) REFERENCES Media(id),
+    CONSTRAINT fk_product_ref_media_id_back_media_id FOREIGN KEY (ref_media_id_back) REFERENCES Media(id)
 );
 
 CREATE TABLE IF NOT EXISTS product_loot_link (
