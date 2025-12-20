@@ -120,7 +120,8 @@ class StoreController
 
             if(!$canAccountAffordItempriceResp->data) 
             {
-                $resp->message = "Account cannot afford item price to checkout cart : $canAccountAffordItempriceResp->message"; 
+                $resp->message = "Account cannot afford item price to checkout cart"; 
+                $resp->data = false;
                 return $resp; 
             }
 
