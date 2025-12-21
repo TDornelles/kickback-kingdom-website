@@ -783,6 +783,13 @@ class StoreService
 
         if(!$checkoutCartResp->success)
         {
+            if(!is_null($checkoutCartResp->data) && $checkoutCartResp->data == false)
+            {
+                $resp->message = "You don't have the required loot to checkout these products!";
+                $resp->data = false;
+                return 403;
+            }
+
             $resp->message = "Failed to checkout cart : $checkoutCartResp->message";
             return 500;
         }

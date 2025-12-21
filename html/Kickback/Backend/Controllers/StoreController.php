@@ -28,6 +28,7 @@ use Kickback\Backend\Models\Trade;
 use Kickback\Backend\Models\CouponPriceComponentLink;
 
 use Kickback\Backend\Models\Enums\CurrencyCode;
+use Kickback\Backend\Models\ForeignRecordId;
 use Kickback\Backend\Models\ProductPriceComponentLink;
 use Kickback\Backend\Models\Transaction;
 use Kickback\Backend\Models\TransactionComponent;
@@ -119,7 +120,8 @@ class StoreController
 
             if(!$canAccountAffordItempriceResp->data) 
             {
-                $resp->message = "Account cannot afford item price to checkout cart : $canAccountAffordItempriceResp->message"; 
+                $resp->message = "Account cannot afford item price to checkout cart"; 
+                $resp->data = false;
                 return $resp; 
             }
 
@@ -969,19 +971,26 @@ class StoreController
     {
         $resp = new Response(false, "unkown error in materializing product reservations", null);
 
+        $insertedLootReservations = [];
+        $newLootReservations = [];
         try
         {   
             $params = [];
             $valueClause = static::createValueClauseForMaterializeProductReservations($productReservations, $productLootReservations, $params);
             $sql = "INSERT INTO loot_reservation (ctime, crand, ref_loot_ctime, ref_loot_crand, quantity, expiry_time, close_time) $valueClause";
 
-            //throw new Exception(static::interpolateSql($sql, $params));
+            $lootReservationSelectResult = Database::executeSqlQuery($valueClause, $params);
+            if(!$lootReservationSelectResult) throw new Exception("result returned false while attempting to select the inserted reservations for the root products in cart");
+
+            $insertedLootReservations = static::lootReservationsFromResultForMaterializeProductReservations($lootReservationSelectResult);
+
+            $newLootReservations = static::reserveDescendantLootFromBaseRows($insertedLootReservations);
 
             $result = Database::executeSqlQuery($sql, $params);
 
             if(!$result) throw new Exception("result returned false while attempting to insert loot reservations from materialized product reservations");
-
-            $materializedLoots = static::getLootFromMaterializedLootReservations($productLootReservations);
+            
+            $materializedLoots = static::getLootFromMaterializedLootReservations($insertedLootReservations);
 
             $resp->success = true;
             $resp->message = "returned materialized loots from product reservations";
@@ -989,11 +998,315 @@ class StoreController
         }
         catch(Exception $e)
         {
+            if(count($newLootReservations) > 0) static::removeLootReservations($newLootReservations);
+
             throw new Exception("exception caught while materializing product reseravations : $e");
         }
 
         return $resp;
     }
+
+    private static function lootReservationsFromResultForMaterializeProductReservations(mysqli_result $lootReservationsResult) : array
+    {
+        $lootReservations = [];
+
+        while($row = $lootReservationsResult->fetch_assoc())
+        {
+            $lootReservation = new vLootReservation($row["ctime"], (int)$row["crand"]);
+            $lootReservation->lootId = new ForeignRecordId($row["ref_loot_ctime"], $row["ref_loot_crand"]);
+            $lootReservation->quantity = (int)$row["quantity"];
+            $lootReservation->expiryTime = DateTime::createFromFormat('Y-m-d H:i:s.u', $row['expiry_time']);
+
+            $lootReservations[] = $lootReservation;
+        }
+
+        return $lootReservations;
+    }
+
+    /**
+     * Given base loot reservations (each row has ctime, crand, ref_loot_crand, expiry_time),
+     * insert additional loot_reservation rows for all descendant loot where
+     * loot.container_loot_id eventually leads to the base ref_loot_crand.
+     *
+     * Requires MySQL 8.0+ (WITH RECURSIVE).
+     *
+     * @param mysqli $conn
+     * @param array $baseRows Array of associative arrays:
+     *   [
+     *     ['ctime' => '2025-12-12 10:00:00.123456', 'crand' => '123', 'ref_loot_crand' => 768, 'expiry_time' => '...'],
+     *     ...
+     *   ]
+     */
+    private static function reserveDescendantLootFromBaseRows(array &$baseLootReservations) : array
+    {
+        $newInsertedReservations = [];
+
+        if (empty($baseLootReservations)) {
+            return $newInsertedReservations;
+        }
+
+        // Existing loot ids already reserved in the input array (lootId->crand is what matters / unique).
+        $existingLootIds = [];
+
+        // Seed table: root_loot_id + expiry_time (carry expiry to descendants).
+        $seedSelects = [];
+        $seedParams  = [];
+        $seedTypes   = "";
+
+        foreach ($baseLootReservations as $lr) {
+            $errors = [];
+
+            if (!isset($lr->lootId) || !isset($lr->lootId->crand)) {
+                $errors[] = 'lootId->crand';
+            }
+            if (!($lr->expiryTime instanceof DateTime)) {
+                $errors[] = 'expiryTime (must be DateTime)';
+            }
+
+            if (!empty($errors)) {
+                throw new InvalidArgumentException(
+                    'LootReservation missing or invalid fields: ' . implode(', ', $errors)
+                );
+            }
+
+            $lootId = (int)$lr->lootId->crand;
+            $existingLootIds[(string)$lootId] = true;
+
+            $seedSelects[] = "SELECT ? AS root_loot_id, ? AS expiry_time";
+            $seedTypes    .= "is";
+            $seedParams[]  = $lootId;
+            $seedParams[]  = $lr->expiryTime->format("Y-m-d H:i:s.u");
+        }
+
+        if (empty($seedSelects)) {
+            return $newInsertedReservations;
+        }
+
+        $seedTableSql = implode(" UNION ALL ", $seedSelects);
+
+        // 1) Discover descendants (exclude the roots themselves)
+        $descendantsSql = "
+            WITH RECURSIVE
+            seed AS (
+                $seedTableSql
+            ),
+            tree AS (
+                SELECT
+                    s.root_loot_id,
+                    s.expiry_time,
+                    s.root_loot_id AS loot_id,
+                    CAST(s.root_loot_id AS CHAR(2000)) AS path
+                FROM seed s
+
+                UNION ALL
+
+                SELECT
+                    t.root_loot_id,
+                    t.expiry_time,
+                    child.Id AS loot_id,
+                    CONCAT(t.path, ',', child.Id) AS path
+                FROM tree t
+                JOIN loot child
+                ON child.container_loot_id = t.loot_id
+                AND FIND_IN_SET(child.Id, t.path) = 0
+            )
+            SELECT
+                t.loot_id AS ref_loot_crand,
+                MIN(t.expiry_time) AS expiry_time
+            FROM tree t
+            WHERE t.loot_id <> t.root_loot_id
+            GROUP BY t.loot_id
+        ";
+
+        $conn = Database::getConnection();
+
+        $stmt = $conn->prepare($descendantsSql);
+        if (!$stmt) {
+            throw new RuntimeException("Prepare failed (descendantsSql): " . $conn->error);
+        }
+
+        $bindArgs = [$seedTypes];
+        foreach ($seedParams as $k => $v) {
+            $bindArgs[] = &$seedParams[$k];
+        }
+        if (!call_user_func_array([$stmt, 'bind_param'], $bindArgs)) {
+            throw new RuntimeException("bind_param failed (descendantsSql): " . $stmt->error);
+        }
+        if (!$stmt->execute()) {
+            throw new RuntimeException("Execute failed (descendantsSql): " . $stmt->error);
+        }
+
+        $result = $stmt->get_result();
+        if (!$result) {
+            throw new RuntimeException("get_result() failed (enable mysqlnd): " . $stmt->error);
+        }
+
+        $descendants = [];
+        while ($row = $result->fetch_assoc()) {
+            $lootId = (int)$row['ref_loot_crand'];
+
+            // Only add descendants not already present in the input array
+            if (isset($existingLootIds[(string)$lootId])) {
+                continue;
+            }
+
+            $descendants[] = [
+                'ref_loot_crand' => $lootId,
+                'expiry_time'    => $row['expiry_time'],
+            ];
+        }
+        $stmt->close();
+
+        if (empty($descendants)) {
+            return $newInsertedReservations;
+        }
+
+        // 2) Build ONE INSERT for those descendant loots,
+        // and keep a list of the NEW ids we attempted to insert.
+        $insertSelects = [];
+        $insertParams  = [];
+        $insertTypes   = "";
+
+        // attempted rows keyed by lootId => [ctime, crand, expiry_time]
+        $attemptedByLootId = [];
+
+        foreach ($descendants as $d) {
+            $id = new RecordId(); // new reservation id per inserted row
+            $lootId = (int)$d['ref_loot_crand'];
+
+            $attemptedByLootId[(string)$lootId] = [
+                'ctime'       => (string)$id->ctime,
+                'crand'       => (int)$id->crand,
+                'expiry_time' => (string)$d['expiry_time'],
+            ];
+
+            $insertSelects[] = "
+                SELECT
+                    ? AS ctime,
+                    ? AS crand,
+                    '0000-00-00 00:00:00' AS ref_loot_ctime,
+                    ? AS ref_loot_crand,
+                    1 AS quantity,
+                    ? AS expiry_time,
+                    NULL AS close_time
+            ";
+
+            // ctime(s), crand(i), ref_loot_crand(i), expiry_time(s)
+            $insertTypes    .= "siis";
+            $insertParams[]  = (string)$id->ctime;
+            $insertParams[]  = (int)$id->crand;
+            $insertParams[]  = $lootId;
+            $insertParams[]  = (string)$d['expiry_time'];
+        }
+
+        $insertSql = "
+            INSERT IGNORE INTO loot_reservation
+                (ctime, crand, ref_loot_ctime, ref_loot_crand, quantity, expiry_time, close_time)
+            " . implode(" UNION ALL ", $insertSelects);
+
+        $stmt2 = $conn->prepare($insertSql);
+        if (!$stmt2) {
+            throw new RuntimeException("Prepare failed (insertSql): " . $conn->error);
+        }
+
+        $bindArgs2 = [$insertTypes];
+        foreach ($insertParams as $k => $v) {
+            $bindArgs2[] = &$insertParams[$k];
+        }
+        if (!call_user_func_array([$stmt2, 'bind_param'], $bindArgs2)) {
+            throw new RuntimeException("bind_param failed (insertSql): " . $stmt2->error);
+        }
+
+        if (!$stmt2->execute()) {
+            throw new RuntimeException("Execute failed (insertSql): " . $stmt2->error);
+        }
+        $stmt2->close();
+
+        // 3) Confirm which rows actually got inserted by selecting back the attempted (ctime, crand).
+        $idSelects = [];
+        $idParams  = [];
+        $idTypes   = "";
+
+        foreach ($attemptedByLootId as $lootIdStr => $a) {
+            $idSelects[] = "SELECT ? AS ctime, ? AS crand, ? AS ref_loot_crand";
+            $idTypes    .= "sii";
+            $idParams[]  = $a['ctime'];
+            $idParams[]  = $a['crand'];
+            $idParams[]  = (int)$lootIdStr;
+        }
+
+        $idTableSql = implode(" UNION ALL ", $idSelects);
+
+        $confirmSql = "
+            SELECT
+                lr.ctime,
+                lr.crand,
+                lr.ref_loot_crand,
+                lr.expiry_time
+            FROM loot_reservation lr
+            JOIN (
+                $idTableSql
+            ) x
+            ON x.ctime = lr.ctime
+            AND x.crand = lr.crand
+            AND x.ref_loot_crand = lr.ref_loot_crand
+        ";
+
+        $stmt3 = $conn->prepare($confirmSql);
+        if (!$stmt3) {
+            throw new RuntimeException("Prepare failed (confirmSql): " . $conn->error);
+        }
+
+        $bindArgs3 = [$idTypes];
+        foreach ($idParams as $k => $v) {
+            $bindArgs3[] = &$idParams[$k];
+        }
+        if (!call_user_func_array([$stmt3, 'bind_param'], $bindArgs3)) {
+            throw new RuntimeException("bind_param failed (confirmSql): " . $stmt3->error);
+        }
+
+        if (!$stmt3->execute()) {
+            throw new RuntimeException("Execute failed (confirmSql): " . $stmt3->error);
+        }
+
+        $result3 = $stmt3->get_result();
+        if (!$result3) {
+            throw new RuntimeException("get_result() failed (confirmSql): " . $stmt3->error);
+        }
+
+        // 4) Add NEW records to the input array AND also return them
+        while ($row = $result3->fetch_assoc()) {
+            $lootId = (int)$row['ref_loot_crand'];
+
+            // obey your uniqueness rule: lootId is unique for the array
+            if (isset($existingLootIds[(string)$lootId])) {
+                continue;
+            }
+
+            $new = new vLootReservation($row['ctime'], (int)$row['crand']);
+            $new->lootId = new ForeignRecordId('0000-00-00 00:00:00', $lootId);
+
+            $new->expiryTime = DateTime::createFromFormat("Y-m-d H:i:s.u", $row['expiry_time'])
+                ?: new DateTime($row['expiry_time']);
+
+            if (property_exists($new, 'quantity')) {
+                $new->quantity = 1;
+            }
+
+            $baseLootReservations[] = $new;
+            $newInsertedReservations[] = $new;
+
+            $existingLootIds[(string)$lootId] = true;
+        }
+
+        $stmt3->close();
+
+        return $newInsertedReservations;
+    }
+
+
+
+
 
     /**
  * Reconstructs the SQL by replacing each ? with the quoted parameter value.
@@ -1072,7 +1385,7 @@ private static function interpolateSql(string $sql, array $params): string
 
     private static function createWhereClauseForGetLootFromMaterializedLootReservations(array $reservations, array &$params) : string
     {
-        if(count($reservations) < 0) throw new InvalidArgumentException("\$reservations array must contain at least one element");
+        if(count($reservations) <= 0) throw new InvalidArgumentException("\$reservations array must contain at least one element");
 
         $whereClause = "";
 
