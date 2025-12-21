@@ -23,6 +23,7 @@ class Database {
             assert(is_string($username));
             assert(is_string($password));
             assert(is_string($database));
+            mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
             // Attempting to establish a database connection
             self::$conn = new \mysqli($servername, $username, $password, $database);
@@ -38,10 +39,14 @@ class Database {
                 throw new \Exception("Error setting charset: " . self::$conn->error);
             }
             
-            // Set the collation to utf8mb4_unicode_ci for consistency
-            if (!self::$conn->query("SET collation_connection = 'utf8mb4_unicode_ci'")) {
-                throw new \Exception("Error setting collation: " . self::$conn->error);
+
+            if (!self::$conn->query("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci")) {
+                throw new \Exception("Error setting names/collation: " . self::$conn->error);
             }
+            // Set the collation to utf8mb4_unicode_ci for consistency
+            /*if (!self::$conn->query("SET collation_connection = 'utf8mb4_unicode_ci'")) {
+                throw new \Exception("Error setting collation: " . self::$conn->error);
+            }*/
         }
 
         return self::$conn;

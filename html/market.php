@@ -23,7 +23,7 @@ $cart = null;
 
 
 $account = Session::getCurrentAccount();
-$locator = $_GET["store-locator"] ?? "kickback-market";
+$locator = $_GET["store-locator"] ?? "emberwood-market";
 
 $storeResp = StoreController::getStoreByLocator($locator);
 if (!$storeResp || !$storeResp->success || empty($storeResp->data)) {
@@ -580,15 +580,6 @@ if (Session::isLoggedIn()) {
       ?>
     </div>
   </div>
-
-  <div class="row">
-    <div class="col-12">
-      <button id="open-store-json" class="btn btn-primary">
-        Open Store JSON
-      </button>
-    </div>
-  </div>
-
 
   <div class="row">
     <div class="col-12">
