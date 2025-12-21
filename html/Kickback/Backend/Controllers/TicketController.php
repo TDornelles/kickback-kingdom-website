@@ -762,9 +762,9 @@ class TicketController
         return substr($validated, 0, 45);
     }
 
-    private static function normalizeUserAgent(mixed $input): ?string
+    private static function normalizeUserAgent(mixed $input): ?string 
     {
-        if (is_null($input)) {
+        if ($input === null) {
             return null;
         }
 
@@ -773,8 +773,10 @@ class TicketController
             return null;
         }
 
-        return mb_substr($userAgent, 0, 255);
+        // Call global function explicitly
+        return \mb_substr($userAgent, 0, 255);
     }
+
 
     private static function normalizePriority(mixed $input): ?int
     {

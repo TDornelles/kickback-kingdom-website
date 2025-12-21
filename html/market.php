@@ -583,15 +583,6 @@ if (Session::isLoggedIn()) {
 
   <div class="row">
     <div class="col-12">
-      <button id="open-store-json" class="btn btn-primary">
-        Open Store JSON
-      </button>
-    </div>
-  </div>
-
-
-  <div class="row">
-    <div class="col-12">
       <section class="emberwood-store theme-default">
         <header class="store-header">
           <img src="/assets/images/store/store-logo.png" class="store-logo" alt="Emberwood Trading Company">
