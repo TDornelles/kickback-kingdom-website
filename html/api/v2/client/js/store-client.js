@@ -289,10 +289,6 @@ class StoreClient {
                 body: JSON.stringify(bodyData)
             });
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-
             const data = await response.text();
             let jsonData;
             
@@ -300,6 +296,15 @@ class StoreClient {
                 jsonData = JSON.parse(data);
             } catch (parseError) {
                 throw new Error('Invalid JSON response from server');
+            }
+
+            if (!response.ok) {
+                if(response.status == 403 && jsonData.data === false)
+                {
+                    throw new Error(jsonData.message);
+                }
+
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
 
             if (!jsonData.success) {
