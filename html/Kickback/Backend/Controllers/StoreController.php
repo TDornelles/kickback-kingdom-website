@@ -3484,8 +3484,8 @@ private static function interpolateSql(string $sql, array $params): string
             $params = [
                 $cartProductLink->ctime, 
                 $cartProductLink->crand, 
-                $cartProductLink->removed, 
-                $cartProductLink->checkedOut, 
+                0, 
+                0, 
                 $cartProductLink->cartId->ctime, 
                 $cartProductLink->cartId->crand, 
                 $cartProductLink->productId->ctime, 
