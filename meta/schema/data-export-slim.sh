@@ -12,7 +12,7 @@ KKDB_EXPORT_PATH="${KKDB_EXPORT_PATH:-$HOME/kickback-kingdom-slim-database-backu
 KKDB_USER_NAME="${KKDB_USER_NAME:-root}"
 KKDB_DATABASE_NAME="${KKDB_DATABASE_NAME:-kickbackdb}"
 
-STRUCTURE_ONLY_TABLES="analytics share_purchase merchant_share_statement ticket ticket_assignment ticket_attachment ticket_category ticket_comment ticket_tag transaction"
+STRUCTURE_ONLY_TABLES="analytic share_purchase merchant_share_statement interest_payments ticket ticket_assignment ticket_attachment ticket_category ticket_comment ticket_tag transaction transaction_component"
 
 if [ -f "$KKDB_EXPORT_PATH" ]; then
     # Try to get last-modified timestamp off of existing file.
