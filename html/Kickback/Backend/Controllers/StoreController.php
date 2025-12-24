@@ -3622,7 +3622,7 @@ private static function interpolateSql(string $sql, array $params): string
             $selectSql = "SELECT
                 ".static::$columnsInCartView."
                 FROM v_cart
-                WHERE account_crand = ? AND store_ctime = ? AND store_crand = ?;
+                WHERE account_crand = ? AND store_ctime = ? AND store_crand = ? AND checked_out = 0 AND void = 0;
             ";
 
             $params = [$accountId->crand, $storeId->ctime, $storeId->crand];
