@@ -1692,6 +1692,21 @@ if (!Session::isLoggedIn()) {
                             </a>
                         </li>
                         <li>
+                            <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/admin-loot-grant.php">
+                                <i class="nav-icon fa-solid fa-gift"></i> Loot Grant
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/admin-shipment-pool.php">
+                                <i class="nav-icon fa-solid fa-boxes-stacked"></i> Shipment Pool
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/admin-item-manager.php">
+                                <i class="nav-icon fa-solid fa-box-open"></i> Item Manager
+                            </a>
+                        </li>
+                        <li>
                             <a class="dropdown-item" href="#" onclick="OpenSelectAccountModal(null,'UseDelegateAccess')">
                                 <i class="nav-icon fa-solid fa-eye"></i> Delegate Access
                             </a>
