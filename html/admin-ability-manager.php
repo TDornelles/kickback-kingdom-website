@@ -279,27 +279,27 @@ foreach ($abilities as $ability) {
                             </div>
                             <div class="col-md-3">
                                 <label for="ability-prestige-gain" class="form-label">Prestige Gain</label>
-                                <input type="number" class="form-control" id="ability-prestige-gain" name="prestige_gain" value="0" min="0" required>
+                                <input type="number" class="form-control" id="ability-prestige-gain" name="prestige_gain" value="0" required>
                             </div>
                             <div class="col-md-3">
                                 <label for="ability-prestige-multiplier" class="form-label">Prestige Multiplier</label>
-                                <input type="number" step="0.01" class="form-control" id="ability-prestige-multiplier" name="prestige_multiplier" value="0" min="0" required>
+                                <input type="number" step="0.01" class="form-control" id="ability-prestige-multiplier" name="prestige_multiplier" value="0" required>
                             </div>
                             <div class="col-md-3">
                                 <label for="ability-exp-gain" class="form-label">EXP Gain</label>
-                                <input type="number" class="form-control" id="ability-exp-gain" name="exp_gain" value="0" min="0" required>
+                                <input type="number" class="form-control" id="ability-exp-gain" name="exp_gain" value="0" required>
                             </div>
                             <div class="col-md-3">
                                 <label for="ability-exp-multiplier" class="form-label">EXP Multiplier</label>
-                                <input type="number" step="0.01" class="form-control" id="ability-exp-multiplier" name="exp_multiplier" value="0" min="0" required>
+                                <input type="number" step="0.01" class="form-control" id="ability-exp-multiplier" name="exp_multiplier" value="0" required>
                             </div>
                             <div class="col-md-3">
                                 <label for="ability-level-gain" class="form-label">Level Gain</label>
-                                <input type="number" class="form-control" id="ability-level-gain" name="level_gain" value="0" min="0" required>
+                                <input type="number" class="form-control" id="ability-level-gain" name="level_gain" value="0" required>
                             </div>
                             <div class="col-md-3">
                                 <label for="ability-level-multiplier" class="form-label">Level Multiplier</label>
-                                <input type="number" step="0.01" class="form-control" id="ability-level-multiplier" name="level_multiplier" value="0" min="0" required>
+                                <input type="number" step="0.01" class="form-control" id="ability-level-multiplier" name="level_multiplier" value="0" required>
                             </div>
                         </div>
                     </div>
