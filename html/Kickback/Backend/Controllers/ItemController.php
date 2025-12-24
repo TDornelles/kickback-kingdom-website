@@ -385,6 +385,31 @@ class ItemController
     public static function updateItem(Item $item): Response {
         $conn = Database::getConnection();
 
+        $requiresUniqueLootCheck = $item->type === ItemType::Unique || $item->rarity === ItemRarity::Unique;
+
+        if ($requiresUniqueLootCheck) {
+            $lootCountStmt = $conn->prepare('SELECT COUNT(*) AS loot_count FROM loot WHERE item_id = ?');
+            if (!$lootCountStmt) {
+                return new Response(false, 'Failed to validate item uniqueness: ' . $conn->error);
+            }
+
+            $lootCountStmt->bind_param('i', $item->crand);
+            if (!$lootCountStmt->execute()) {
+                $error = $lootCountStmt->error;
+                $lootCountStmt->close();
+                return new Response(false, 'Failed to validate item uniqueness: ' . $error);
+            }
+
+            $lootCountRow = $lootCountStmt->get_result()->fetch_assoc();
+            $lootCountStmt->close();
+
+            $lootCount = (int)($lootCountRow['loot_count'] ?? 0);
+
+            if ($lootCount > 1) {
+                return new Response(false, "Cannot mark this item as unique because {$lootCount} loot records already exist for it.");
+            }
+        }
+
         $sql = "
             UPDATE item
             SET
