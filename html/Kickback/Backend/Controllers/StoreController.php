@@ -5941,7 +5941,7 @@ private static function interpolateSql(string $sql, array $params): string
             $cartProductId = $pair["cartProductId"];
             $priceComponent = $pair["priceComponent"];
 
-            $link = new recordId();
+            $link = new RecordId();
 
             array_push($params, $link->ctime, $link->crand, $cartProductId->ctime, $cartProductId->crand, $priceComponent->ctime, $priceComponent->crand);
 
