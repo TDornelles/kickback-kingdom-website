@@ -2155,15 +2155,15 @@ private static function interpolateSql(string $sql, array $params): string
             *  [4] - $reservation->productId->ctime
             *  [5] - $reservation->productId->crand
             *  [6] - $reservation->quantity
-            *  [7] - $reservation->expiryTime?->format("Y-m-d H:i:s:u")
-            *  [8] - $reservation->closeTime?->format("Y-m-d H:i:s:u")
+            *  [7] - $reservation->expiryTime?->format("Y-m-d H:i:s.u")
+            *  [8] - $reservation->closeTime?->format("Y-m-d H:i:s.u")
             */
 
             $cartId = new vRecordId($params[$i+2],$params[$i+3]);
             $productId = new vRecordId($params[$i+4],$params[$i+5]);
             $quantity = $params[$i+6];
-            $expiryTime = is_null($params[$i+7]) ? null : DateTime::createFromFormat("Y-m-d H:i:s:u", $params[$i+7]);
-            $closeTime = is_null($params[$i+8]) ? null : DateTime::createFromFormat("Y-m-d H:i:s:u", $params[$i+8]);
+            $expiryTime = is_null($params[$i+7]) ? null : DateTime::createFromFormat("Y-m-d H:i:s.u", $params[$i+7]);
+            $closeTime = is_null($params[$i+8]) ? null : DateTime::createFromFormat("Y-m-d H:i:s.u", $params[$i+8]);
 
             $reservation = new vProductReservation(
                 $params[$i],
