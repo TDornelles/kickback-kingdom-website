@@ -26,8 +26,8 @@ if [ -f "$KKDB_EXPORT_PATH" ]; then
     mv "$KKDB_EXPORT_PATH" "$KKDB_EXPORT_PATH.$KKDB_TIMESTAMP"
 fi
 
-KKDB_DATA_ARGS="--single-transaction --add-drop-database --add-drop-trigger --comments --complete-insert --default-character-set=utf8mb4 --events --log-error --opt --routines --triggers --skip-compact"
-KKDB_SCHEMA_ONLY_ARGS="--single-transaction --add-drop-trigger --comments --complete-insert --default-character-set=utf8mb4 --log-error --opt --triggers --skip-compact --no-data"
+KKDB_SCHEMA_ONLY_ARGS="--single-transaction --add-drop-database --add-drop-trigger --comments --complete-insert --default-character-set=utf8mb4 --events --log-error --opt --routines --triggers --skip-compact --no-data"
+KKDB_DATA_ARGS="--single-transaction --comments --complete-insert --default-character-set=utf8mb4 --log-error --opt --skip-compact --no-create-info --skip-triggers --skip-events --skip-routines --no-create-db"
 
 IGNORE_TABLE_ARGS=""
 for table in $STRUCTURE_ONLY_TABLES; do
@@ -35,24 +35,24 @@ for table in $STRUCTURE_ONLY_TABLES; do
 done
 
 echo "Slim export of database '$KKDB_DATABASE_NAME' will now begin."
-echo "Step 1: Exporting database with data, excluding rows for: $STRUCTURE_ONLY_TABLES"
-echo "mysqldump --user=\"$KKDB_USER_NAME\" $KKDB_DATA_ARGS --databases \"$KKDB_DATABASE_NAME\" $IGNORE_TABLE_ARGS --password > \"$KKDB_EXPORT_PATH\""
-mysqldump --user="$KKDB_USER_NAME" $KKDB_DATA_ARGS --databases "$KKDB_DATABASE_NAME" $IGNORE_TABLE_ARGS --password > "$KKDB_EXPORT_PATH"
+echo "Step 1: Exporting full schema (no data) so all tables exist before views/routines."
+echo "mysqldump --user=\"$KKDB_USER_NAME\" $KKDB_SCHEMA_ONLY_ARGS --databases \"$KKDB_DATABASE_NAME\" --password > \"$KKDB_EXPORT_PATH\""
+mysqldump --user="$KKDB_USER_NAME" $KKDB_SCHEMA_ONLY_ARGS --databases "$KKDB_DATABASE_NAME" --password > "$KKDB_EXPORT_PATH"
 retcode="$?"
 
 if [ "0" -ne "$retcode" ]; then
-    echo "ERROR: Initial export failed with code $retcode. Aborting."
+    echo "ERROR: Initial schema export failed with code $retcode. Aborting."
     exit "$retcode"
 fi
 
-echo "Step 2: Appending schema-only definitions for: $STRUCTURE_ONLY_TABLES"
-echo "mysqldump --user=\"$KKDB_USER_NAME\" $KKDB_SCHEMA_ONLY_ARGS \"$KKDB_DATABASE_NAME\" $STRUCTURE_ONLY_TABLES --password >> \"$KKDB_EXPORT_PATH\""
-mysqldump --user="$KKDB_USER_NAME" $KKDB_SCHEMA_ONLY_ARGS "$KKDB_DATABASE_NAME" $STRUCTURE_ONLY_TABLES --password >> "$KKDB_EXPORT_PATH"
+echo "Step 2: Appending data for tables (excluding structure-only tables): $STRUCTURE_ONLY_TABLES"
+echo "mysqldump --user=\"$KKDB_USER_NAME\" $KKDB_DATA_ARGS --databases \"$KKDB_DATABASE_NAME\" $IGNORE_TABLE_ARGS --password >> \"$KKDB_EXPORT_PATH\""
+mysqldump --user="$KKDB_USER_NAME" $KKDB_DATA_ARGS --databases "$KKDB_DATABASE_NAME" $IGNORE_TABLE_ARGS --password >> "$KKDB_EXPORT_PATH"
 retcode="$?"
 
 if [ "0" -eq "$retcode" ]; then
     if [ -f "$KKDB_EXPORT_PATH" ]; then
-        echo "Slim database export (with schema-only tables) successfully written to '$KKDB_EXPORT_PATH'"
+        echo "Slim database export (schema first, then data) successfully written to '$KKDB_EXPORT_PATH'"
     else
         echo "ERROR: 'mysqldump' reports success, but no file was written to '$KKDB_EXPORT_PATH'"
         exit 1
