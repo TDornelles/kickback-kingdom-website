@@ -57,10 +57,6 @@ class AbilityController
             if (!is_numeric($value)) {
                 return "Invalid value for {$label}.";
             }
-
-            if ($value < 0) {
-                return ucfirst($label) . ' cannot be negative.';
-            }
         }
 
         if (strlen($ability->titleChange) > 45) {
