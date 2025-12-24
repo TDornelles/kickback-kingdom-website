@@ -9,6 +9,7 @@ use Kickback\Backend\Models\Response;
 use Kickback\Backend\Views\vAbility;
 use Kickback\Backend\Views\vRecordId;
 use Kickback\Services\Database;
+use mysqli_sql_exception;
 
 class AbilityController
 {
@@ -161,10 +162,16 @@ class AbilityController
             $ability->titleChange
         );
 
-        if (!$stmt->execute()) {
-            $error = $stmt->error;
+        try {
+            $stmt->execute();
+        } catch (mysqli_sql_exception $e) {
+            $errorMessage = 'Failed to create ability: ' . $e->getMessage();
+            if ($e->getCode() === 1062) {
+                $errorMessage = 'An ability with that icon already exists. Please choose a different icon.';
+            }
+
             $stmt->close();
-            return new Response(false, 'Failed to create ability: ' . $error);
+            return new Response(false, $errorMessage);
         }
 
         $newId = (int)$conn->insert_id;
@@ -220,10 +227,16 @@ class AbilityController
             $ability->crand
         );
 
-        if (!$stmt->execute()) {
-            $error = $stmt->error;
+        try {
+            $stmt->execute();
+        } catch (mysqli_sql_exception $e) {
+            $errorMessage = 'Failed to update ability: ' . $e->getMessage();
+            if ($e->getCode() === 1062) {
+                $errorMessage = 'An ability with that icon already exists. Please choose a different icon.';
+            }
+
             $stmt->close();
-            return new Response(false, 'Failed to update ability: ' . $error);
+            return new Response(false, $errorMessage);
         }
 
         $affected = $stmt->affected_rows;
