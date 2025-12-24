@@ -25,6 +25,7 @@ class LootReservation extends RecordId
         parent::__construct();
 
         $this->lootId = is_null($lootId) ?  null : $lootId->getForeignRecordId();
+        $this->lootId->ctime = "0000-00-00 00:00:00";
 
         $this->quantity = is_null($quantity) ? 1 : $quantity;
 
