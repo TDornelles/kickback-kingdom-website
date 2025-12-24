@@ -3602,7 +3602,7 @@ private static function interpolateSql(string $sql, array $params): string
         WHERE NOT EXISTS (
             SELECT 1
             FROM cart
-            WHERE ref_account_crand = ? AND ref_store_ctime = ? AND ref_store_crand = ?
+            WHERE ref_account_crand = ? AND ref_store_ctime = ? AND ref_store_crand = ? AND checked_out = 0 AND void = 0
         );";
 
         $params = [$cart->ctime, $cart->crand, $accountId->ctime, $accountId->crand, $storeId->ctime, $storeId->crand, $accountId->crand, $storeId->ctime, $storeId->crand];
