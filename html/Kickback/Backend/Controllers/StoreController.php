@@ -1514,7 +1514,7 @@ private static function interpolateSql(string $sql, array $params): string
     {
         $params = [];
         $valueClause = static::createValueClauseForTransactNonFungibleLoot($newOwner, $loots, $params);
-        $sql = "UPDATE loot l JOIN ($valueClause) la ON la.loot_id = l.Id SET l.account_Id = la.account_id";
+        $sql = "UPDATE loot l JOIN ($valueClause) la ON la.loot_id = l.Id SET l.account_Id = la.account_id AND dateObtained = NOW()";
 
         $result = Database::executeSqlQuery($sql, $params);
 
@@ -6825,7 +6825,7 @@ private static function interpolateSql(string $sql, array $params): string
             $productTransactionComponent->fromAccount = $cart->account;
             $productTransactionComponent->toAccount = $cart->store->owner;
             $productTransactionComponent->toAccount->ctime = "0000-00-00 00:00:00";
-            
+
             $productTransactionComponent->amount = $loot->quantity;
             $productTransactionComponent->loot = $loot;
 
