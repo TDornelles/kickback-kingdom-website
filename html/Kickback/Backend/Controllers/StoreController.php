@@ -2216,8 +2216,8 @@ private static function interpolateSql(string $sql, array $params): string
                     $reservation->productId->ctime,
                     $reservation->productId->crand,
                     $reservation->quantity,
-                    $reservation->expiryTime?->format("Y-m-d H:i:s:u"),
-                    $reservation->closeTime?->format("Y-m-d H:i:s:u")
+                    $reservation->expiryTime?->format("Y-m-d H:i:s.u"),
+                    $reservation->closeTime?->format("Y-m-d H:i:s.u")
                 );
             } 
             else 
