@@ -3594,11 +3594,11 @@ private static function interpolateSql(string $sql, array $params): string
         $cart = new Cart($accountId->ctime, $accountId->crand, $storeId->ctime, $storeId->crand);
 
         $sql = "INSERT INTO cart (
-            ctime, crand,
+            ctime, crand, checked_out, void,
             ref_account_ctime, ref_account_crand,
             ref_store_ctime, ref_store_crand
         )
-        SELECT ?, ?, ?, ?, ?, ?
+        SELECT ?, ?, 0, 0, ?, ?, ?, ?
         WHERE NOT EXISTS (
             SELECT 1
             FROM cart
