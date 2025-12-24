@@ -7,7 +7,7 @@ namespace Kickback\Backend\Models;
 use DateTime;
 use Kickback\Backend\Views\vRecordId;
 
-class ProductReservation extends recordId
+class ProductReservation extends RecordId
 {
 
     public ?ForeignRecordId $cartId;
