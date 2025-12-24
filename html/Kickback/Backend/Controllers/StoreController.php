@@ -1514,7 +1514,7 @@ private static function interpolateSql(string $sql, array $params): string
     {
         $params = [];
         $valueClause = static::createValueClauseForTransactNonFungibleLoot($newOwner, $loots, $params);
-        $sql = "UPDATE loot l JOIN ($valueClause) la ON la.loot_id = l.Id SET l.account_Id = la.account_id";
+        $sql = "UPDATE loot l JOIN ($valueClause) la ON la.loot_id = l.Id SET l.account_Id = la.account_id AND dateObtained = NOW()";
 
         $result = Database::executeSqlQuery($sql, $params);
 
@@ -2155,15 +2155,15 @@ private static function interpolateSql(string $sql, array $params): string
             *  [4] - $reservation->productId->ctime
             *  [5] - $reservation->productId->crand
             *  [6] - $reservation->quantity
-            *  [7] - $reservation->expiryTime?->format("Y-m-d H:i:s:u")
-            *  [8] - $reservation->closeTime?->format("Y-m-d H:i:s:u")
+            *  [7] - $reservation->expiryTime?->format("Y-m-d H:i:s.u")
+            *  [8] - $reservation->closeTime?->format("Y-m-d H:i:s.u")
             */
 
             $cartId = new vRecordId($params[$i+2],$params[$i+3]);
             $productId = new vRecordId($params[$i+4],$params[$i+5]);
             $quantity = $params[$i+6];
-            $expiryTime = is_null($params[$i+7]) ? null : DateTime::createFromFormat("Y-m-d H:i:s:u", $params[$i+7]);
-            $closeTime = is_null($params[$i+8]) ? null : DateTime::createFromFormat("Y-m-d H:i:s:u", $params[$i+8]);
+            $expiryTime = is_null($params[$i+7]) ? null : DateTime::createFromFormat("Y-m-d H:i:s.u", $params[$i+7]);
+            $closeTime = is_null($params[$i+8]) ? null : DateTime::createFromFormat("Y-m-d H:i:s.u", $params[$i+8]);
 
             $reservation = new vProductReservation(
                 $params[$i],
@@ -2216,8 +2216,8 @@ private static function interpolateSql(string $sql, array $params): string
                     $reservation->productId->ctime,
                     $reservation->productId->crand,
                     $reservation->quantity,
-                    $reservation->expiryTime?->format("Y-m-d H:i:s:u"),
-                    $reservation->closeTime?->format("Y-m-d H:i:s:u")
+                    $reservation->expiryTime?->format("Y-m-d H:i:s.u"),
+                    $reservation->closeTime?->format("Y-m-d H:i:s.u")
                 );
             } 
             else 
@@ -3484,8 +3484,8 @@ private static function interpolateSql(string $sql, array $params): string
             $params = [
                 $cartProductLink->ctime, 
                 $cartProductLink->crand, 
-                $cartProductLink->removed, 
-                $cartProductLink->checkedOut, 
+                0, 
+                0, 
                 $cartProductLink->cartId->ctime, 
                 $cartProductLink->cartId->crand, 
                 $cartProductLink->productId->ctime, 
@@ -3594,15 +3594,15 @@ private static function interpolateSql(string $sql, array $params): string
         $cart = new Cart($accountId->ctime, $accountId->crand, $storeId->ctime, $storeId->crand);
 
         $sql = "INSERT INTO cart (
-            ctime, crand,
+            ctime, crand, checked_out, void,
             ref_account_ctime, ref_account_crand,
             ref_store_ctime, ref_store_crand
         )
-        SELECT ?, ?, ?, ?, ?, ?
+        SELECT ?, ?, 0, 0, ?, ?, ?, ?
         WHERE NOT EXISTS (
             SELECT 1
             FROM cart
-            WHERE ref_account_crand = ? AND ref_store_ctime = ? AND ref_store_crand = ?
+            WHERE ref_account_crand = ? AND ref_store_ctime = ? AND ref_store_crand = ? AND checked_out = 0 AND void = 0
         );";
 
         $params = [$cart->ctime, $cart->crand, $accountId->ctime, $accountId->crand, $storeId->ctime, $storeId->crand, $accountId->crand, $storeId->ctime, $storeId->crand];
@@ -3622,7 +3622,7 @@ private static function interpolateSql(string $sql, array $params): string
             $selectSql = "SELECT
                 ".static::$columnsInCartView."
                 FROM v_cart
-                WHERE account_crand = ? AND store_ctime = ? AND store_crand = ?;
+                WHERE account_crand = ? AND store_ctime = ? AND store_crand = ? AND checked_out = 0 AND void = 0;
             ";
 
             $params = [$accountId->crand, $storeId->ctime, $storeId->crand];
@@ -5945,7 +5945,7 @@ private static function interpolateSql(string $sql, array $params): string
             $cartProductId = $pair["cartProductId"];
             $priceComponent = $pair["priceComponent"];
 
-            $link = new recordId();
+            $link = new RecordId();
 
             array_push($params, $link->ctime, $link->crand, $cartProductId->ctime, $cartProductId->crand, $priceComponent->ctime, $priceComponent->crand);
 
@@ -6797,8 +6797,12 @@ private static function interpolateSql(string $sql, array $params): string
         $transaction->void = false;
         $transaction->description = "Cart Checkout Transaction For ".$cart->account->username."'s Cart. Cart Id : ($cart->ctime, $cart->crand)";
         $transaction->type = "CART";
+
         $transaction->firstAccount = $cart->account;
+        $transaction->firstAccount->ctime = "0000-00-00 00:00:00";
+
         $transaction->secondAccount = $cart->store->owner;
+        $transaction->secondAccount->ctime = "0000-00-00 00:00:00";
 
         for($i = 0; $i < count($productLoots); $i++)
         {
@@ -6808,6 +6812,8 @@ private static function interpolateSql(string $sql, array $params): string
             $productTransactionComponent->transaction = $transaction;
             $productTransactionComponent->fromAccount = $cart->store->owner;
             $productTransactionComponent->toAccount = $cart->account;
+            $productTransactionComponent->toAccount->ctime = "0000-00-00 00:00:00";
+
             $productTransactionComponent->amount = $loot->quantity;
             $productTransactionComponent->loot = $loot;
 
@@ -6822,6 +6828,8 @@ private static function interpolateSql(string $sql, array $params): string
             $productTransactionComponent->transaction = $transaction;
             $productTransactionComponent->fromAccount = $cart->account;
             $productTransactionComponent->toAccount = $cart->store->owner;
+            $productTransactionComponent->toAccount->ctime = "0000-00-00 00:00:00";
+
             $productTransactionComponent->amount = $loot->quantity;
             $productTransactionComponent->loot = $loot;
 
