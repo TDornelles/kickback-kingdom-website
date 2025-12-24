@@ -6793,8 +6793,12 @@ private static function interpolateSql(string $sql, array $params): string
         $transaction->void = false;
         $transaction->description = "Cart Checkout Transaction For ".$cart->account->username."'s Cart. Cart Id : ($cart->ctime, $cart->crand)";
         $transaction->type = "CART";
+
         $transaction->firstAccount = $cart->account;
+        $transaction->firstAccount->ctime = "0000-00-00 00:00:00";
+
         $transaction->secondAccount = $cart->store->owner;
+        $transaction->secondAccount->ctime = "0000-00-00 00:00:00";
 
         for($i = 0; $i < count($productLoots); $i++)
         {
@@ -6804,6 +6808,8 @@ private static function interpolateSql(string $sql, array $params): string
             $productTransactionComponent->transaction = $transaction;
             $productTransactionComponent->fromAccount = $cart->store->owner;
             $productTransactionComponent->toAccount = $cart->account;
+            $productTransactionComponent->toAccount->ctime = "0000-00-00 00:00:00";
+
             $productTransactionComponent->amount = $loot->quantity;
             $productTransactionComponent->loot = $loot;
 
@@ -6818,6 +6824,8 @@ private static function interpolateSql(string $sql, array $params): string
             $productTransactionComponent->transaction = $transaction;
             $productTransactionComponent->fromAccount = $cart->account;
             $productTransactionComponent->toAccount = $cart->store->owner;
+            $productTransactionComponent->toAccount->ctime = "0000-00-00 00:00:00";
+            
             $productTransactionComponent->amount = $loot->quantity;
             $productTransactionComponent->loot = $loot;
 
