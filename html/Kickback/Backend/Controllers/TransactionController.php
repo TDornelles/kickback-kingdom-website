@@ -219,8 +219,8 @@ class TransactionController
         $params = [
             $transaction->ctime,
             $transaction->crand,
-            $transaction->complete,
-            $transaction->void,
+            (int)$transaction->complete,
+            (int)$transaction->void,
             $transaction->description,
             $transaction->type,
             $transaction->firstAccount->ctime,
