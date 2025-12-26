@@ -949,9 +949,11 @@
           section.classList.add("active");
           section.classList.remove("leaving");
           section.setAttribute("aria-hidden", "false");
-          section.classList.add(slides[activeIndex].accent ?? "");
+          const accent = slides[activeIndex].accent;
+          if (accent) section.classList.add(accent);
         } else {
-          section.classList.remove(slides[idx].accent ?? "");
+          const accent = slides[idx].accent;
+          if (accent) section.classList.remove(accent);
           if (section.classList.contains("active")) {
             section.classList.add("leaving");
             setTimeout(() => section.classList.remove("leaving"), 260);
