@@ -171,6 +171,7 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       transform: translateY(40px) scale(0.98) rotateX(3deg);
       pointer-events: none;
       transition: opacity 260ms ease, transform 320ms ease, filter 320ms ease;
+      z-index: 0;
       background: radial-gradient(circle at 12% 10%, rgba(255, 209, 102, 0.12), transparent 38%), radial-gradient(circle at 90% 15%, rgba(124, 183, 255, 0.16), transparent 42%), linear-gradient(180deg, rgba(16,23,32,0.94), rgba(19,29,44,0.9));
       border: 1px solid var(--border);
       border-radius: 18px;
@@ -194,6 +195,7 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       transform: translateY(-20px) scale(0.96);
       pointer-events: none;
       filter: blur(2px);
+      z-index: 1;
       transition: opacity 240ms ease, transform 240ms ease, filter 240ms ease;
     }
     .slide::before {
@@ -311,6 +313,79 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
       gap: 12px;
+    }
+    .opening-grid {
+      display: grid;
+      grid-template-columns: minmax(320px, 1.2fr) minmax(260px, 0.9fr);
+      gap: 14px;
+      align-items: stretch;
+    }
+    .opening-hero {
+      position: relative;
+      overflow: hidden;
+      padding: 18px;
+      background: linear-gradient(140deg, rgba(255, 209, 102, 0.12), rgba(124, 183, 255, 0.16));
+      border: 1px solid rgba(255, 209, 102, 0.35);
+    }
+    .opening-hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 18% 24%, rgba(255, 209, 102, 0.18), transparent 45%), radial-gradient(circle at 82% 76%, rgba(124, 183, 255, 0.16), transparent 36%);
+      opacity: 0.6;
+      pointer-events: none;
+    }
+    .opening-hero > * { position: relative; z-index: 1; }
+    .opening-title {
+      font-size: clamp(24px, 4vw, 36px);
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
+    }
+    .opening-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin: 12px 0;
+    }
+    .opening-stat {
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(12, 18, 28, 0.35);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+    .opening-stat strong {
+      display: block;
+      font-size: 26px;
+      letter-spacing: 0.04em;
+    }
+    .opening-program {
+      display: grid;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .opening-program-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    .opening-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid var(--border);
+      font-size: 12px;
+      letter-spacing: 0.04em;
     }
     .tag {
       display: inline-block;
@@ -494,6 +569,8 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       .copy-link { width: 100%; justify-content: center; text-align: center; }
       .control-bar { width: 100%; }
       .control-bar button { flex: 1 1 120px; }
+      .opening-grid { grid-template-columns: 1fr; }
+      .opening-hero { order: -1; }
     }
   </style>
 </head>
@@ -616,21 +693,47 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
         id: "opening",
         title: "Opening Ceremony",
         render: () => `
-          <div class="two-col">
-            <div class="card accent-bg-gold">
+          <div class="opening-grid">
+            <div class="card opening-hero accent-bg-gold">
               <div class="ribbon">Grand Opening</div>
-              <div class="kpi">ATLAS ARCHIVE</div>
-              <p class="muted">Thank you for an epic year of quests, guild triumphs, and countless nights in the Realm.</p>
-              <div class="actions">
-                <button class="cta-primary" data-action="celebrate">Celebrate</button>
-                <button class="cta-primary" data-action="next">Begin</button>
+              <div class="opening-title">Atlas Archive is live</div>
+              <p class="muted">Curtains up. This year&apos;s legends, quests, and guild moments are queued for the spotlight.</p>
+              <div class="opening-stats">
+                <div class="opening-stat">
+                  <span class="pill">Archive Year</span>
+                  <strong>2026</strong>
+                  <span class="sub">Season showcase</span>
+                </div>
+                <div class="opening-stat">
+                  <span class="pill">Guilds RSVP&apos;d</span>
+                  <strong>12</strong>
+                  <span class="sub">Featured banners</span>
+                </div>
+              </div>
+              <div class="actions flex-wrap">
+                <button class="cta-primary" data-action="celebrate">Start the fanfare</button>
+                <button class="cta-primary" data-action="next">Begin the slides</button>
+                <button class="cta-primary" data-action="fullscreen">Fullscreen</button>
               </div>
             </div>
             <div class="card accent-bg-cyan">
-              <div class="ribbon">Award Show Vibes</div>
-              <p class="muted">Curtains up. The spotlight is yours. Expect applause, gold confetti, and the loudest horns in the Kingdom.</p>
-              <div class="actions">
-                <button class="cta-primary" data-action="fullscreen">Go Fullscreen</button>
+              <div class="ribbon">Tonight&apos;s Program</div>
+              <div class="opening-program">
+                <div class="opening-program-item">
+                  <span class="opening-chip">Highlights</span>
+                  State of the Realm, ledger sparks, and guild showstoppers.
+                </div>
+                <div class="opening-program-item">
+                  <span class="opening-chip">Allies</span>
+                  Best partners, clutch duos, and chemistry rankings.
+                </div>
+                <div class="opening-program-item">
+                  <span class="opening-chip">Future</span>
+                  Outlooks, upgrades, and where the banners fly next.
+                </div>
+              </div>
+              <div class="actions flex-wrap" style="margin-top:12px;">
+                <button class="cta-primary" data-action="share">Share link</button>
               </div>
             </div>
           </div>
@@ -1101,27 +1204,22 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       const previousIndex = activeIndex;
       const previousSection = sectionRefs[previousIndex];
       const previousAccent = previousIndex >= 0 ? slides[previousIndex].accent : null;
-      if (previousSection) {
-        const exitDuration = startExitAnimation(previousSection);
-        previousSection.classList.add("leaving");
-        await waitMs(exitDuration);
-        previousSection.classList.remove("active", "leaving");
-        if (previousAccent) previousSection.classList.remove(previousAccent);
-        previousSection.setAttribute("aria-hidden", "true");
-      }
 
-      activeIndex = clamped;
-      const target = sectionRefs[activeIndex];
+      const target = sectionRefs[clamped];
       if (!target) {
         isTransitioning = false;
         return;
       }
 
+      const accent = slides[clamped].accent;
+      const exitDuration = previousSection ? startExitAnimation(previousSection) : 0;
+
+      activeIndex = clamped;
       setNavState(activeIndex);
+
       target.classList.add("active");
       target.classList.remove("leaving");
       target.setAttribute("aria-hidden", "false");
-      const accent = slides[activeIndex].accent;
       if (accent) target.classList.add(accent);
       startEnterAnimation(target);
       updateStageHeight(target);
@@ -1131,7 +1229,16 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
         history.replaceState(null, "", newUrl);
       }
 
-      isTransitioning = false;
+      if (previousSection) {
+        previousSection.classList.add("leaving");
+        setTimeout(() => {
+          previousSection.classList.remove("active", "leaving");
+          if (previousAccent) previousSection.classList.remove(previousAccent);
+          previousSection.setAttribute("aria-hidden", "true");
+        }, exitDuration);
+      }
+
+      setTimeout(() => { isTransitioning = false; }, Math.max(exitDuration, 260));
     }
 
     function toggleFullscreen() {
