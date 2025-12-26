@@ -13,6 +13,7 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Atlas Archive - Yearly Review (POC)</title>
+  <link rel="stylesheet" href="/assets/vendors/bootstrap/bootstrap.min.css" />
   <style>
     :root {
       --bg: #060910;
@@ -425,6 +426,11 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       letter-spacing: 0.1em;
       text-transform: uppercase;
     }
+    .title-logo img {
+      max-width: min(320px, 60vw);
+      height: auto;
+      display: block;
+    }
     .title-present {
       font-family: var(--mono);
       letter-spacing: 0.3em;
@@ -445,35 +451,68 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
     .stat-hero .kpi {
       font-size: clamp(34px, 6vw, 72px);
     }
+    .control-bar {
+      background: rgba(12,18,28,0.6);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      backdrop-filter: blur(8px);
+      box-shadow: var(--shadow);
+      padding: 10px 14px;
+    }
+    .control-bar button {
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.05);
+      color: var(--text);
+      font-weight: 700;
+      padding: 8px 14px;
+    }
+    .control-bar button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
     @media (max-width: 960px) {
       .page { grid-template-columns: 1fr; }
       .control-bar { position: sticky; top: 0; }
+    }
+    @media (max-width: 768px) {
+      .slides-stage { padding: 78px 14px 18px; min-height: 68vh; }
+      .slides-stage .slide { inset: 12px; padding: 18px; }
+      .hud.floating { inset: 12px 12px auto 12px; flex-wrap: wrap; gap: 8px; }
+      .slide-header { flex-direction: column; align-items: flex-start; }
+      .copy-link { width: 100%; justify-content: center; text-align: center; }
+      .control-bar { width: 100%; }
+      .control-bar button { flex: 1 1 120px; }
     }
   </style>
 </head>
 <body>
   <div class="page-shell scanlines">
     <div class="film-grain"></div>
-    <div class="page">
-      <main class="content">
-        <div class="slides-stage">
-          <div class="hud floating">
-            <div class="hud-left">
-              <span class="pill">Atlas</span>
-              <span class="pill">2025</span>
+    <div class="page container-fluid py-4">
+      <main class="content row justify-content-center g-3">
+        <div class="col-12">
+          <div class="slides-stage w-100">
+            <div class="hud floating d-flex align-items-center justify-content-between flex-wrap gap-2">
+              <div class="hud-left d-inline-flex align-items-center gap-2 flex-wrap">
+                <span class="pill">Atlas</span>
+                <span class="pill">2025</span>
+              </div>
+              <div class="hud-dots d-inline-flex gap-2" id="dot-nav" aria-label="Slide navigation"></div>
+              <div class="hud-right d-inline-flex align-items-center gap-2">
+                <button id="immersive-toggle" class="hud-icon" title="Fullscreen">⛶</button>
+                <button id="mute-toggle" class="hud-icon" title="Mute">🔈</button>
+              </div>
             </div>
-            <div class="hud-dots" id="dot-nav" aria-label="Slide navigation"></div>
-            <div class="hud-right">
-              <button id="immersive-toggle" class="hud-icon" title="Fullscreen">⛶</button>
-              <button id="mute-toggle" class="hud-icon" title="Mute">🔈</button>
-            </div>
+            <div id="slides"></div>
           </div>
-          <div id="slides"></div>
         </div>
-        <div class="control-bar" aria-label="Slide controls">
-          <button id="prev-btn">◀</button>
-          <span id="counter" class="muted" aria-live="polite">Slide 1/1</span>
-          <button id="next-btn">▶</button>
+        <div class="col-12">
+          <div class="control-bar d-flex align-items-center justify-content-center gap-2 flex-wrap mt-2" aria-label="Slide controls">
+            <button id="prev-btn" class="btn btn-outline-light btn-sm">◀</button>
+            <span id="counter" class="muted" aria-live="polite">Slide 1/1</span>
+            <button id="next-btn" class="btn btn-outline-light btn-sm">▶</button>
+          </div>
         </div>
       </main>
     </div>
@@ -552,7 +591,9 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
         accent: "accent-bg-cyan",
         render: () => `
           <div class="slide-hero">
-            <div class="title-logo">Kickback Kingdom</div>
+            <div class="title-logo shadow-sm">
+              <img src="https://kickback-kingdom.com/assets/images/logo-kk.png" alt="Kickback Kingdom" class="img-fluid">
+            </div>
             <div class="title-present">Presents</div>
             <div class="mega">Atlas Archive 2026</div>
             <div class="lead">Your annual checkpoint through Kickback Kingdom — stories, stats, and highlights from the realm.</div>
@@ -1131,5 +1172,6 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
     });
     updateStageHeight(sectionRefs[0]);
   </script>
+  <script src="/assets/vendors/bootstrap/bootstrap.bundle.min.js"></script>
 </body>
 </html>
