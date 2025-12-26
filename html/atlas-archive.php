@@ -176,7 +176,6 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       transition: none;
       z-index: 0;
       background: none;
-      border: 1px solid rgba(255,255,255,0.14);
       border-radius: 14px;
       padding: 22px;
       overflow: hidden;
@@ -242,7 +241,8 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       flex: 1;
       overflow-y: auto;
       overflow-x: hidden;
-      padding-right: 10px;
+      padding-right: 14px;
+      scrollbar-gutter: stable;
       scrollbar-width: thin;
       scrollbar-color: var(--accent) rgba(255,255,255,0.06);
     }
