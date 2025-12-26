@@ -1,5 +1,11 @@
 <?php
 // Kickback Kingdom - Atlas Archive (POC with immersive award-show styling)
+require_once(($_SERVER["DOCUMENT_ROOT"] ?: __DIR__) . "/Kickback/init.php");
+
+use Kickback\Backend\Controllers\SeasonController;
+
+$seasonController = new SeasonController();
+$seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
 ?>
 <!doctype html>
 <html lang="en">
@@ -26,7 +32,10 @@
     body {
       margin: 0;
       font-family: var(--sans);
-      background: var(--gradient);
+      background: <?php echo $seasonBackgroundUrl ? "url('{$seasonBackgroundUrl}')" : "var(--gradient)"; ?>;
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
       color: var(--text);
       min-height: 100vh;
       overflow-x: hidden;
