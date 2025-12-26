@@ -204,6 +204,33 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       z-index: 1;
       transition: none;
     }
+    #slides {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 14px;
+      scrollbar-gutter: stable;
+      scrollbar-width: thin;
+      scrollbar-color: var(--accent) rgba(255,255,255,0.06);
+    }
+    #slides::-webkit-scrollbar {
+      width: 12px;
+    }
+    #slides::-webkit-scrollbar-track {
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      border-radius: 999px;
+    }
+    #slides::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, rgba(255,209,102,0.55), rgba(124,183,255,0.7));
+      border-radius: 999px;
+      border: 2px solid rgba(12,18,28,0.9);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+    #slides::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, rgba(255,209,102,0.7), rgba(124,183,255,0.85));
+    }
     .slide::before {
       content: "";
       position: absolute;
@@ -240,28 +267,8 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
     }
     .slide-body {
       flex: 1;
-      overflow-y: auto;
-      overflow-x: hidden;
-      padding-right: 14px;
-      scrollbar-gutter: stable;
-      scrollbar-width: thin;
-      scrollbar-color: var(--accent) rgba(255,255,255,0.06);
-    }
-    .slide-body::-webkit-scrollbar {
-      width: 12px;
-    }
-    .slide-body::-webkit-scrollbar-track {
-      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
-      border-radius: 999px;
-    }
-    .slide-body::-webkit-scrollbar-thumb {
-      background: linear-gradient(180deg, rgba(255,209,102,0.55), rgba(124,183,255,0.7));
-      border-radius: 999px;
-      border: 2px solid rgba(12,18,28,0.9);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-    }
-    .slide-body::-webkit-scrollbar-thumb:hover {
-      background: linear-gradient(180deg, rgba(255,209,102,0.7), rgba(124,183,255,0.85));
+      overflow: visible;
+      padding-right: 0;
     }
     .slide-title {
       display: flex;
