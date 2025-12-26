@@ -822,7 +822,6 @@
       const target = sectionRefs[activeIndex];
       if (!target) return;
 
-      jumpSelect.value = String(activeIndex);
       counter.textContent = `Slide ${activeIndex + 1} / ${slides.length}`;
       prevBtn.disabled = activeIndex === 0;
       nextBtn.disabled = activeIndex === slides.length - 1;
