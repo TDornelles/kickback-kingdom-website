@@ -62,95 +62,9 @@
       min-height: 100vh;
       display: grid;
       grid-template-columns: 1fr;
-      gap: 12px;
-      padding: 18px 18px 42px;
-    }
-    header.hero {
-      grid-column: 1;
-      background: radial-gradient(circle at 30% 20%, rgba(255, 209, 102, 0.18), transparent 45%), radial-gradient(circle at 80% 10%, rgba(124, 183, 255, 0.12), transparent 50%), linear-gradient(145deg, rgba(34, 48, 64, 0.75), rgba(18, 26, 38, 0.94));
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 32px 28px 34px;
-      box-shadow: var(--shadow);
-      position: relative;
-      overflow: hidden;
-      isolation: isolate;
-    }
-    .hero::before {
-      content: "";
-      position: absolute;
-      inset: -20% 40% auto auto;
-      width: 320px;
-      height: 320px;
-      border-radius: 999px;
-      background: radial-gradient(circle, rgba(255, 209, 102, 0.45), transparent 60%);
-      filter: blur(30px);
-      opacity: 0.7;
-      z-index: -1;
-      animation: pulse 6s ease-in-out infinite alternate;
-    }
-    .hero::after {
-      content: "";
-      position: absolute;
-      inset: auto auto -40% -10%;
-      width: 420px;
-      height: 420px;
-      border-radius: 999px;
-      background: radial-gradient(circle, rgba(124, 183, 255, 0.35), transparent 60%);
-      filter: blur(40px);
-      opacity: 0.6;
-      z-index: -1;
-      animation: pulse 8s ease-in-out infinite alternate-reverse;
-    }
-    @keyframes pulse {
-      from { transform: scale(0.96); opacity: 0.7; }
-      to { transform: scale(1.05); opacity: 1; }
-    }
-    header.hero h1 {
-      margin: 0 0 8px;
-      font-weight: 800;
-      letter-spacing: -0.03em;
-      font-size: clamp(26px, 4vw, 38px);
-      text-transform: uppercase;
-    }
-    header.hero p {
-      margin: 0 0 8px;
-      color: var(--muted);
-      max-width: 960px;
-      font-size: 15px;
-      line-height: 1.5;
-    }
-    .hero .subline {
-      font-family: var(--mono);
-      text-transform: uppercase;
-      letter-spacing: 0.28em;
-      font-size: 11px;
-      color: var(--accent);
-    }
-    .hero .kudos {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      margin-top: 10px;
-      padding: 10px 14px;
-      border-radius: 12px;
-      background: rgba(255, 209, 102, 0.08);
-      border: 1px solid rgba(255, 209, 102, 0.26);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
-      font-weight: 700;
-      color: #ffd166;
-    }
-    .hero .kudos .spark {
-      width: 10px;
-      height: 10px;
-      border-radius: 999px;
-      background: #ffd166;
-      box-shadow: 0 0 12px 3px rgba(255, 209, 102, 0.6);
-      animation: glow 1.8s ease-in-out infinite alternate;
-    }
-    @keyframes glow {
-      from { opacity: 0.75; }
-      to { opacity: 1; transform: scale(1.08); }
+      gap: 0;
+      padding: 0 18px 32px;
+      align-content: center;
     }
     .content {
       display: flex;
@@ -165,6 +79,16 @@
       color: var(--muted);
       font-weight: 700;
       letter-spacing: 0.02em;
+    }
+    .hud.floating {
+      position: absolute;
+      inset: 12px 12px auto 12px;
+      z-index: 3;
+      background: rgba(12,18,28,0.6);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      backdrop-filter: blur(8px);
+      box-shadow: var(--shadow);
     }
     .hud-left {
       display: inline-flex;
@@ -212,9 +136,9 @@
       overflow: hidden;
       border-radius: 18px;
       border: 1px solid var(--border);
-      background: linear-gradient(160deg, rgba(16,23,32,0.85), rgba(12,18,28,0.9));
+      background: linear-gradient(160deg, rgba(16,23,32,0.92), rgba(12,18,28,0.96));
       box-shadow: var(--shadow);
-      min-height: 60vh;
+      min-height: 70vh;
       padding: 12px;
       isolation: isolate;
     }
@@ -229,23 +153,24 @@
     }
     .slides-stage .slide {
       position: absolute;
-      inset: 20px;
+      inset: 18px;
       opacity: 0;
-      transform: translateY(40px) scale(0.98);
+      transform: translateY(40px) scale(0.98) rotateX(3deg);
       pointer-events: none;
       transition: opacity 260ms ease, transform 320ms ease, filter 320ms ease;
       background: radial-gradient(circle at 12% 10%, rgba(255, 209, 102, 0.12), transparent 38%), radial-gradient(circle at 90% 15%, rgba(124, 183, 255, 0.16), transparent 42%), linear-gradient(180deg, rgba(16,23,32,0.94), rgba(19,29,44,0.9));
       border: 1px solid var(--border);
       border-radius: 18px;
-      padding: 22px;
+      padding: 26px;
       box-shadow: var(--shadow);
       overflow: hidden;
       filter: drop-shadow(0 20px 40px rgba(0,0,0,0.35));
+      backdrop-filter: blur(4px);
     }
     .slides-stage .slide.active {
       position: relative;
       opacity: 1;
-      transform: translateY(0) scale(1);
+      transform: translateY(0) scale(1) rotateX(0deg);
       pointer-events: auto;
       z-index: 2;
       animation: slideIn 520ms ease;
@@ -459,7 +384,6 @@
     }
     @media (max-width: 960px) {
       .page { grid-template-columns: 1fr; }
-      header.hero { grid-column: 1; }
       .control-bar { position: sticky; top: 0; }
     }
   </style>
@@ -468,32 +392,25 @@
   <div class="page-shell scanlines">
     <div class="film-grain"></div>
     <div class="page">
-      <header class="hero">
-        <div class="subline">Kickback Kingdom · Annual Awards</div>
-        <h1>Atlas Archive · Year in Review</h1>
-        <p>Thank you, Realmwalkers, for an incredible year. Tonight we open the vault, spotlight our heroes, and celebrate the stories that shaped the Kingdom.</p>
-        <div class="kudos"><span class="spark"></span> <span>Presented with gratitude to our community</span></div>
-      </header>
-
       <main class="content">
-        <div class="hud">
-          <div class="hud-left">
-            <span>Atlas Checkpoint</span>
-            <span class="pill">2025</span>
+        <div class="slides-stage">
+          <div class="hud floating">
+            <div class="hud-left">
+              <span class="pill">Atlas</span>
+              <span class="pill">2025</span>
+            </div>
+            <div class="hud-dots" id="dot-nav" aria-label="Slide navigation"></div>
+            <div class="hud-right">
+              <button id="immersive-toggle" class="hud-icon" title="Fullscreen">⛶</button>
+              <button id="mute-toggle" class="hud-icon" title="Mute">🔈</button>
+            </div>
           </div>
-          <div class="hud-dots" id="dot-nav" aria-label="Slide navigation"></div>
-          <div class="hud-right">
-            <button id="immersive-toggle" class="hud-icon" title="Fullscreen">⛶</button>
-            <button id="mute-toggle" class="hud-icon" title="Mute">🔈</button>
-          </div>
+          <div id="slides"></div>
         </div>
-        <div id="slides" class="slides-stage"></div>
         <div class="control-bar" aria-label="Slide controls">
+          <button id="prev-btn">◀</button>
           <span id="counter" class="muted" aria-live="polite">Slide 1/1</span>
-          <div style="margin-left:auto; display:flex; gap:8px;">
-            <button id="prev-btn">◀</button>
-            <button id="next-btn">▶</button>
-          </div>
+          <button id="next-btn">▶</button>
         </div>
       </main>
     </div>
