@@ -233,13 +233,14 @@
       opacity: 0;
       transform: translateY(40px) scale(0.98);
       pointer-events: none;
-      transition: opacity 260ms ease, transform 320ms ease;
+      transition: opacity 260ms ease, transform 320ms ease, filter 320ms ease;
       background: radial-gradient(circle at 12% 10%, rgba(255, 209, 102, 0.12), transparent 38%), radial-gradient(circle at 90% 15%, rgba(124, 183, 255, 0.16), transparent 42%), linear-gradient(180deg, rgba(16,23,32,0.94), rgba(19,29,44,0.9));
       border: 1px solid var(--border);
       border-radius: 18px;
       padding: 22px;
       box-shadow: var(--shadow);
       overflow: hidden;
+      filter: drop-shadow(0 20px 40px rgba(0,0,0,0.35));
     }
     .slides-stage .slide.active {
       position: relative;
@@ -247,6 +248,14 @@
       transform: translateY(0) scale(1);
       pointer-events: auto;
       z-index: 2;
+      animation: slideIn 520ms ease;
+    }
+    .slides-stage .slide.leaving {
+      opacity: 0;
+      transform: translateY(-20px) scale(0.96);
+      pointer-events: none;
+      filter: blur(2px);
+      transition: opacity 240ms ease, transform 240ms ease, filter 240ms ease;
     }
     .slide::before {
       content: "";
@@ -379,6 +388,49 @@
       font-weight: 800;
       color: var(--accent);
       letter-spacing: 0.08em;
+    }
+    .cta-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 18px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: linear-gradient(90deg, rgba(255, 209, 102, 0.25), rgba(124, 183, 255, 0.18));
+      color: #0d121b;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      box-shadow: 0 15px 40px rgba(0,0,0,0.35);
+      cursor: pointer;
+      transition: transform 140ms ease, box-shadow 140ms ease;
+    }
+    .cta-primary:hover { transform: translateY(-2px) scale(1.01); box-shadow: 0 20px 46px rgba(0,0,0,0.4); }
+    .cta-primary:active { transform: translateY(0) scale(0.99); }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .accent-bg-gold { --accent: #ffd166; }
+    .accent-bg-cyan { --accent: #6cf0c2; }
+    .accent-bg-pink { --accent: #ff7edb; }
+    .accent-bg-violet { --accent: #c08bff; }
+    .spark {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      opacity: 0.9;
+      pointer-events: none;
+      animation: sparkFly 900ms ease-out forwards;
+    }
+    @keyframes sparkFly {
+      0% { transform: translate(0,0) scale(1); opacity: 1; }
+      70% { opacity: 1; }
+      100% { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
     }
     .sub {
       font-size: 14px;
@@ -519,14 +571,21 @@
         title: "Opening Ceremony",
         render: () => `
           <div class="two-col">
-            <div class="card">
-              <div class="ribbon">Thank You, Kickback Kingdom</div>
-              <p class="muted">A year of quests, guild triumphs, and countless nights in the Realm. This archive is our love letter to everyone who journeyed with us.</p>
-              <p><strong>Press Next</strong> or use arrow keys to advance. Copy any slide link to share highlights.</p>
+            <div class="card accent-bg-gold">
+              <div class="ribbon">Grand Opening</div>
+              <div class="kpi">ATLAS ARCHIVE</div>
+              <p class="muted">Thank you for an epic year of quests, guild triumphs, and countless nights in the Realm.</p>
+              <div class="actions">
+                <button class="cta-primary" data-action="celebrate">Celebrate</button>
+                <button class="cta-primary" data-action="next">Begin</button>
+              </div>
             </div>
-            <div class="card">
+            <div class="card accent-bg-cyan">
               <div class="ribbon">Award Show Vibes</div>
               <p class="muted">Curtains up. The spotlight is yours. Expect applause, gold confetti, and the loudest horns in the Kingdom.</p>
+              <div class="actions">
+                <button class="cta-primary" data-action="fullscreen">Go Fullscreen</button>
+              </div>
             </div>
           </div>
         `
@@ -534,6 +593,7 @@
       {
         id: "world-status",
         title: "World Status",
+        accent: "accent-bg-cyan",
         render: (data) => {
           const activeAccounts = 2480;
           const uptime = data.servers.map(s => s.uptime).join(" / ");
@@ -544,12 +604,17 @@
               <div class="stat"><label>Guilds Tracked</label><strong>${data.guilds.length}</strong></div>
               <div class="stat"><label>Ledger Streams</label><strong>${data.ledgers.length}</strong></div>
             </div>
+            <div class="actions">
+              <button class="cta-primary" data-action="celebrate">Spark</button>
+              <button class="cta-primary" data-action="share">Share Slide</button>
+            </div>
           `;
         }
       },
       {
         id: "victory-lap",
         title: "Community Victory Lap",
+        accent: "accent-bg-gold",
         render: (data) => {
           const quests = data.accounts[0].questsCompleted + 420; // mock uplift
           const hours = 38000;
@@ -576,12 +641,17 @@
                 <p class="sub">From festivals to sieges — every gathering a memory.</p>
               </div>
             </div>
+            <div class="actions">
+              <button class="cta-primary" data-action="celebrate">Celebrate</button>
+              <button class="cta-primary" data-action="next">Next Highlight</button>
+            </div>
           `;
         }
       },
       {
         id: "population",
         title: "Population & Activity",
+        accent: "accent-bg-violet",
         render: (data) => `
           <div class="stat-grid">
             ${data.activity.map(item => `
@@ -592,11 +662,16 @@
               </div>
             `).join("")}
           </div>
+          <div class="actions">
+            <button class="cta-primary" data-action="celebrate">Pulse</button>
+            <button class="cta-primary" data-action="share">Share Slide</button>
+          </div>
         `
       },
       {
         id: "guild-atlas",
         title: "Guild Atlas",
+        accent: "accent-bg-cyan",
         render: (data) => `
           <div class="list">
             ${data.guilds.map(g => `
@@ -610,11 +685,16 @@
               </div>
             `).join("")}
           </div>
+          <div class="actions">
+            <button class="cta-primary" data-action="celebrate">Guild Cheer</button>
+            <button class="cta-primary" data-action="share">Share Slide</button>
+          </div>
         `
       },
       {
         id: "economy",
         title: "Economy Ledger",
+        accent: "accent-bg-gold",
         render: (data) => `
           <div class="two-col">
             <div class="card">
@@ -630,11 +710,16 @@
               `).join("")}
             </div>
           </div>
+          <div class="actions">
+            <button class="cta-primary" data-action="celebrate">Showers</button>
+            <button class="cta-primary" data-action="share">Share Slide</button>
+          </div>
         `
       },
       {
         id: "systems",
         title: "Systems Utilization",
+        accent: "accent-bg-cyan",
         render: (data) => `
           <div class="list">
             ${data.servers.map(s => `
@@ -648,11 +733,16 @@
               </div>
             `).join("")}
           </div>
+          <div class="actions">
+            <button class="cta-primary" data-action="celebrate">Light Up</button>
+            <button class="cta-primary" data-action="share">Share Slide</button>
+          </div>
         `
       },
       {
         id: "events",
         title: "Notable Events Timeline",
+        accent: "accent-bg-pink",
         render: (data) => `
           <div class="timeline">
             ${data.events.map(ev => `
@@ -663,11 +753,16 @@
               </div>
             `).join("")}
           </div>
+          <div class="actions">
+            <button class="cta-primary" data-action="celebrate">Fireworks</button>
+            <button class="cta-primary" data-action="share">Share Slide</button>
+          </div>
         `
       },
       {
         id: "account-spotlight",
         title: "Account Spotlight",
+        accent: "accent-bg-gold",
         render: (data) => {
           const acct = data.accounts[0];
           return `
@@ -685,12 +780,17 @@
                 <p class="muted">Guilds: ${acct.guilds.join(", ")}</p>
               </div>
             </div>
+            <div class="actions">
+              <button class="cta-primary" data-action="celebrate">Applause</button>
+              <button class="cta-primary" data-action="share">Share Spotlight</button>
+            </div>
           `;
         }
       },
       {
         id: "best-friend",
         title: "Best Friend / Frequent Ally",
+        accent: "accent-bg-cyan",
         render: (data) => {
           const acct = data.accounts[0];
           const best = acct.coQuestPartners[0];
@@ -709,12 +809,17 @@
                 <p class="muted">Highest synergy trio by shared completions.</p>
               </div>
             </div>
+            <div class="actions">
+              <button class="cta-primary" data-action="celebrate">Cheer Duo</button>
+              <button class="cta-primary" data-action="share">Share Link</button>
+            </div>
           `;
         }
       },
       {
         id: "games",
         title: "Favorite, Best, and Worst Games",
+        accent: "accent-bg-violet",
         render: (data) => {
           const acct = data.accounts[0];
           const bestMatch = acct.matches.find(m => m.elo === Math.max(...acct.eloHistory)) || acct.matches[0];
@@ -743,12 +848,17 @@
                 <p class="sub">Peak ${Math.max(...acct.eloHistory)} · Floor ${Math.min(...acct.eloHistory)}</p>
               </div>
             </div>
+            <div class="actions">
+              <button class="cta-primary" data-action="celebrate">Confetti</button>
+              <button class="cta-primary" data-action="share">Share Game</button>
+            </div>
           `;
         }
       },
       {
         id: "outlook",
         title: "Forward Outlook",
+        accent: "accent-bg-cyan",
         render: () => `
           <div class="stat-grid">
             <div class="stat">
@@ -766,6 +876,10 @@
               <strong>Mentor New Archivists</strong>
               <p class="muted">Share builds and ledgers with newer accounts.</p>
             </div>
+          </div>
+          <div class="actions">
+            <button class="cta-primary" data-action="celebrate">Raise Banner</button>
+            <button class="cta-primary" data-action="share">Share Outlook</button>
           </div>
         `
       }
@@ -833,8 +947,15 @@
       sectionRefs.forEach((section, idx) => {
         if (idx === activeIndex) {
           section.classList.add("active");
+          section.classList.remove("leaving");
           section.setAttribute("aria-hidden", "false");
+          section.classList.add(slides[activeIndex].accent ?? "");
         } else {
+          section.classList.remove(slides[idx].accent ?? "");
+          if (section.classList.contains("active")) {
+            section.classList.add("leaving");
+            setTimeout(() => section.classList.remove("leaving"), 260);
+          }
           section.classList.remove("active");
           section.setAttribute("aria-hidden", "true");
         }
@@ -862,6 +983,8 @@
       } else if (e.key === " ") {
         e.preventDefault();
         setActiveSlide(activeIndex + 1, { scroll: true });
+      } else if (e.key === "c") {
+        triggerCelebration();
       }
     });
 
@@ -899,6 +1022,45 @@
     muteToggle.addEventListener("click", () => {
       isMuted = !isMuted;
       muteToggle.textContent = isMuted ? "🔇" : "🔈";
+    });
+
+    function triggerCelebration() {
+      const bounds = slidesContainer.getBoundingClientRect();
+      const count = 18;
+      for (let i = 0; i < count; i++) {
+        const spark = document.createElement("div");
+        spark.className = "spark";
+        const dx = (Math.random() * 200 - 100) + "px";
+        const dy = (Math.random() * 260 - 80) + "px";
+        spark.style.setProperty("--dx", dx);
+        spark.style.setProperty("--dy", dy);
+        spark.style.left = (bounds.width / 2) + "px";
+        spark.style.top = (bounds.height / 2) + "px";
+        spark.style.background = ["#ffd166", "#7cb7ff", "#ff7edb", "#6cf0c2"][i % 4];
+        slidesContainer.appendChild(spark);
+        setTimeout(() => spark.remove(), 900);
+      }
+    }
+
+    slidesContainer.addEventListener("click", (e) => {
+      const target = e.target;
+      if (target.matches(".cta-primary[data-action='celebrate']")) {
+        triggerCelebration();
+      }
+      if (target.matches(".cta-primary[data-action='next']")) {
+        setActiveSlide(activeIndex + 1, { scroll: true });
+      }
+      if (target.matches(".cta-primary[data-action='fullscreen']")) {
+        immersiveToggle.click();
+      }
+      if (target.matches(".cta-primary[data-action='share']")) {
+        const slideId = slides[activeIndex].id;
+        const url = `${window.location.origin}${window.location.pathname}#${slideId}`;
+        navigator.clipboard.writeText(url).then(() => {
+          target.textContent = "Copied!";
+          setTimeout(() => target.textContent = "Share Slide", 1200);
+        });
+      }
     });
 
     window.addEventListener("resize", () => {
