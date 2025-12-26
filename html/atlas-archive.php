@@ -178,7 +178,6 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       filter: drop-shadow(0 20px 40px rgba(0,0,0,0.35));
       backdrop-filter: blur(4px);
       max-width: calc(100% - 36px);
-      margin: 0 auto;
     }
     .slides-stage .slide.active {
       position: relative;
