@@ -15,6 +15,7 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
   <title>Atlas Archive - Yearly Review (POC)</title>
   <link rel="stylesheet" href="/assets/vendors/bootstrap/bootstrap.min.css" />
   <link rel="stylesheet" href="/assets/css/kickback-kingdom.css" />
+  <link rel="stylesheet" href="/assets/vendors/animate/animate.min.css" />
   <style>
     :root {
       --bg: #060910;
@@ -1093,6 +1094,77 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
     const prevBtn = document.getElementById("prev-btn");
     const nextBtn = document.getElementById("next-btn");
     const counter = document.getElementById("counter");
+    const animationConfig = {
+      duration: 900,
+      exitDuration: 650,
+      stagger: 140,
+      defaultStage: {
+        enter: "animate__fadeInUp",
+        exit: "animate__fadeOutDown",
+      },
+      defaultElement: {
+        enter: "animate__fadeInUp",
+        exit: "animate__fadeOutDown",
+        duration: 750,
+      },
+      defaultElements: [
+        { selector: ".slide-header", enter: "animate__fadeInDown", exit: "animate__fadeOutUp", delay: 0 },
+        { selector: ".slide-body > *", enter: "animate__fadeInUp", exit: "animate__fadeOutDown", stagger: true },
+      ],
+      slides: {
+        title: {
+          stage: { enter: "animate__fadeIn", exit: "animate__fadeOut", duration: 900 },
+          elements: [
+            { selector: ".title-logo", enter: "animate__fadeInDown", delay: 0 },
+            { selector: ".title-present", enter: "animate__fadeIn", delay: 120 },
+            { selector: ".mega", enter: "animate__fadeInUp", delay: 240 },
+            { selector: ".lead", enter: "animate__fadeInUp", delay: 360 },
+            { selector: ".actions .cta-primary", enter: "animate__zoomIn", stagger: true, delay: 500 },
+          ],
+        },
+        opening: {
+          elements: [
+            { selector: ".opening-panel", enter: "animate__fadeInUp", exit: "animate__fadeOutDown" },
+            { selector: ".opening-stat", enter: "animate__fadeInUp", stagger: true },
+            { selector: ".opening-program-item", enter: "animate__fadeInLeft", stagger: true },
+          ],
+        },
+        "world-status": {
+          stage: { enter: "animate__fadeIn", exit: "animate__fadeOut" },
+          elements: [{ selector: ".stat-hero .card", enter: "animate__fadeInUp", stagger: true }],
+        },
+        "victory-lap": {
+          elements: [{ selector: ".stat-hero .card", enter: "animate__fadeInUp", stagger: true }],
+        },
+        population: {
+          elements: [{ selector: ".stat-hero .card", enter: "animate__lightSpeedInRight", stagger: true }],
+        },
+        "guild-atlas": {
+          elements: [{ selector: ".stat-hero .card", enter: "animate__fadeInUp", stagger: true }],
+        },
+        economy: {
+          elements: [{ selector: ".stat-hero .card", enter: "animate__fadeInUp", stagger: true }],
+        },
+        systems: {
+          elements: [{ selector: ".stat-hero .card", enter: "animate__fadeInUp", stagger: true }],
+        },
+        events: {
+          elements: [{ selector: ".timeline .card", enter: "animate__fadeInLeft", stagger: true }],
+        },
+        "account-spotlight": {
+          elements: [{ selector: ".stat-hero .card", enter: "animate__fadeInUp", stagger: true }],
+        },
+        "best-friend": {
+          elements: [{ selector: ".stat-hero .card", enter: "animate__fadeInUp", stagger: true }],
+        },
+        games: {
+          elements: [{ selector: ".stat-hero .card", enter: "animate__fadeInUp", stagger: true }],
+        },
+        outlook: {
+          elements: [{ selector: ".stat-hero .card", enter: "animate__fadeInUp", stagger: true }],
+        },
+      },
+    };
 
     let activeIndex = -1;
     let isTransitioning = false;
@@ -1138,10 +1210,101 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
         btn.classList.add("bg-ranked-1");
       });
     }
-    function resetSequenceItem(item) {}
-    function tagSequenceItems() {}
-    function startEnterAnimation() {}
-    function startExitAnimation() { return 0; }
+    function resetAnimationClasses(el) {
+      if (!el) return;
+      const animateClasses = Array.from(el.classList).filter(cls => cls.startsWith("animate__"));
+      animateClasses.forEach(cls => el.classList.remove(cls));
+    }
+    function applyAnimation(el, animationName, { delay = 0, duration = animationConfig.duration } = {}) {
+      if (!el || !animationName) return Promise.resolve();
+      resetAnimationClasses(el);
+      el.style.animationDelay = `${delay}ms`;
+      el.style.setProperty("--animate-delay", `${delay}ms`);
+      el.style.setProperty("--animate-duration", `${duration}ms`);
+      return new Promise((resolve) => {
+        const handle = () => {
+          resetAnimationClasses(el);
+          el.removeEventListener("animationend", handle);
+          resolve();
+        };
+        el.addEventListener("animationend", handle, { once: true });
+        el.classList.add("animate__animated", animationName);
+      });
+    }
+    function tagSequenceItems(section) {
+      const items = section.querySelectorAll(".sequence-item");
+      items.forEach((item, idx) => {
+        if (!item.dataset.animate) {
+          item.dataset.animate = animationConfig.defaultElement.enter;
+        }
+        if (!item.dataset.delay) {
+          item.dataset.delay = idx * animationConfig.stagger;
+        }
+      });
+      const customNodes = section.querySelectorAll("[data-animate]");
+      customNodes.forEach((node, idx) => {
+        if (!node.dataset.delay) {
+          node.dataset.delay = idx * animationConfig.stagger;
+        }
+      });
+    }
+    function getSlideAnimationConfig(sectionId) {
+      const overrides = animationConfig.slides[sectionId] || {};
+      return {
+        stage: { ...animationConfig.defaultStage, ...(overrides.stage || {}) },
+        elements: [...animationConfig.defaultElements, ...(overrides.elements || [])],
+      };
+    }
+    function collectElementAnimations(section, config) {
+      const collected = [];
+      config.elements.forEach((def, defIdx) => {
+        const nodes = section.querySelectorAll(def.selector);
+        nodes.forEach((node, nodeIdx) => {
+          collected.push({
+            el: node,
+            enter: def.enter || animationConfig.defaultElement.enter,
+            exit: def.exit || animationConfig.defaultElement.exit,
+            duration: def.duration || animationConfig.defaultElement.duration,
+            delay: def.delay ?? (def.stagger ? nodeIdx * animationConfig.stagger : defIdx * animationConfig.stagger),
+          });
+        });
+      });
+      section.querySelectorAll("[data-animate]").forEach((node) => {
+        collected.push({
+          el: node,
+          enter: node.dataset.animate,
+          exit: node.dataset.exitAnimate || animationConfig.defaultElement.exit,
+          duration: Number(node.dataset.duration) || animationConfig.defaultElement.duration,
+          delay: Number(node.dataset.delay) || 0,
+        });
+      });
+      const seen = new Set();
+      return collected.filter(({ el }) => {
+        const key = el;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+    function startEnterAnimation(section) {
+      const config = getSlideAnimationConfig(section.id);
+      const elementAnimations = collectElementAnimations(section, config);
+      applyAnimation(section, config.stage.enter, { duration: config.stage.duration || animationConfig.duration });
+      elementAnimations.forEach((item) => {
+        applyAnimation(item.el, item.enter, { delay: item.delay, duration: item.duration });
+      });
+    }
+    function startExitAnimation(section) {
+      const config = getSlideAnimationConfig(section.id);
+      const elementAnimations = collectElementAnimations(section, config);
+      const animations = [
+        applyAnimation(section, config.stage.exit, { duration: config.stage.exitDuration || animationConfig.exitDuration }),
+      ];
+      elementAnimations.forEach((item) => {
+        animations.push(applyAnimation(item.el, item.exit, { delay: 0, duration: item.duration }));
+      });
+      return Promise.all(animations);
+    }
 
     function waitMs(ms) {
       return new Promise((resolve) => setTimeout(resolve, ms));
@@ -1176,6 +1339,7 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       setNavState(activeIndex);
 
       if (previousSection) {
+        await startExitAnimation(previousSection);
         previousSection.classList.remove("active", "leaving");
         if (previousAccent) previousSection.classList.remove(previousAccent);
         previousSection.setAttribute("aria-hidden", "true");
