@@ -1000,7 +1000,8 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
     const nextBtn = document.getElementById("next-btn");
     const counter = document.getElementById("counter");
 
-    let activeIndex = 0;
+    let activeIndex = -1;
+    let isTransitioning = false;
     const sectionRefs = [];
     const dotRefs = [];
 
@@ -1043,6 +1044,10 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
         btn.classList.add("bg-ranked-1");
       });
     }
+    function resetSequenceItem(item) {
+      item.classList.remove("sequence-in", "sequence-out");
+      item.style.animationDelay = "";
+    }
     function tagSequenceItems(section) {
       const header = section.querySelector(".slide-header");
       if (header) header.classList.add("sequence-item");
@@ -1055,7 +1060,7 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
     function startEnterAnimation(section) {
       const items = section.querySelectorAll(".sequence-item");
       items.forEach((item, idx) => {
-        item.classList.remove("sequence-out");
+        resetSequenceItem(item);
         item.style.animationDelay = `${idx * 120}ms`;
         // trigger reflow for restart
         void item.offsetWidth;
@@ -1064,54 +1069,69 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
     }
     function startExitAnimation(section) {
       const items = section.querySelectorAll(".sequence-item");
+      const base = 320;
+      const delay = 80;
+      const duration = base + Math.max(0, (items.length - 1) * delay);
       items.forEach((item, idx) => {
-        item.classList.remove("sequence-in");
-        item.style.animationDelay = `${idx * 80}ms`;
+        resetSequenceItem(item);
+        item.style.animationDelay = `${idx * delay}ms`;
         void item.offsetWidth;
         item.classList.add("sequence-out");
       });
+      return duration;
     }
 
-    function setActiveSlide(index, opts = { scroll: false, updateHash: true }) {
-      activeIndex = Math.max(0, Math.min(index, slides.length - 1));
+    function waitMs(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+    function setNavState(idx) {
+      counter.textContent = `Slide ${idx + 1} / ${slides.length}`;
+      prevBtn.disabled = idx === 0;
+      nextBtn.disabled = idx === slides.length - 1;
+      dotRefs.forEach((dot, dotIdx) => {
+        dot.classList.toggle("active", dotIdx === idx);
+      });
+    }
+    async function setActiveSlide(index, opts = { scroll: false, updateHash: true }) {
+      if (isTransitioning) return;
+      const clamped = Math.max(0, Math.min(index, slides.length - 1));
+      if (clamped === activeIndex) return;
+      isTransitioning = true;
+
+      const previousIndex = activeIndex;
+      const previousSection = sectionRefs[previousIndex];
+      const previousAccent = previousIndex >= 0 ? slides[previousIndex].accent : null;
+      if (previousSection) {
+        const exitDuration = startExitAnimation(previousSection);
+        previousSection.classList.add("leaving");
+        await waitMs(exitDuration);
+        previousSection.classList.remove("active", "leaving");
+        if (previousAccent) previousSection.classList.remove(previousAccent);
+        previousSection.setAttribute("aria-hidden", "true");
+      }
+
+      activeIndex = clamped;
       const target = sectionRefs[activeIndex];
-      if (!target) return;
+      if (!target) {
+        isTransitioning = false;
+        return;
+      }
 
-      counter.textContent = `Slide ${activeIndex + 1} / ${slides.length}`;
-      prevBtn.disabled = activeIndex === 0;
-      nextBtn.disabled = activeIndex === slides.length - 1;
-
-      dotRefs.forEach((dot, idx) => {
-        dot.classList.toggle("active", idx === activeIndex);
-      });
-
-      sectionRefs.forEach((section, idx) => {
-        if (idx === activeIndex) {
-          section.classList.add("active");
-          section.classList.remove("leaving");
-          section.setAttribute("aria-hidden", "false");
-          const accent = slides[activeIndex].accent;
-          if (accent) section.classList.add(accent);
-          startEnterAnimation(section);
-        } else {
-          const accent = slides[idx].accent;
-          if (accent) section.classList.remove(accent);
-          if (section.classList.contains("active")) {
-            section.classList.add("leaving");
-            startExitAnimation(section);
-            setTimeout(() => section.classList.remove("leaving"), 260);
-          }
-          section.classList.remove("active");
-          section.setAttribute("aria-hidden", "true");
-        }
-      });
-
+      setNavState(activeIndex);
+      target.classList.add("active");
+      target.classList.remove("leaving");
+      target.setAttribute("aria-hidden", "false");
+      const accent = slides[activeIndex].accent;
+      if (accent) target.classList.add(accent);
+      startEnterAnimation(target);
       updateStageHeight(target);
 
       if (opts.updateHash) {
         const newUrl = `${window.location.pathname}#${slides[activeIndex].id}`;
         history.replaceState(null, "", newUrl);
       }
+
+      isTransitioning = false;
     }
 
     function toggleFullscreen() {
