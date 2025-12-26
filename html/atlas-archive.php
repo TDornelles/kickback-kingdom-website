@@ -13,6 +13,8 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Atlas Archive - Yearly Review (POC)</title>
+  <link rel="stylesheet" href="/assets/vendors/bootstrap/bootstrap.min.css" />
+  <link rel="stylesheet" href="/assets/css/kickback-kingdom.css" />
   <style>
     :root {
       --bg: #060910;
@@ -333,7 +335,6 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       padding: 14px 18px;
       border-radius: 12px;
       border: 1px solid var(--border);
-      background: linear-gradient(90deg, rgba(255, 209, 102, 0.25), rgba(124, 183, 255, 0.18));
       color: #0d121b;
       font-weight: 800;
       letter-spacing: 0.08em;
@@ -425,6 +426,11 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       letter-spacing: 0.1em;
       text-transform: uppercase;
     }
+    .title-logo img {
+      max-width: min(320px, 60vw);
+      height: auto;
+      display: block;
+    }
     .title-present {
       font-family: var(--mono);
       letter-spacing: 0.3em;
@@ -445,35 +451,75 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
     .stat-hero .kpi {
       font-size: clamp(34px, 6vw, 72px);
     }
+    .sequence-item { opacity: 0; }
+    .sequence-in { animation: sequenceIn 420ms ease forwards; }
+    .sequence-out { animation: sequenceOut 320ms ease forwards; }
+    @keyframes sequenceIn {
+      0% { opacity: 0; transform: translateY(18px) scale(0.98); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes sequenceOut {
+      0% { opacity: 1; transform: translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateY(-12px) scale(0.98); }
+    }
+    .control-bar {
+      background: rgba(12,18,28,0.6);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      backdrop-filter: blur(8px);
+      box-shadow: var(--shadow);
+      padding: 10px 14px;
+    }
+    .control-bar button {
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.05);
+      color: var(--text);
+      font-weight: 700;
+      padding: 8px 14px;
+    }
+    .control-bar button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
     @media (max-width: 960px) {
       .page { grid-template-columns: 1fr; }
       .control-bar { position: sticky; top: 0; }
+    }
+    @media (max-width: 768px) {
+      .slides-stage { padding: 78px 14px 18px; min-height: 68vh; }
+      .slides-stage .slide { inset: 12px; padding: 18px; }
+      .hud.floating { inset: 12px 12px auto 12px; flex-wrap: wrap; gap: 8px; }
+      .slide-header { flex-direction: column; align-items: flex-start; }
+      .copy-link { width: 100%; justify-content: center; text-align: center; }
+      .control-bar { width: 100%; }
+      .control-bar button { flex: 1 1 120px; }
     }
   </style>
 </head>
 <body>
   <div class="page-shell scanlines">
     <div class="film-grain"></div>
-    <div class="page">
-      <main class="content">
-        <div class="slides-stage">
-          <div class="hud floating">
-            <div class="hud-left">
-              <span class="pill">Atlas</span>
-              <span class="pill">2025</span>
+    <div class="page container-fluid py-4">
+      <main class="content row justify-content-center g-3">
+        <div class="col-12">
+          <div class="slides-stage w-100">
+            <div class="hud floating d-flex align-items-center justify-content-between flex-wrap gap-2">
+              <div class="hud-left d-inline-flex align-items-center gap-2 flex-wrap">
+                <span class="pill">Atlas</span>
+                <span class="pill">2025</span>
+              </div>
+              <div class="hud-dots d-inline-flex gap-2" id="dot-nav" aria-label="Slide navigation"></div>
             </div>
-            <div class="hud-dots" id="dot-nav" aria-label="Slide navigation"></div>
-            <div class="hud-right">
-              <button id="immersive-toggle" class="hud-icon" title="Fullscreen">⛶</button>
-              <button id="mute-toggle" class="hud-icon" title="Mute">🔈</button>
-            </div>
+            <div id="slides"></div>
           </div>
-          <div id="slides"></div>
         </div>
-        <div class="control-bar" aria-label="Slide controls">
-          <button id="prev-btn">◀</button>
-          <span id="counter" class="muted" aria-live="polite">Slide 1/1</span>
-          <button id="next-btn">▶</button>
+        <div class="col-12">
+          <div class="control-bar d-flex align-items-center justify-content-center gap-2 flex-wrap mt-2" aria-label="Slide controls">
+            <button id="prev-btn" class="btn btn-outline-light btn-sm">◀</button>
+            <span id="counter" class="muted" aria-live="polite">Slide 1/1</span>
+            <button id="next-btn" class="btn btn-outline-light btn-sm">▶</button>
+          </div>
         </div>
       </main>
     </div>
@@ -550,9 +596,12 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
         id: "title",
         title: "Atlas Archive",
         accent: "accent-bg-cyan",
+        hideHeaderTitle: true,
         render: () => `
           <div class="slide-hero">
-            <div class="title-logo">Kickback Kingdom</div>
+            <div class="title-logo shadow-sm">
+              <img src="https://kickback-kingdom.com/assets/images/logo-kk.png" alt="Kickback Kingdom" class="img-fluid">
+            </div>
             <div class="title-present">Presents</div>
             <div class="mega">Atlas Archive 2026</div>
             <div class="lead">Your annual checkpoint through Kickback Kingdom — stories, stats, and highlights from the realm.</div>
@@ -950,11 +999,9 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
     const prevBtn = document.getElementById("prev-btn");
     const nextBtn = document.getElementById("next-btn");
     const counter = document.getElementById("counter");
-    const immersiveToggle = document.getElementById("immersive-toggle");
-    const muteToggle = document.getElementById("mute-toggle");
 
-    let activeIndex = 0;
-    let isMuted = false;
+    let activeIndex = -1;
+    let isTransitioning = false;
     const sectionRefs = [];
     const dotRefs = [];
 
@@ -964,11 +1011,12 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       section.id = slide.id;
       section.tabIndex = -1;
       section.dataset.index = index;
+      const heading = slide.hideHeaderTitle ? "" : `<h2>${slide.title}</h2>`;
       section.innerHTML = `
         <div class="slide-header">
           <div class="slide-title">
             <span class="pill">Archive Node</span>
-            <h2>${slide.title}</h2>
+            ${heading}
           </div>
           <button class="copy-link" data-slide="${slide.id}">Copy link</button>
         </div>
@@ -976,6 +1024,7 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       `;
       slidesContainer.appendChild(section);
       sectionRefs.push(section);
+      tagSequenceItems(section);
 
       const dot = document.createElement("button");
       dot.className = "hud-dot";
@@ -990,48 +1039,111 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       const stage = slidesContainer;
       stage.style.height = `${target.offsetHeight + 40}px`;
     }
+    function applyCtaBranding() {
+      document.querySelectorAll(".cta-primary").forEach((btn) => {
+        btn.classList.add("bg-ranked-1");
+      });
+    }
+    function resetSequenceItem(item) {
+      item.classList.remove("sequence-in", "sequence-out");
+      item.style.animationDelay = "";
+    }
+    function tagSequenceItems(section) {
+      const header = section.querySelector(".slide-header");
+      if (header) header.classList.add("sequence-item");
+      const body = section.querySelector(".slide-body");
+      if (!body) return;
+      Array.from(body.children).forEach((child) => {
+        child.classList.add("sequence-item");
+      });
+    }
+    function startEnterAnimation(section) {
+      const items = section.querySelectorAll(".sequence-item");
+      items.forEach((item, idx) => {
+        resetSequenceItem(item);
+        item.style.animationDelay = `${idx * 120}ms`;
+        // trigger reflow for restart
+        void item.offsetWidth;
+        item.classList.add("sequence-in");
+      });
+    }
+    function startExitAnimation(section) {
+      const items = section.querySelectorAll(".sequence-item");
+      const base = 320;
+      const delay = 80;
+      const duration = base + Math.max(0, (items.length - 1) * delay);
+      items.forEach((item, idx) => {
+        resetSequenceItem(item);
+        item.style.animationDelay = `${idx * delay}ms`;
+        void item.offsetWidth;
+        item.classList.add("sequence-out");
+      });
+      return duration;
+    }
 
-    function setActiveSlide(index, opts = { scroll: false, updateHash: true }) {
-      activeIndex = Math.max(0, Math.min(index, slides.length - 1));
+    function waitMs(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+    function setNavState(idx) {
+      counter.textContent = `Slide ${idx + 1} / ${slides.length}`;
+      prevBtn.disabled = idx === 0;
+      nextBtn.disabled = idx === slides.length - 1;
+      dotRefs.forEach((dot, dotIdx) => {
+        dot.classList.toggle("active", dotIdx === idx);
+      });
+    }
+    async function setActiveSlide(index, opts = { scroll: false, updateHash: true }) {
+      if (isTransitioning) return;
+      const clamped = Math.max(0, Math.min(index, slides.length - 1));
+      if (clamped === activeIndex) return;
+      isTransitioning = true;
+
+      const previousIndex = activeIndex;
+      const previousSection = sectionRefs[previousIndex];
+      const previousAccent = previousIndex >= 0 ? slides[previousIndex].accent : null;
+      if (previousSection) {
+        const exitDuration = startExitAnimation(previousSection);
+        previousSection.classList.add("leaving");
+        await waitMs(exitDuration);
+        previousSection.classList.remove("active", "leaving");
+        if (previousAccent) previousSection.classList.remove(previousAccent);
+        previousSection.setAttribute("aria-hidden", "true");
+      }
+
+      activeIndex = clamped;
       const target = sectionRefs[activeIndex];
-      if (!target) return;
+      if (!target) {
+        isTransitioning = false;
+        return;
+      }
 
-      counter.textContent = `Slide ${activeIndex + 1} / ${slides.length}`;
-      prevBtn.disabled = activeIndex === 0;
-      nextBtn.disabled = activeIndex === slides.length - 1;
-
-      dotRefs.forEach((dot, idx) => {
-        dot.classList.toggle("active", idx === activeIndex);
-      });
-
-      sectionRefs.forEach((section, idx) => {
-        if (idx === activeIndex) {
-          section.classList.add("active");
-          section.classList.remove("leaving");
-          section.setAttribute("aria-hidden", "false");
-          const accent = slides[activeIndex].accent;
-          if (accent) section.classList.add(accent);
-        } else {
-          const accent = slides[idx].accent;
-          if (accent) section.classList.remove(accent);
-          if (section.classList.contains("active")) {
-            section.classList.add("leaving");
-            setTimeout(() => section.classList.remove("leaving"), 260);
-          }
-          section.classList.remove("active");
-          section.setAttribute("aria-hidden", "true");
-        }
-      });
-
+      setNavState(activeIndex);
+      target.classList.add("active");
+      target.classList.remove("leaving");
+      target.setAttribute("aria-hidden", "false");
+      const accent = slides[activeIndex].accent;
+      if (accent) target.classList.add(accent);
+      startEnterAnimation(target);
       updateStageHeight(target);
 
       if (opts.updateHash) {
         const newUrl = `${window.location.pathname}#${slides[activeIndex].id}`;
         history.replaceState(null, "", newUrl);
       }
+
+      isTransitioning = false;
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
     }
 
     slides.forEach(createSlideSection);
+    applyCtaBranding();
     setActiveSlide(0);
 
     prevBtn.addEventListener("click", () => setActiveSlide(activeIndex - 1, { scroll: true }));
@@ -1073,19 +1185,6 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
     window.addEventListener("hashchange", scrollToHash);
     scrollToHash();
 
-    immersiveToggle.addEventListener("click", () => {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(() => {});
-      } else {
-        document.exitFullscreen().catch(() => {});
-      }
-    });
-
-    muteToggle.addEventListener("click", () => {
-      isMuted = !isMuted;
-      muteToggle.textContent = isMuted ? "🔇" : "🔈";
-    });
-
     function triggerCelebration() {
       const bounds = slidesContainer.getBoundingClientRect();
       const count = 18;
@@ -1113,7 +1212,7 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
         setActiveSlide(activeIndex + 1, { scroll: true });
       }
       if (target.matches(".cta-primary[data-action='fullscreen']")) {
-        immersiveToggle.click();
+        toggleFullscreen();
       }
       if (target.matches(".cta-primary[data-action='share']")) {
         const slideId = slides[activeIndex].id;
@@ -1131,5 +1230,6 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
     });
     updateStageHeight(sectionRefs[0]);
   </script>
+  <script src="/assets/vendors/bootstrap/bootstrap.bundle.min.js"></script>
 </body>
 </html>
