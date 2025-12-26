@@ -168,9 +168,9 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       position: absolute;
       inset: 18px;
       opacity: 0;
-      transform: translateY(40px) scale(0.98) rotateX(3deg);
+      transform: none;
       pointer-events: none;
-      transition: opacity 260ms ease, transform 320ms ease, filter 320ms ease;
+      transition: none;
       z-index: 0;
       background: radial-gradient(circle at 12% 10%, rgba(255, 209, 102, 0.12), transparent 38%), radial-gradient(circle at 90% 15%, rgba(124, 183, 255, 0.16), transparent 42%), linear-gradient(180deg, rgba(16,23,32,0.94), rgba(19,29,44,0.9));
       border: 1px solid var(--border);
@@ -181,22 +181,23 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       filter: drop-shadow(0 20px 40px rgba(0,0,0,0.35));
       backdrop-filter: blur(4px);
       max-width: calc(100% - 36px);
+      display: none;
     }
     .slides-stage .slide.active {
       position: relative;
       opacity: 1;
-      transform: translateY(0) scale(1) rotateX(0deg);
+      transform: none;
       pointer-events: auto;
       z-index: 2;
-      animation: slideIn 520ms ease;
+      display: block;
     }
     .slides-stage .slide.leaving {
       opacity: 0;
-      transform: translateY(-20px) scale(0.96);
+      transform: none;
       pointer-events: none;
-      filter: blur(2px);
+      filter: none;
       z-index: 1;
-      transition: opacity 240ms ease, transform 240ms ease, filter 240ms ease;
+      transition: none;
     }
     .slide::before {
       content: "";
@@ -447,17 +448,7 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       background: var(--accent);
       opacity: 0.9;
       pointer-events: none;
-      animation: sparkFly 900ms ease-out forwards;
-    }
-    @keyframes sparkFly {
-      0% { transform: translate(0,0) scale(1); opacity: 1; }
-      70% { opacity: 1; }
-      100% { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
-    }
-    @keyframes slideIn {
-      0% { opacity: 0; transform: translateY(30px) scale(0.98); filter: blur(6px); }
-      60% { opacity: 1; filter: blur(0); }
-      100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+      animation: none;
     }
     .sub {
       font-size: 14px;
@@ -540,17 +531,7 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
     .stat-hero .kpi {
       font-size: clamp(34px, 6vw, 72px);
     }
-    .sequence-item { opacity: 0; }
-    .sequence-in { animation: sequenceIn 420ms ease forwards; }
-    .sequence-out { animation: sequenceOut 320ms ease forwards; }
-    @keyframes sequenceIn {
-      0% { opacity: 0; transform: translateY(18px) scale(0.98); }
-      100% { opacity: 1; transform: translateY(0) scale(1); }
-    }
-    @keyframes sequenceOut {
-      0% { opacity: 1; transform: translateY(0) scale(1); }
-      100% { opacity: 0; transform: translateY(-12px) scale(0.98); }
-    }
+    .sequence-item { opacity: 1; }
     .control-bar {
       background: rgba(12,18,28,0.6);
       border: 1px solid var(--border);
@@ -1157,42 +1138,10 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
         btn.classList.add("bg-ranked-1");
       });
     }
-    function resetSequenceItem(item) {
-      item.classList.remove("sequence-in", "sequence-out");
-      item.style.animationDelay = "";
-    }
-    function tagSequenceItems(section) {
-      const header = section.querySelector(".slide-header");
-      if (header) header.classList.add("sequence-item");
-      const body = section.querySelector(".slide-body");
-      if (!body) return;
-      Array.from(body.children).forEach((child) => {
-        child.classList.add("sequence-item");
-      });
-    }
-    function startEnterAnimation(section) {
-      const items = section.querySelectorAll(".sequence-item");
-      items.forEach((item, idx) => {
-        resetSequenceItem(item);
-        item.style.animationDelay = `${idx * 120}ms`;
-        // trigger reflow for restart
-        void item.offsetWidth;
-        item.classList.add("sequence-in");
-      });
-    }
-    function startExitAnimation(section) {
-      const items = section.querySelectorAll(".sequence-item");
-      const base = 320;
-      const delay = 80;
-      const duration = base + Math.max(0, (items.length - 1) * delay);
-      items.forEach((item, idx) => {
-        resetSequenceItem(item);
-        item.style.animationDelay = `${idx * delay}ms`;
-        void item.offsetWidth;
-        item.classList.add("sequence-out");
-      });
-      return duration;
-    }
+    function resetSequenceItem(item) {}
+    function tagSequenceItems() {}
+    function startEnterAnimation() {}
+    function startExitAnimation() { return 0; }
 
     function waitMs(ms) {
       return new Promise((resolve) => setTimeout(resolve, ms));
@@ -1222,14 +1171,21 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       }
 
       const accent = slides[clamped].accent;
-      const exitDuration = previousSection ? startExitAnimation(previousSection) : 0;
 
       activeIndex = clamped;
       setNavState(activeIndex);
 
+      if (previousSection) {
+        previousSection.classList.remove("active", "leaving");
+        if (previousAccent) previousSection.classList.remove(previousAccent);
+        previousSection.setAttribute("aria-hidden", "true");
+        previousSection.style.display = "none";
+      }
+
       target.classList.add("active");
       target.classList.remove("leaving");
       target.setAttribute("aria-hidden", "false");
+      target.style.display = "block";
       if (accent) target.classList.add(accent);
       startEnterAnimation(target);
       updateStageHeight(target);
@@ -1239,16 +1195,7 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
         history.replaceState(null, "", newUrl);
       }
 
-      if (previousSection) {
-        previousSection.classList.add("leaving");
-        setTimeout(() => {
-          previousSection.classList.remove("active", "leaving");
-          if (previousAccent) previousSection.classList.remove(previousAccent);
-          previousSection.setAttribute("aria-hidden", "true");
-        }, exitDuration);
-      }
-
-      setTimeout(() => { isTransitioning = false; }, Math.max(exitDuration, 260));
+      isTransitioning = false;
     }
 
     function toggleFullscreen() {
@@ -1302,23 +1249,7 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
     window.addEventListener("hashchange", scrollToHash);
     scrollToHash();
 
-    function triggerCelebration() {
-      const bounds = slidesContainer.getBoundingClientRect();
-      const count = 18;
-      for (let i = 0; i < count; i++) {
-        const spark = document.createElement("div");
-        spark.className = "spark";
-        const dx = (Math.random() * 200 - 100) + "px";
-        const dy = (Math.random() * 260 - 80) + "px";
-        spark.style.setProperty("--dx", dx);
-        spark.style.setProperty("--dy", dy);
-        spark.style.left = (bounds.width / 2) + "px";
-        spark.style.top = (bounds.height / 2) + "px";
-        spark.style.background = ["#ffd166", "#7cb7ff", "#ff7edb", "#6cf0c2"][i % 4];
-        slidesContainer.appendChild(spark);
-        setTimeout(() => spark.remove(), 900);
-      }
-    }
+    function triggerCelebration() { return; }
 
     slidesContainer.addEventListener("click", (e) => {
       const target = e.target;
