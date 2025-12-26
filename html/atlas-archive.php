@@ -82,7 +82,7 @@
     }
     .hud.floating {
       position: absolute;
-      inset: 12px 12px auto 12px;
+      inset: 16px 16px auto 16px;
       z-index: 3;
       background: rgba(12,18,28,0.6);
       border: 1px solid var(--border);
@@ -138,9 +138,11 @@
       border: 1px solid var(--border);
       background: linear-gradient(160deg, rgba(16,23,32,0.92), rgba(12,18,28,0.96));
       box-shadow: var(--shadow);
-      min-height: 70vh;
-      padding: 12px;
+      min-height: 75vh;
+      padding: 96px 24px 24px;
       isolation: isolate;
+      max-width: 1200px;
+      margin: 0 auto;
     }
     .slides-stage::before {
       content: "";
@@ -166,6 +168,8 @@
       overflow: hidden;
       filter: drop-shadow(0 20px 40px rgba(0,0,0,0.35));
       backdrop-filter: blur(4px);
+      max-width: calc(100% - 36px);
+      margin: 0 auto;
     }
     .slides-stage .slide.active {
       position: relative;
@@ -401,6 +405,25 @@
       margin: 0 auto;
       line-height: 1.4;
     }
+    .title-logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .title-present {
+      font-family: var(--mono);
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-top: 8px;
+    }
     .stat-hero {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -521,7 +544,9 @@
         accent: "accent-bg-cyan",
         render: () => `
           <div class="slide-hero">
-            <div class="mega">Atlas Archive</div>
+            <div class="title-logo">Kickback Kingdom</div>
+            <div class="title-present">Presents</div>
+            <div class="mega">Atlas Archive 2026</div>
             <div class="lead">Your annual checkpoint through Kickback Kingdom — stories, stats, and highlights from the realm.</div>
             <div class="actions" style="justify-content:center;">
               <button class="cta-primary" data-action="next">Start</button>
