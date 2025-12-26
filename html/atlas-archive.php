@@ -316,18 +316,23 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
     }
     .opening-grid {
       display: grid;
-      grid-template-columns: minmax(320px, 1.2fr) minmax(260px, 0.9fr);
-      gap: 14px;
-      align-items: stretch;
+      grid-template-columns: 1fr;
+      justify-items: center;
+      gap: 18px;
     }
-    .opening-hero {
+    .opening-panel {
       position: relative;
       overflow: hidden;
-      padding: 18px;
-      background: linear-gradient(140deg, rgba(255, 209, 102, 0.12), rgba(124, 183, 255, 0.16));
+      padding: 26px 28px;
+      max-width: 820px;
+      width: 100%;
+      text-align: center;
+      background: linear-gradient(140deg, rgba(255, 209, 102, 0.12), rgba(124, 183, 255, 0.08));
       border: 1px solid rgba(255, 209, 102, 0.35);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
     }
-    .opening-hero::after {
+    .opening-panel::after {
       content: "";
       position: absolute;
       inset: 0;
@@ -335,9 +340,9 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       opacity: 0.6;
       pointer-events: none;
     }
-    .opening-hero > * { position: relative; z-index: 1; }
+    .opening-panel > * { position: relative; z-index: 1; }
     .opening-title {
-      font-size: clamp(24px, 4vw, 36px);
+      font-size: clamp(28px, 5vw, 44px);
       font-weight: 900;
       letter-spacing: -0.02em;
       margin-bottom: 10px;
@@ -345,8 +350,9 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
     .opening-stats {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 10px;
-      margin: 12px 0;
+      gap: 12px;
+      margin: 16px auto;
+      max-width: 640px;
     }
     .opening-stat {
       padding: 12px;
@@ -363,18 +369,21 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
     .opening-program {
       display: grid;
       gap: 10px;
-      margin-top: 10px;
+      margin: 10px auto 0;
+      max-width: 680px;
     }
     .opening-program-item {
-      display: flex;
+      display: grid;
+      grid-template-columns: 120px 1fr;
       align-items: center;
-      gap: 10px;
-      padding: 10px 12px;
+      gap: 12px;
+      padding: 12px 14px;
       border-radius: 12px;
       background: rgba(255,255,255,0.03);
       border: 1px solid var(--border);
       font-weight: 700;
       letter-spacing: 0.02em;
+      text-align: left;
     }
     .opening-chip {
       display: inline-flex;
@@ -444,6 +453,11 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       0% { transform: translate(0,0) scale(1); opacity: 1; }
       70% { opacity: 1; }
       100% { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
+    }
+    @keyframes slideIn {
+      0% { opacity: 0; transform: translateY(30px) scale(0.98); filter: blur(6px); }
+      60% { opacity: 1; filter: blur(0); }
+      100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
     }
     .sub {
       font-size: 14px;
@@ -570,7 +584,8 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       .control-bar { width: 100%; }
       .control-bar button { flex: 1 1 120px; }
       .opening-grid { grid-template-columns: 1fr; }
-      .opening-hero { order: -1; }
+      .opening-panel { padding: 22px 18px; }
+      .opening-program-item { grid-template-columns: 1fr; text-align: center; }
     }
   </style>
 </head>
@@ -694,7 +709,7 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
         title: "Opening Ceremony",
         render: () => `
           <div class="opening-grid">
-            <div class="card opening-hero accent-bg-gold">
+            <div class="opening-panel card accent-bg-gold">
               <div class="ribbon">Grand Opening</div>
               <div class="opening-title">Atlas Archive is live</div>
               <p class="muted">Curtains up. This year&apos;s legends, quests, and guild moments are queued for the spotlight.</p>
@@ -710,14 +725,6 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
                   <span class="sub">Featured banners</span>
                 </div>
               </div>
-              <div class="actions flex-wrap">
-                <button class="cta-primary" data-action="celebrate">Start the fanfare</button>
-                <button class="cta-primary" data-action="next">Begin the slides</button>
-                <button class="cta-primary" data-action="fullscreen">Fullscreen</button>
-              </div>
-            </div>
-            <div class="card accent-bg-cyan">
-              <div class="ribbon">Tonight&apos;s Program</div>
               <div class="opening-program">
                 <div class="opening-program-item">
                   <span class="opening-chip">Highlights</span>
@@ -732,7 +739,10 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
                   Outlooks, upgrades, and where the banners fly next.
                 </div>
               </div>
-              <div class="actions flex-wrap" style="margin-top:12px;">
+              <div class="actions flex-wrap" style="justify-content:center; margin-top:18px;">
+                <button class="cta-primary" data-action="celebrate">Start the fanfare</button>
+                <button class="cta-primary" data-action="next">Begin the slides</button>
+                <button class="cta-primary" data-action="fullscreen">Fullscreen</button>
                 <button class="cta-primary" data-action="share">Share link</button>
               </div>
             </div>
