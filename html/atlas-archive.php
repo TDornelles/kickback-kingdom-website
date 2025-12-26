@@ -344,13 +344,6 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       cursor: pointer;
       transition: transform 140ms ease, box-shadow 140ms ease;
     }
-    .cta-primary.bg-ranked-1 {
-      background: linear-gradient(89deg, #f1eac6, gold, #f1eac6);
-      background-size: 200%;
-      animation: shine 5s ease-in-out infinite;
-      color: #0d121b !important;
-      border-color: #b2ab86;
-    }
     .cta-primary:hover { transform: translateY(-2px) scale(1.01); box-shadow: 0 20px 46px rgba(0,0,0,0.4); }
     .cta-primary:active { transform: translateY(0) scale(0.99); }
     .actions {
