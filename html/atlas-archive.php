@@ -451,6 +451,17 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
     .stat-hero .kpi {
       font-size: clamp(34px, 6vw, 72px);
     }
+    .sequence-item { opacity: 0; }
+    .sequence-in { animation: sequenceIn 420ms ease forwards; }
+    .sequence-out { animation: sequenceOut 320ms ease forwards; }
+    @keyframes sequenceIn {
+      0% { opacity: 0; transform: translateY(18px) scale(0.98); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes sequenceOut {
+      0% { opacity: 1; transform: translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateY(-12px) scale(0.98); }
+    }
     .control-bar {
       background: rgba(12,18,28,0.6);
       border: 1px solid var(--border);
@@ -1012,6 +1023,7 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       `;
       slidesContainer.appendChild(section);
       sectionRefs.push(section);
+      tagSequenceItems(section);
 
       const dot = document.createElement("button");
       dot.className = "hud-dot";
@@ -1029,6 +1041,34 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
     function applyCtaBranding() {
       document.querySelectorAll(".cta-primary").forEach((btn) => {
         btn.classList.add("bg-ranked-1");
+      });
+    }
+    function tagSequenceItems(section) {
+      const header = section.querySelector(".slide-header");
+      if (header) header.classList.add("sequence-item");
+      const body = section.querySelector(".slide-body");
+      if (!body) return;
+      Array.from(body.children).forEach((child) => {
+        child.classList.add("sequence-item");
+      });
+    }
+    function startEnterAnimation(section) {
+      const items = section.querySelectorAll(".sequence-item");
+      items.forEach((item, idx) => {
+        item.classList.remove("sequence-out");
+        item.style.animationDelay = `${idx * 120}ms`;
+        // trigger reflow for restart
+        void item.offsetWidth;
+        item.classList.add("sequence-in");
+      });
+    }
+    function startExitAnimation(section) {
+      const items = section.querySelectorAll(".sequence-item");
+      items.forEach((item, idx) => {
+        item.classList.remove("sequence-in");
+        item.style.animationDelay = `${idx * 80}ms`;
+        void item.offsetWidth;
+        item.classList.add("sequence-out");
       });
     }
 
@@ -1052,11 +1092,13 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
           section.setAttribute("aria-hidden", "false");
           const accent = slides[activeIndex].accent;
           if (accent) section.classList.add(accent);
+          startEnterAnimation(section);
         } else {
           const accent = slides[idx].accent;
           if (accent) section.classList.remove(accent);
           if (section.classList.contains("active")) {
             section.classList.add("leaving");
+            startExitAnimation(section);
             setTimeout(() => section.classList.remove("leaving"), 260);
           }
           section.classList.remove("active");
