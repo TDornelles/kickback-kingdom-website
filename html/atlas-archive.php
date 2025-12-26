@@ -225,10 +225,6 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       opacity: 0.6;
       pointer-events: none;
     }
-    .slide:focus {
-      outline: 2px solid var(--accent);
-      outline-offset: 4px;
-    }
     .slide-header {
       display: flex;
       align-items: center;
