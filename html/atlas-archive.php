@@ -594,7 +594,7 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
               </div>
               <div class="hud-dots d-inline-flex gap-2" id="dot-nav" aria-label="Slide navigation"></div>
             </div>
-            <div id="slides"></div>
+            <div id="slides" class="w-100"></div>
           </div>
         </div>
         <div class="col-12">
