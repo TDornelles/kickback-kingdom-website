@@ -61,12 +61,12 @@
       z-index: 2;
       min-height: 100vh;
       display: grid;
-      grid-template-columns: 320px 1fr;
+      grid-template-columns: 1fr;
       gap: 18px;
       padding: 28px 28px 64px;
     }
     header.hero {
-      grid-column: 1 / span 2;
+      grid-column: 1;
       background: linear-gradient(145deg, rgba(255, 209, 102, 0.18), rgba(108, 240, 194, 0.14), rgba(124, 183, 255, 0.16));
       border: 1px solid var(--border);
       border-radius: 20px;
@@ -151,54 +151,6 @@
     @keyframes glow {
       from { opacity: 0.75; }
       to { opacity: 1; transform: scale(1.08); }
-    }
-    .nav {
-      position: sticky;
-      top: 18px;
-      align-self: start;
-      background: linear-gradient(180deg, rgba(19,29,44,0.9), rgba(12,18,28,0.92));
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 12px;
-      box-shadow: var(--shadow);
-      max-height: calc(100vh - 48px);
-      overflow: auto;
-      backdrop-filter: blur(8px);
-    }
-    .nav h3 {
-      margin: 6px 0 12px;
-      font-size: 14px;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      text-transform: uppercase;
-    }
-    .nav ul {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      display: grid;
-      gap: 6px;
-    }
-    .nav button {
-      width: 100%;
-      background: rgba(255,255,255,0.01);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      color: var(--text);
-      padding: 10px 12px;
-      text-align: left;
-      cursor: pointer;
-      font-weight: 600;
-      transition: border-color 120ms ease, background 120ms ease, transform 120ms ease;
-    }
-    .nav button:hover {
-      border-color: var(--accent);
-      transform: translateX(2px);
-    }
-    .nav button.active {
-      background: rgba(255, 209, 102, 0.1);
-      border-color: var(--accent);
-      box-shadow: 0 0 0 1px rgba(255, 209, 102, 0.3) inset;
     }
     .content {
       display: flex;
@@ -432,7 +384,6 @@
     @media (max-width: 960px) {
       .page { grid-template-columns: 1fr; }
       header.hero { grid-column: 1; }
-      .nav { position: relative; top: 0; max-height: none; }
       .control-bar { position: sticky; top: 0; }
     }
   </style>
@@ -447,11 +398,6 @@
         <p>Thank you, Realmwalkers, for an incredible year. Tonight we open the vault, spotlight our heroes, and celebrate the stories that shaped the Kingdom.</p>
         <div class="kudos"><span class="spark"></span> <span>Presented with gratitude to our community</span></div>
       </header>
-
-      <aside class="nav">
-        <h3>Atlas Nodes</h3>
-        <ul id="slide-nav"></ul>
-      </aside>
 
       <main class="content">
         <div class="control-bar">
@@ -791,7 +737,6 @@
     ];
 
     const slidesContainer = document.getElementById("slides");
-    const navList = document.getElementById("slide-nav");
     const jumpSelect = document.getElementById("jump-select");
     const prevBtn = document.getElementById("prev-btn");
     const nextBtn = document.getElementById("next-btn");
@@ -820,13 +765,6 @@
       slidesContainer.appendChild(section);
       sectionRefs.push(section);
 
-      const navItem = document.createElement("li");
-      const navBtn = document.createElement("button");
-      navBtn.textContent = slide.title;
-      navBtn.addEventListener("click", () => setActiveSlide(index, { scroll: true }));
-      navItem.appendChild(navBtn);
-      navList.appendChild(navItem);
-
       const option = document.createElement("option");
       option.value = index;
       option.textContent = `${index + 1}. ${slide.title}`;
@@ -843,10 +781,6 @@
       activeIndex = Math.max(0, Math.min(index, slides.length - 1));
       const target = sectionRefs[activeIndex];
       if (!target) return;
-
-      navList.querySelectorAll("button").forEach(btn => btn.classList.remove("active"));
-      const navButton = navList.querySelectorAll("button")[activeIndex];
-      if (navButton) navButton.classList.add("active");
 
       jumpSelect.value = String(activeIndex);
       counter.textContent = `Slide ${activeIndex + 1} / ${slides.length}`;
