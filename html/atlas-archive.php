@@ -1215,15 +1215,22 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       const animateClasses = Array.from(el.classList).filter(cls => cls.startsWith("animate__"));
       animateClasses.forEach(cls => el.classList.remove(cls));
     }
-    function applyAnimation(el, animationName, { delay = 0, duration = animationConfig.duration } = {}) {
+    function applyAnimation(el, animationName, { delay = 0, duration = animationConfig.duration, repeat = 1 } = {}) {
       if (!el || !animationName) return Promise.resolve();
       resetAnimationClasses(el);
       el.style.animationDelay = `${delay}ms`;
       el.style.setProperty("--animate-delay", `${delay}ms`);
       el.style.setProperty("--animate-duration", `${duration}ms`);
+      el.style.animationIterationCount = `${repeat}`;
+      el.style.setProperty("--animate-repeat", `${repeat}`);
       return new Promise((resolve) => {
         const handle = () => {
           resetAnimationClasses(el);
+          el.style.removeProperty("animationDelay");
+          el.style.removeProperty("--animate-delay");
+          el.style.removeProperty("--animate-duration");
+          el.style.removeProperty("animationIterationCount");
+          el.style.removeProperty("--animate-repeat");
           el.removeEventListener("animationend", handle);
           resolve();
         };
