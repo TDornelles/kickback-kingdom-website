@@ -158,16 +158,42 @@ foreach ($itemRows as $row) {
     }
 }
 
+$typeAllowedItemIds = [];
+foreach ($itemRows as $row) {
+    $typeValue = $row->type ?? null;
+    if ($typeValue === null) {
+        continue;
+    }
+
+    if (!isset($typeAllowedItemIds[$typeValue])) {
+        $typeAllowedItemIds[$typeValue] = [];
+    }
+
+    $typeAllowedItemIds[$typeValue][] = $row->crand;
+}
+
 $itemTypes = ItemType::cases();
 $restrictedItemTypes = [
     ItemType::RaffleTicket,
     ItemType::PrestigeToken,
     ItemType::WritOfPassage,
 ];
-$itemTypeOptions = array_values(array_filter(
-    $itemTypes,
-    fn(ItemType $type) => !in_array($type, $restrictedItemTypes, true)
-));
+$restrictedItemTypeValues = array_map(fn(ItemType $type) => $type->value, $restrictedItemTypes);
+$itemTypeOptions = $itemTypes;
+$itemTypeDescriptions = [
+    ItemType::Badge->value => 'Badges are earned accolades kept in the badge inventory and cannot be traded.',
+    ItemType::Standard->value => 'Standard items are regular tradable items with no special restrictions.',
+    ItemType::Unique->value => 'Unique items are one-of-a-kind and are automatically paired with the Unique rarity.',
+    ItemType::NonTradable->value => 'Non-tradable items stay in the item inventory but cannot be traded to other players.',
+    ItemType::PrestigeToken->value => 'Prestige Tokens can be spent to commend or denounce another player.',
+    ItemType::RaffleTicket->value => 'Raffle Tickets are used for entering raffles.',
+    ItemType::WritOfPassage->value => 'Writs of Passage grant access to special events or areas.',
+];
+$defaultItemTypeHelper = '';
+if (!empty($itemTypeOptions)) {
+    $defaultTypeValue = $itemTypeOptions[0]->value;
+    $defaultItemTypeHelper = $itemTypeDescriptions[$defaultTypeValue] ?? '';
+}
 $itemRarities = ItemRarity::cases();
 $equipmentSlots = ItemEquipmentSlot::cases();
 $itemCategories = ItemCategory::cases();
@@ -440,9 +466,23 @@ function enumLabel(string $value): string
                                                 <label class="form-label">Type</label>
                                                 <select class="form-select" name="type" id="item-type">
                                                     <?php foreach ($itemTypeOptions as $type) { ?>
-                                                        <option value="<?= $type->value; ?>"><?= enumLabel($type->name); ?></option>
+                                                        <?php
+                                                        $typeValue = $type->value;
+                                                        $allowedIds = $typeAllowedItemIds[$typeValue] ?? [];
+                                                        $isRestricted = in_array($typeValue, $restrictedItemTypeValues, true);
+                                                        ?>
+                                                        <option
+                                                            value="<?= $typeValue; ?>"
+                                                            data-restricted="<?= $isRestricted ? '1' : '0'; ?>"
+                                                            data-allowed-ids="<?= htmlspecialchars(implode(',', $allowedIds)); ?>"
+                                                        >
+                                                            <?= enumLabel($type->name); ?>
+                                                        </option>
                                                     <?php } ?>
                                                 </select>
+                                                <div class="form-text text-body-secondary" id="item-type-helper">
+                                                    <?= htmlspecialchars($defaultItemTypeHelper ?: 'Select an item type to see what it does.'); ?>
+                                                </div>
                                             </div>
                                             <div class="col-md-4">
                                                 <label class="form-label">Rarity</label>
@@ -780,6 +820,8 @@ function enumLabel(string $value): string
         const DEFAULT_MEDIA_SRC = <?= json_encode($defaultMediaPath); ?>;
         const ITEM_TYPE_UNIQUE = '<?= ItemType::Unique->value; ?>';
         const ITEM_TYPE_STANDARD = '<?= ItemType::Standard->value; ?>';
+        const ITEM_TYPE_DESCRIPTIONS = <?= json_encode($itemTypeDescriptions); ?>;
+        const ITEM_TYPE_ALLOWED_IDS = <?= json_encode($typeAllowedItemIds); ?>;
         const ITEM_RARITY_UNIQUE = '<?= ItemRarity::Unique->value; ?>';
         const ITEM_RARITY_LEGENDARY = '<?= ItemRarity::Legendary->value; ?>';
 
@@ -815,6 +857,51 @@ function enumLabel(string $value): string
                     containerSize.value = -1;
                 }
             }
+        }
+
+        function setTypeHelperText(selectedType) {
+            const helper = document.getElementById('item-type-helper');
+            if (!helper) return;
+
+            const description = ITEM_TYPE_DESCRIPTIONS?.[selectedType] || 'Select an item type to see what it does.';
+            helper.textContent = description;
+        }
+
+        function updateTypeOptionAvailability(itemId) {
+            const typeSelect = document.getElementById('item-type');
+            if (!typeSelect) return;
+
+            let selectedValue = typeSelect.value;
+            let firstEnabledValue = '';
+
+            Array.from(typeSelect.options).forEach((option) => {
+                const typeValue = option.value;
+                const allowedIds = (option.dataset.allowedIds || '')
+                    .split(',')
+                    .map((id) => parseInt(id, 10))
+                    .filter((id) => !Number.isNaN(id));
+
+                const isRestricted = option.dataset.restricted === '1';
+                const isAllowed = isRestricted
+                    ? itemId && allowedIds.includes(parseInt(itemId, 10))
+                    : true;
+
+                option.disabled = !isAllowed;
+                if (option.disabled && selectedValue === typeValue) {
+                    selectedValue = '';
+                }
+
+                if (!option.disabled && !firstEnabledValue) {
+                    firstEnabledValue = typeValue;
+                }
+            });
+
+            if (!selectedValue) {
+                typeSelect.value = firstEnabledValue || '';
+                selectedValue = typeSelect.value;
+            }
+
+            setTypeHelperText(selectedValue);
         }
 
         function enforceUniquePairing() {
@@ -910,6 +997,7 @@ function enumLabel(string $value): string
 
                 toggleEquipmentFields(itemData.equipable == 1);
                 toggleContainerFields(itemData.is_container == 1);
+                updateTypeOptionAvailability(itemData.Id);
                 enforceUniquePairing();
                 setAbilitySelections(itemData.abilities ?? []);
             } else {
@@ -926,6 +1014,7 @@ function enumLabel(string $value): string
 
                 toggleEquipmentFields(false);
                 toggleContainerFields(false);
+                updateTypeOptionAvailability('');
                 enforceUniquePairing();
                 clearAbilitySelections();
             }
@@ -993,11 +1082,15 @@ function enumLabel(string $value): string
 
         const itemTypeSelect = document.getElementById('item-type');
         const itemRaritySelect = document.getElementById('item-rarity');
-        itemTypeSelect?.addEventListener('change', handleTypeChange);
+        itemTypeSelect?.addEventListener('change', () => {
+            handleTypeChange();
+            setTypeHelperText(itemTypeSelect.value);
+        });
         itemRaritySelect?.addEventListener('change', handleRarityChange);
 
         toggleEquipmentFields(equipableCheckbox?.checked ?? false);
         toggleContainerFields(containerCheckbox?.checked ?? false);
+        updateTypeOptionAvailability(document.getElementById('item-id')?.value ?? '');
 
         function openMediaPicker(inputId, previewId, labelId) {
             OpenSelectMediaModal('itemModal', previewId, inputId, (mediaId, mediaPath) => {
