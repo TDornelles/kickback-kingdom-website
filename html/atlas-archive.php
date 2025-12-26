@@ -150,11 +150,13 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       border: 1px solid var(--border);
       background: linear-gradient(160deg, rgba(16,23,32,0.92), rgba(12,18,28,0.96));
       box-shadow: var(--shadow);
-      min-height: 75vh;
+      height: min(85vh, 980px);
       padding: 96px 24px 24px;
       isolation: isolate;
       max-width: 1200px;
       margin: 0 auto;
+      display: flex;
+      align-items: stretch;
     }
     .slides-stage::before {
       content: "";
@@ -183,6 +185,8 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       backdrop-filter: blur(4px);
       max-width: calc(100% - 36px);
       display: none;
+      flex-direction: column;
+      overflow: hidden;
     }
     .slides-stage .slide.active {
       position: relative;
@@ -190,7 +194,7 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       transform: none;
       pointer-events: auto;
       z-index: 2;
-      display: block;
+      display: flex;
     }
     .slides-stage .slide.leaving {
       opacity: 0;
@@ -233,6 +237,11 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       gap: 12px;
       flex-wrap: wrap;
       margin-bottom: 12px;
+    }
+    .slide-body {
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 6px;
     }
     .slide-title {
       display: flex;
@@ -558,7 +567,7 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       .control-bar { position: sticky; top: 0; }
     }
     @media (max-width: 768px) {
-      .slides-stage { padding: 78px 14px 18px; min-height: 68vh; }
+      .slides-stage { padding: 78px 14px 18px; height: 76vh; }
       .slides-stage .slide { inset: 12px; padding: 18px; }
       .hud.floating { inset: 12px 12px auto 12px; flex-wrap: wrap; gap: 8px; }
       .slide-header { flex-direction: column; align-items: flex-start; }
@@ -1200,11 +1209,6 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       dotRefs.push(dot);
     }
 
-    function updateStageHeight(target) {
-      if (!target) return;
-      const stage = slidesContainer;
-      stage.style.height = `${target.offsetHeight + 40}px`;
-    }
     function applyCtaBranding() {
       document.querySelectorAll(".cta-primary").forEach((btn) => {
         btn.classList.add("bg-ranked-1");
@@ -1215,7 +1219,17 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       const animateClasses = Array.from(el.classList).filter(cls => cls.startsWith("animate__"));
       animateClasses.forEach(cls => el.classList.remove(cls));
     }
-    function applyAnimation(el, animationName, { delay = 0, duration = animationConfig.duration, repeat = 1 } = {}) {
+    function cleanupAnimation(el) {
+      if (!el) return;
+      resetAnimationClasses(el);
+      el.style.removeProperty("animationDelay");
+      el.style.removeProperty("--animate-delay");
+      el.style.removeProperty("--animate-duration");
+      el.style.removeProperty("animationIterationCount");
+      el.style.removeProperty("--animate-repeat");
+      el.style.removeProperty("animationFillMode");
+    }
+    function applyAnimation(el, animationName, { delay = 0, duration = animationConfig.duration, repeat = 1, holdFinalState = false } = {}) {
       if (!el || !animationName) return Promise.resolve();
       resetAnimationClasses(el);
       el.style.animationDelay = `${delay}ms`;
@@ -1223,14 +1237,12 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       el.style.setProperty("--animate-duration", `${duration}ms`);
       el.style.animationIterationCount = `${repeat}`;
       el.style.setProperty("--animate-repeat", `${repeat}`);
+      el.style.animationFillMode = "both";
       return new Promise((resolve) => {
         const handle = () => {
-          resetAnimationClasses(el);
-          el.style.removeProperty("animationDelay");
-          el.style.removeProperty("--animate-delay");
-          el.style.removeProperty("--animate-duration");
-          el.style.removeProperty("animationIterationCount");
-          el.style.removeProperty("--animate-repeat");
+          if (!holdFinalState) {
+            cleanupAnimation(el);
+          }
           el.removeEventListener("animationend", handle);
           resolve();
         };
@@ -1305,10 +1317,10 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       const config = getSlideAnimationConfig(section.id);
       const elementAnimations = collectElementAnimations(section, config);
       const animations = [
-        applyAnimation(section, config.stage.exit, { duration: config.stage.exitDuration || animationConfig.exitDuration }),
+        applyAnimation(section, config.stage.exit, { duration: config.stage.exitDuration || animationConfig.exitDuration, holdFinalState: true }),
       ];
       elementAnimations.forEach((item) => {
-        animations.push(applyAnimation(item.el, item.exit, { delay: 0, duration: item.duration }));
+        animations.push(applyAnimation(item.el, item.exit, { delay: 0, duration: item.duration, holdFinalState: true }));
       });
       return Promise.all(animations);
     }
@@ -1349,11 +1361,15 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
         previousSection.classList.add("leaving");
         previousSection.style.display = "block";
         await startExitAnimation(previousSection);
+        previousSection.style.visibility = "hidden";
         previousSection.classList.remove("active", "leaving");
         previousSection.style.removeProperty("opacity");
         if (previousAccent) previousSection.classList.remove(previousAccent);
         previousSection.setAttribute("aria-hidden", "true");
         previousSection.style.display = "none";
+        previousSection.style.removeProperty("visibility");
+        cleanupAnimation(previousSection);
+        previousSection.querySelectorAll(".animate__animated").forEach(cleanupAnimation);
       }
 
       target.classList.add("active");
@@ -1362,7 +1378,6 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       target.style.display = "block";
       if (accent) target.classList.add(accent);
       startEnterAnimation(target);
-      updateStageHeight(target);
 
       if (opts.updateHash) {
         const newUrl = `${window.location.pathname}#${slides[activeIndex].id}`;
@@ -1446,11 +1461,6 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       }
     });
 
-    window.addEventListener("resize", () => {
-      const target = sectionRefs[activeIndex];
-      updateStageHeight(target);
-    });
-    updateStageHeight(sectionRefs[0]);
   </script>
   <script src="/assets/vendors/bootstrap/bootstrap.bundle.min.js"></script>
 </body>
