@@ -335,7 +335,6 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       padding: 14px 18px;
       border-radius: 12px;
       border: 1px solid var(--border);
-      background: linear-gradient(90deg, rgba(255, 209, 102, 0.25), rgba(124, 183, 255, 0.18));
       color: #0d121b;
       font-weight: 800;
       letter-spacing: 0.08em;
@@ -500,10 +499,6 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
                 <span class="pill">2025</span>
               </div>
               <div class="hud-dots d-inline-flex gap-2" id="dot-nav" aria-label="Slide navigation"></div>
-              <div class="hud-right d-inline-flex align-items-center gap-2">
-                <button id="immersive-toggle" class="hud-icon" title="Fullscreen">⛶</button>
-                <button id="mute-toggle" class="hud-icon" title="Mute">🔈</button>
-              </div>
             </div>
             <div id="slides"></div>
           </div>
@@ -993,11 +988,8 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
     const prevBtn = document.getElementById("prev-btn");
     const nextBtn = document.getElementById("next-btn");
     const counter = document.getElementById("counter");
-    const immersiveToggle = document.getElementById("immersive-toggle");
-    const muteToggle = document.getElementById("mute-toggle");
 
     let activeIndex = 0;
-    let isMuted = false;
     const sectionRefs = [];
     const dotRefs = [];
 
@@ -1080,6 +1072,14 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       }
     }
 
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+
     slides.forEach(createSlideSection);
     applyCtaBranding();
     setActiveSlide(0);
@@ -1123,19 +1123,6 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
     window.addEventListener("hashchange", scrollToHash);
     scrollToHash();
 
-    immersiveToggle.addEventListener("click", () => {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(() => {});
-      } else {
-        document.exitFullscreen().catch(() => {});
-      }
-    });
-
-    muteToggle.addEventListener("click", () => {
-      isMuted = !isMuted;
-      muteToggle.textContent = isMuted ? "🔇" : "🔈";
-    });
-
     function triggerCelebration() {
       const bounds = slidesContainer.getBoundingClientRect();
       const count = 18;
@@ -1163,7 +1150,7 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
         setActiveSlide(activeIndex + 1, { scroll: true });
       }
       if (target.matches(".cta-primary[data-action='fullscreen']")) {
-        immersiveToggle.click();
+        toggleFullscreen();
       }
       if (target.matches(".cta-primary[data-action='share']")) {
         const slideId = slides[activeIndex].id;
