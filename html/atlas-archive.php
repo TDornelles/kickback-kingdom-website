@@ -237,15 +237,46 @@
       align-items: center;
       gap: 6px;
     }
-    .slide {
+    .slides-stage {
+      position: relative;
+      overflow: hidden;
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      background: linear-gradient(160deg, rgba(16,23,32,0.85), rgba(12,18,28,0.9));
+      box-shadow: var(--shadow);
+      min-height: 320px;
+      padding: 12px;
+      isolation: isolate;
+    }
+    .slides-stage::before {
+      content: "";
+      position: absolute;
+      inset: 8px;
+      border-radius: 14px;
+      background: radial-gradient(circle at 20% 30%, rgba(255, 209, 102, 0.06), transparent 40%), radial-gradient(circle at 80% 20%, rgba(124, 183, 255, 0.08), transparent 36%);
+      z-index: 0;
+      pointer-events: none;
+    }
+    .slides-stage .slide {
+      position: absolute;
+      inset: 12px;
+      opacity: 0;
+      transform: translateX(60px) scale(0.98);
+      pointer-events: none;
+      transition: opacity 260ms ease, transform 320ms ease;
       background: linear-gradient(180deg, rgba(16,23,32,0.94), rgba(19,29,44,0.9));
       border: 1px solid var(--border);
       border-radius: 16px;
       padding: 18px;
       box-shadow: var(--shadow);
-      scroll-margin-top: 90px;
-      position: relative;
       overflow: hidden;
+    }
+    .slides-stage .slide.active {
+      position: relative;
+      opacity: 1;
+      transform: translateX(0) scale(1);
+      pointer-events: auto;
+      z-index: 2;
     }
     .slide::before {
       content: "";
@@ -430,7 +461,7 @@
           <select id="jump-select" aria-label="Jump to slide"></select>
           <button id="immersive-toggle" class="immersive">⛶ Immersive</button>
         </div>
-        <div id="slides"></div>
+        <div id="slides" class="slides-stage"></div>
       </main>
     </div>
   </div>
@@ -802,6 +833,12 @@
       jumpSelect.appendChild(option);
     }
 
+    function updateStageHeight(target) {
+      if (!target) return;
+      const stage = slidesContainer;
+      stage.style.height = `${target.offsetHeight + 40}px`;
+    }
+
     function setActiveSlide(index, opts = { scroll: false, updateHash: true }) {
       activeIndex = Math.max(0, Math.min(index, slides.length - 1));
       const target = sectionRefs[activeIndex];
@@ -816,10 +853,17 @@
       prevBtn.disabled = activeIndex === 0;
       nextBtn.disabled = activeIndex === slides.length - 1;
 
-      if (opts.scroll) {
-        target.focus({ preventScroll: true });
-        target.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
+      sectionRefs.forEach((section, idx) => {
+        if (idx === activeIndex) {
+          section.classList.add("active");
+          section.setAttribute("aria-hidden", "false");
+        } else {
+          section.classList.remove("active");
+          section.setAttribute("aria-hidden", "true");
+        }
+      });
+
+      updateStageHeight(target);
 
       if (opts.updateHash) {
         const newUrl = `${window.location.pathname}#${slides[activeIndex].id}`;
@@ -856,17 +900,6 @@
       });
     });
 
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const idx = Number(entry.target.dataset.index);
-          if (idx !== activeIndex) setActiveSlide(idx, { scroll: false });
-        }
-      });
-    }, { threshold: 0.55 });
-
-    sectionRefs.forEach(section => observer.observe(section));
-
     function scrollToHash() {
       const hash = window.location.hash.replace("#", "");
       if (!hash) return;
@@ -886,6 +919,12 @@
         document.exitFullscreen().catch(() => {});
       }
     });
+
+    window.addEventListener("resize", () => {
+      const target = sectionRefs[activeIndex];
+      updateStageHeight(target);
+    });
+    updateStageHeight(sectionRefs[0]);
   </script>
 </body>
 </html>
