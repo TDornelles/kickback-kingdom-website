@@ -62,15 +62,15 @@
       min-height: 100vh;
       display: grid;
       grid-template-columns: 1fr;
-      gap: 18px;
-      padding: 28px 28px 64px;
+      gap: 12px;
+      padding: 18px 18px 42px;
     }
     header.hero {
       grid-column: 1;
-      background: linear-gradient(145deg, rgba(255, 209, 102, 0.18), rgba(108, 240, 194, 0.14), rgba(124, 183, 255, 0.16));
+      background: radial-gradient(circle at 30% 20%, rgba(255, 209, 102, 0.18), transparent 45%), radial-gradient(circle at 80% 10%, rgba(124, 183, 255, 0.12), transparent 50%), linear-gradient(145deg, rgba(34, 48, 64, 0.75), rgba(18, 26, 38, 0.94));
       border: 1px solid var(--border);
       border-radius: 20px;
-      padding: 26px 26px 30px;
+      padding: 32px 28px 34px;
       box-shadow: var(--shadow);
       position: relative;
       overflow: hidden;
@@ -155,39 +155,57 @@
     .content {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 10px;
     }
-    .control-bar {
-      background: linear-gradient(90deg, rgba(19,29,44,0.95), rgba(12,18,28,0.98));
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 12px;
+    .hud {
       display: flex;
       align-items: center;
-      gap: 10px;
-      box-shadow: var(--shadow);
-      position: sticky;
-      top: 16px;
-      z-index: 4;
+      justify-content: space-between;
+      padding: 6px 10px;
+      color: var(--muted);
+      font-weight: 700;
+      letter-spacing: 0.02em;
     }
-    .control-bar select, .control-bar button {
-      background: rgba(255,255,255,0.02);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 8px 10px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .control-bar button:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-    .immersive {
-      margin-left: auto;
+    .hud-left {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 10px;
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+    .hud-dots {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .hud-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      cursor: pointer;
+      transition: transform 140ms ease, background 140ms ease, border-color 140ms ease;
+    }
+    .hud-dot.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      transform: scale(1.1);
+    }
+    .hud-right {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .hud-icon {
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      background: rgba(255,255,255,0.02);
+      cursor: pointer;
     }
     .slides-stage {
       position: relative;
@@ -196,7 +214,7 @@
       border: 1px solid var(--border);
       background: linear-gradient(160deg, rgba(16,23,32,0.85), rgba(12,18,28,0.9));
       box-shadow: var(--shadow);
-      min-height: 320px;
+      min-height: 60vh;
       padding: 12px;
       isolation: isolate;
     }
@@ -211,22 +229,22 @@
     }
     .slides-stage .slide {
       position: absolute;
-      inset: 12px;
+      inset: 20px;
       opacity: 0;
-      transform: translateX(60px) scale(0.98);
+      transform: translateY(40px) scale(0.98);
       pointer-events: none;
       transition: opacity 260ms ease, transform 320ms ease;
-      background: linear-gradient(180deg, rgba(16,23,32,0.94), rgba(19,29,44,0.9));
+      background: radial-gradient(circle at 12% 10%, rgba(255, 209, 102, 0.12), transparent 38%), radial-gradient(circle at 90% 15%, rgba(124, 183, 255, 0.16), transparent 42%), linear-gradient(180deg, rgba(16,23,32,0.94), rgba(19,29,44,0.9));
       border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 18px;
+      border-radius: 18px;
+      padding: 22px;
       box-shadow: var(--shadow);
       overflow: hidden;
     }
     .slides-stage .slide.active {
       position: relative;
       opacity: 1;
-      transform: translateX(0) scale(1);
+      transform: translateY(0) scale(1);
       pointer-events: auto;
       z-index: 2;
     }
@@ -268,6 +286,9 @@
       display: flex;
       align-items: center;
       gap: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-weight: 800;
     }
     .pill {
       font-family: var(--mono);
@@ -286,13 +307,15 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      background: var(--card-strong);
+      background: rgba(255,255,255,0.04);
       color: var(--text);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 8px 10px;
+      border-radius: 12px;
+      padding: 10px 12px;
       cursor: pointer;
-      font-weight: 600;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
     }
     .stat-grid {
       display: grid;
@@ -352,9 +375,10 @@
       font-size: 12px;
     }
     .kpi {
-      font-size: 28px;
-      font-weight: 700;
+      font-size: clamp(30px, 6vw, 64px);
+      font-weight: 800;
       color: var(--accent);
+      letter-spacing: 0.08em;
     }
     .sub {
       font-size: 14px;
@@ -400,14 +424,25 @@
       </header>
 
       <main class="content">
-        <div class="control-bar">
-          <button id="prev-btn">◀ Prev</button>
-          <button id="next-btn">Next ▶</button>
-          <span id="counter" class="muted" aria-live="polite">Slide 1/1</span>
-          <select id="jump-select" aria-label="Jump to slide"></select>
-          <button id="immersive-toggle" class="immersive">⛶ Immersive</button>
+        <div class="hud">
+          <div class="hud-left">
+            <span>Atlas Checkpoint</span>
+            <span class="pill">2025</span>
+          </div>
+          <div class="hud-dots" id="dot-nav" aria-label="Slide navigation"></div>
+          <div class="hud-right">
+            <button id="immersive-toggle" class="hud-icon" title="Fullscreen">⛶</button>
+            <button id="mute-toggle" class="hud-icon" title="Mute">🔈</button>
+          </div>
         </div>
         <div id="slides" class="slides-stage"></div>
+        <div class="control-bar" aria-label="Slide controls">
+          <span id="counter" class="muted" aria-live="polite">Slide 1/1</span>
+          <div style="margin-left:auto; display:flex; gap:8px;">
+            <button id="prev-btn">◀</button>
+            <button id="next-btn">▶</button>
+          </div>
+        </div>
       </main>
     </div>
   </div>
@@ -737,14 +772,17 @@
     ];
 
     const slidesContainer = document.getElementById("slides");
-    const jumpSelect = document.getElementById("jump-select");
+    const dotNav = document.getElementById("dot-nav");
     const prevBtn = document.getElementById("prev-btn");
     const nextBtn = document.getElementById("next-btn");
     const counter = document.getElementById("counter");
     const immersiveToggle = document.getElementById("immersive-toggle");
+    const muteToggle = document.getElementById("mute-toggle");
 
     let activeIndex = 0;
+    let isMuted = false;
     const sectionRefs = [];
+    const dotRefs = [];
 
     function createSlideSection(slide, index) {
       const section = document.createElement("section");
@@ -765,10 +803,12 @@
       slidesContainer.appendChild(section);
       sectionRefs.push(section);
 
-      const option = document.createElement("option");
-      option.value = index;
-      option.textContent = `${index + 1}. ${slide.title}`;
-      jumpSelect.appendChild(option);
+      const dot = document.createElement("button");
+      dot.className = "hud-dot";
+      dot.setAttribute("aria-label", `Go to ${slide.title}`);
+      dot.addEventListener("click", () => setActiveSlide(index, { scroll: true }));
+      dotNav.appendChild(dot);
+      dotRefs.push(dot);
     }
 
     function updateStageHeight(target) {
@@ -786,6 +826,10 @@
       counter.textContent = `Slide ${activeIndex + 1} / ${slides.length}`;
       prevBtn.disabled = activeIndex === 0;
       nextBtn.disabled = activeIndex === slides.length - 1;
+
+      dotRefs.forEach((dot, idx) => {
+        dot.classList.toggle("active", idx === activeIndex);
+      });
 
       sectionRefs.forEach((section, idx) => {
         if (idx === activeIndex) {
@@ -810,7 +854,6 @@
 
     prevBtn.addEventListener("click", () => setActiveSlide(activeIndex - 1, { scroll: true }));
     nextBtn.addEventListener("click", () => setActiveSlide(activeIndex + 1, { scroll: true }));
-    jumpSelect.addEventListener("change", (e) => setActiveSlide(Number(e.target.value), { scroll: true }));
 
     document.addEventListener("keydown", (e) => {
       if (e.key === "ArrowLeft") {
@@ -852,6 +895,11 @@
       } else {
         document.exitFullscreen().catch(() => {});
       }
+    });
+
+    muteToggle.addEventListener("click", () => {
+      isMuted = !isMuted;
+      muteToggle.textContent = isMuted ? "🔇" : "🔈";
     });
 
     window.addEventListener("resize", () => {
