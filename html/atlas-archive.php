@@ -183,6 +183,7 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       filter: none;
       backdrop-filter: blur(4px);
       max-width: none;
+      outline: none;
       display: none;
       flex-direction: column;
       overflow: hidden;
@@ -224,6 +225,10 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       filter: blur(20px);
       opacity: 0.6;
       pointer-events: none;
+    }
+    .slides-stage .slide:focus,
+    .slides-stage .slide:focus-visible {
+      outline: none;
     }
     .slide-header {
       display: flex;
