@@ -165,11 +165,13 @@ foreach ($itemRows as $row) {
         continue;
     }
 
-    if (!isset($typeAllowedItemIds[$typeValue])) {
-        $typeAllowedItemIds[$typeValue] = [];
+    $typeKey = $typeValue instanceof \BackedEnum ? $typeValue->value : (string)$typeValue;
+
+    if (!isset($typeAllowedItemIds[$typeKey])) {
+        $typeAllowedItemIds[$typeKey] = [];
     }
 
-    $typeAllowedItemIds[$typeValue][] = $row->crand;
+    $typeAllowedItemIds[$typeKey][] = $row->crand;
 }
 
 $itemTypes = ItemType::cases();
