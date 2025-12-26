@@ -14,6 +14,7 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Atlas Archive - Yearly Review (POC)</title>
   <link rel="stylesheet" href="/assets/vendors/bootstrap/bootstrap.min.css" />
+  <link rel="stylesheet" href="/assets/css/kickback-kingdom.css" />
   <style>
     :root {
       --bg: #060910;
@@ -343,6 +344,13 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       cursor: pointer;
       transition: transform 140ms ease, box-shadow 140ms ease;
     }
+    .cta-primary.bg-ranked-1 {
+      background: linear-gradient(89deg, #f1eac6, gold, #f1eac6);
+      background-size: 200%;
+      animation: shine 5s ease-in-out infinite;
+      color: #0d121b !important;
+      border-color: #b2ab86;
+    }
     .cta-primary:hover { transform: translateY(-2px) scale(1.01); box-shadow: 0 20px 46px rgba(0,0,0,0.4); }
     .cta-primary:active { transform: translateY(0) scale(0.99); }
     .actions {
@@ -589,6 +597,7 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
         id: "title",
         title: "Atlas Archive",
         accent: "accent-bg-cyan",
+        hideHeaderTitle: true,
         render: () => `
           <div class="slide-hero">
             <div class="title-logo shadow-sm">
@@ -1005,11 +1014,12 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       section.id = slide.id;
       section.tabIndex = -1;
       section.dataset.index = index;
+      const heading = slide.hideHeaderTitle ? "" : `<h2>${slide.title}</h2>`;
       section.innerHTML = `
         <div class="slide-header">
           <div class="slide-title">
             <span class="pill">Archive Node</span>
-            <h2>${slide.title}</h2>
+            ${heading}
           </div>
           <button class="copy-link" data-slide="${slide.id}">Copy link</button>
         </div>
@@ -1030,6 +1040,11 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       if (!target) return;
       const stage = slidesContainer;
       stage.style.height = `${target.offsetHeight + 40}px`;
+    }
+    function applyCtaBranding() {
+      document.querySelectorAll(".cta-primary").forEach((btn) => {
+        btn.classList.add("bg-ranked-1");
+      });
     }
 
     function setActiveSlide(index, opts = { scroll: false, updateHash: true }) {
@@ -1073,6 +1088,7 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
     }
 
     slides.forEach(createSlideSection);
+    applyCtaBranding();
     setActiveSlide(0);
 
     prevBtn.addEventListener("click", () => setActiveSlide(activeIndex - 1, { scroll: true }));
