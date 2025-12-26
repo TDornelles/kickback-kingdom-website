@@ -283,14 +283,14 @@
     }
     .list, .timeline {
       display: grid;
-      gap: 8px;
+      gap: 12px;
       margin: 12px 0 0;
     }
     .card {
-      background: rgba(255,255,255,0.02);
+      background: rgba(255,255,255,0.03);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 10px;
+      padding: 14px;
     }
     .muted { color: var(--muted); }
     .two-col {
@@ -381,6 +381,38 @@
     }
     .spotlight .card {
       border: 1px solid rgba(255, 209, 102, 0.24);
+    }
+    .slide-hero {
+      display: grid;
+      place-items: center;
+      text-align: center;
+      min-height: 360px;
+      gap: 10px;
+    }
+    .slide-hero .mega {
+      font-size: clamp(40px, 10vw, 90px);
+      letter-spacing: -0.04em;
+      font-weight: 900;
+    }
+    .slide-hero .lead {
+      font-size: clamp(16px, 3vw, 24px);
+      color: var(--muted);
+      max-width: 760px;
+      margin: 0 auto;
+      line-height: 1.4;
+    }
+    .stat-hero {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .stat-hero .card {
+      text-align: center;
+      padding: 16px;
+    }
+    .stat-hero .kpi {
+      font-size: clamp(34px, 6vw, 72px);
     }
     @media (max-width: 960px) {
       .page { grid-template-columns: 1fr; }
@@ -484,6 +516,21 @@
 
     const slides = [
       {
+        id: "title",
+        title: "Atlas Archive",
+        accent: "accent-bg-cyan",
+        render: () => `
+          <div class="slide-hero">
+            <div class="mega">Atlas Archive</div>
+            <div class="lead">Your annual checkpoint through Kickback Kingdom — stories, stats, and highlights from the realm.</div>
+            <div class="actions" style="justify-content:center;">
+              <button class="cta-primary" data-action="next">Start</button>
+              <button class="cta-primary" data-action="fullscreen">Fullscreen</button>
+            </div>
+          </div>
+        `
+      },
+      {
         id: "opening",
         title: "Opening Ceremony",
         render: () => `
@@ -515,11 +562,31 @@
           const activeAccounts = 2480;
           const uptime = data.servers.map(s => s.uptime).join(" / ");
           return `
-            <div class="stat-grid">
-              <div class="stat"><label>Active Accounts</label><strong>${activeAccounts}</strong></div>
-              <div class="stat"><label>Realm Uptime</label><strong>${uptime}</strong></div>
-              <div class="stat"><label>Guilds Tracked</label><strong>${data.guilds.length}</strong></div>
-              <div class="stat"><label>Ledger Streams</label><strong>${data.ledgers.length}</strong></div>
+            <div class="slide-hero">
+              <div class="mega">State of the Realm</div>
+              <div class="lead">A snapshot of the Kingdom at a glance.</div>
+            </div>
+            <div class="stat-hero">
+              <div class="card">
+                <div class="pill">Active Accounts</div>
+                <div class="kpi">${activeAccounts}</div>
+                <p class="sub">Adventurers in the Kingdom</p>
+              </div>
+              <div class="card">
+                <div class="pill">Realm Uptime</div>
+                <div class="kpi">${uptime}</div>
+                <p class="sub">Citadel stability</p>
+              </div>
+              <div class="card">
+                <div class="pill">Guilds</div>
+                <div class="kpi">${data.guilds.length}</div>
+                <p class="sub">Active banners</p>
+              </div>
+              <div class="card">
+                <div class="pill">Ledgers</div>
+                <div class="kpi">${data.ledgers.length}</div>
+                <p class="sub">Economic streams</p>
+              </div>
             </div>
             <div class="actions">
               <button class="cta-primary" data-action="celebrate">Spark</button>
@@ -536,26 +603,30 @@
           const quests = data.accounts[0].questsCompleted + 420; // mock uplift
           const hours = 38000;
           return `
-            <div class="spotlight">
+            <div class="slide-hero">
+              <div class="mega">Thank You, Kingdom</div>
+              <div class="lead">Your hours, victories, and friendships lit up the realm.</div>
+            </div>
+            <div class="stat-hero">
               <div class="card">
-                <div class="ribbon">Total Play Hours</div>
-                <p class="kpi">${hours.toLocaleString()}</p>
-                <p class="sub">Time spent defending, crafting, and celebrating together.</p>
+                <div class="pill">Play Hours</div>
+                <div class="kpi">${hours.toLocaleString()}</div>
+                <p class="sub">Moments shared in-world</p>
               </div>
               <div class="card">
-                <div class="ribbon">Quests Completed</div>
-                <p class="kpi">${quests.toLocaleString()}</p>
-                <p class="sub">From Emberwood to the Frontier, every quest logged in the ledger.</p>
+                <div class="pill">Quests</div>
+                <div class="kpi">${quests.toLocaleString()}</div>
+                <p class="sub">Ledgered adventures</p>
               </div>
               <div class="card">
-                <div class="ribbon">Allies Formed</div>
-                <p class="kpi">8,420</p>
-                <p class="sub">Party invitations accepted, friendships forged.</p>
+                <div class="pill">Allies</div>
+                <div class="kpi">8,420</div>
+                <p class="sub">Parties and friendships</p>
               </div>
               <div class="card">
-                <div class="ribbon">Events Hosted</div>
-                <p class="kpi">${data.events.length * 4}</p>
-                <p class="sub">From festivals to sieges — every gathering a memory.</p>
+                <div class="pill">Events</div>
+                <div class="kpi">${data.events.length * 4}</div>
+                <p class="sub">Realm gatherings</p>
               </div>
             </div>
             <div class="actions">
@@ -570,12 +641,16 @@
         title: "Population & Activity",
         accent: "accent-bg-violet",
         render: (data) => `
-          <div class="stat-grid">
+          <div class="slide-hero">
+            <div class="mega">Pulse of the Realm</div>
+            <div class="lead">How the Kingdom moved month over month.</div>
+          </div>
+          <div class="stat-hero">
             ${data.activity.map(item => `
-              <div class="stat">
-                <label>${item.month}</label>
-                <strong>${item.active} active</strong>
-                <span class="muted">${item.returning} returning</span>
+              <div class="card">
+                <div class="pill">${item.month}</div>
+                <div class="kpi">${item.active}</div>
+                <p class="sub">${item.returning} returning</p>
               </div>
             `).join("")}
           </div>
@@ -590,15 +665,16 @@
         title: "Guild Atlas",
         accent: "accent-bg-cyan",
         render: (data) => `
-          <div class="list">
+          <div class="slide-hero">
+            <div class="mega">Guild Highlights</div>
+            <div class="lead">Banners that defined the year.</div>
+          </div>
+          <div class="stat-hero">
             ${data.guilds.map(g => `
               <div class="card">
-                <div class="slide-title">
-                  <span class="pill">Guild</span>
-                  <strong>${g.name}</strong>
-                </div>
-                <p class="muted">Members: ${g.members} · Completions: ${g.completions} · Growth: ${g.growth}</p>
-                <div>${g.tags.map(t => `<span class="tag">${t}</span>`).join("")}</div>
+                <div class="pill">${g.name}</div>
+                <div class="kpi">${g.members}</div>
+                <p class="sub">${g.completions} completions · ${g.growth}</p>
               </div>
             `).join("")}
           </div>
@@ -613,19 +689,25 @@
         title: "Economy Ledger",
         accent: "accent-bg-gold",
         render: (data) => `
-          <div class="two-col">
-            <div class="card">
-              <div class="pill">Ledgers</div>
-              ${data.ledgers.map(l => `
-                <p><strong>${l.description}</strong><br><span class="muted">${l.total.toLocaleString()} total · ${l.delta}</span></p>
-              `).join("")}
-            </div>
-            <div class="card">
-              <div class="pill">Recent Transactions</div>
-              ${data.transactions.map(tx => `
-                <p><strong>${tx.type}</strong> with ${tx.counterparty}<br><span class="muted">${tx.amount.toLocaleString()} value</span></p>
-              `).join("")}
-            </div>
+          <div class="slide-hero">
+            <div class="mega">Economy Pulse</div>
+            <div class="lead">Volume, payouts, and trades that fueled the year.</div>
+          </div>
+          <div class="stat-hero">
+            ${data.ledgers.map(l => `
+              <div class="card">
+                <div class="pill">${l.description}</div>
+                <div class="kpi">${l.total.toLocaleString()}</div>
+                <p class="sub">${l.delta}</p>
+              </div>
+            `).join("")}
+            ${data.transactions.map(tx => `
+              <div class="card">
+                <div class="pill">${tx.type}</div>
+                <div class="kpi">${tx.amount.toLocaleString()}</div>
+                <p class="sub">With ${tx.counterparty}</p>
+              </div>
+            `).join("")}
           </div>
           <div class="actions">
             <button class="cta-primary" data-action="celebrate">Showers</button>
@@ -638,15 +720,16 @@
         title: "Systems Utilization",
         accent: "accent-bg-cyan",
         render: (data) => `
-          <div class="list">
+          <div class="slide-hero">
+            <div class="mega">Systems</div>
+            <div class="lead">Where the realm stayed strong.</div>
+          </div>
+          <div class="stat-hero">
             ${data.servers.map(s => `
               <div class="card">
-                <div class="slide-title">
-                  <span class="pill">Server</span>
-                  <strong>${s.name}</strong>
-                </div>
-                <p class="muted">Uptime: ${s.uptime}</p>
-                <p>Hotspots: ${s.hotspots.join(", ")}</p>
+                <div class="pill">${s.name}</div>
+                <div class="kpi">${s.uptime}</div>
+                <p class="sub">Hotspots: ${s.hotspots.join(", ")}</p>
               </div>
             `).join("")}
           </div>
@@ -661,11 +744,15 @@
         title: "Notable Events Timeline",
         accent: "accent-bg-pink",
         render: (data) => `
+          <div class="slide-hero">
+            <div class="mega">Events</div>
+            <div class="lead">Moments that shook the Kingdom.</div>
+          </div>
           <div class="timeline">
             ${data.events.map(ev => `
               <div class="card">
                 <div class="pill">${ev.date}</div>
-                <strong>${ev.title}</strong>
+                <div class="kpi" style="font-size:32px; letter-spacing:0.04em;">${ev.title}</div>
                 <p class="muted">${ev.note}</p>
               </div>
             `).join("")}
@@ -683,18 +770,30 @@
         render: (data) => {
           const acct = data.accounts[0];
           return `
-            <div class="two-col">
-              <div class="stat">
-                <label>${acct.name}</label>
-                <strong>${acct.class}</strong>
-                <p class="muted">Joined ${acct.joinDate} · ${acct.level} • ${acct.reputation}</p>
-                <p class="muted">Last login: ${new Date(acct.lastLogin).toLocaleDateString()} · Streak: ${acct.streakDays} days</p>
+            <div class="slide-hero">
+              <div class="mega">${acct.name}</div>
+              <div class="lead">${acct.class} · ${acct.reputation}</div>
+            </div>
+            <div class="stat-hero">
+              <div class="card">
+                <div class="pill">Joined</div>
+                <div class="kpi">${acct.joinDate}</div>
+                <p class="sub">Level ${acct.level}</p>
               </div>
-              <div class="stat">
-                <label>Completions</label>
-                <strong>${acct.questsCompleted} quests</strong>
-                <p class="muted">${acct.tasksCompleted} tasks logged</p>
-                <p class="muted">Guilds: ${acct.guilds.join(", ")}</p>
+              <div class="card">
+                <div class="pill">Quests</div>
+                <div class="kpi">${acct.questsCompleted}</div>
+                <p class="sub">${acct.tasksCompleted} tasks</p>
+              </div>
+              <div class="card">
+                <div class="pill">Streak</div>
+                <div class="kpi">${acct.streakDays}</div>
+                <p class="sub">Days active</p>
+              </div>
+              <div class="card">
+                <div class="pill">Guilds</div>
+                <div class="kpi" style="font-size:22px;">${acct.guilds.join(" • ")}</div>
+                <p class="sub">Current banners</p>
               </div>
             </div>
             <div class="actions">
@@ -713,17 +812,20 @@
           const best = acct.coQuestPartners[0];
           const reliableTrio = acct.coQuestPartners.slice(0, 2).map(p => p.name).join(" + ");
           return `
-            <div class="two-col">
+            <div class="slide-hero">
+              <div class="mega">Allies</div>
+              <div class="lead">Those who stood beside you.</div>
+            </div>
+            <div class="stat-hero">
               <div class="card">
                 <div class="pill">Best Ally</div>
-                <strong>${best.name}</strong>
-                <p class="muted">${best.shared} shared quests · ${Math.round(best.successRate * 100)}% success</p>
-                <p class="muted">Last quested: ${best.last}</p>
+                <div class="kpi" style="font-size:32px;">${best.name}</div>
+                <p class="sub">${best.shared} shared quests · ${Math.round(best.successRate * 100)}% win</p>
               </div>
               <div class="card">
                 <div class="pill">Party Chemistry</div>
-                <p><strong>${reliableTrio}</strong></p>
-                <p class="muted">Highest synergy trio by shared completions.</p>
+                <div class="kpi" style="font-size:24px;">${reliableTrio}</div>
+                <p class="sub">Highest synergy trio</p>
               </div>
             </div>
             <div class="actions">
@@ -743,25 +845,29 @@
           const worstMatch = acct.matches.find(m => m.elo === Math.min(...acct.eloHistory)) || acct.matches[acct.matches.length - 1];
           const favoriteMode = acct.modes.reduce((top, mode) => (mode.attempts > (top?.attempts ?? 0) ? mode : top), null);
           return `
-            <div class="two-col">
+            <div class="slide-hero">
+              <div class="mega">Games & Glory</div>
+              <div class="lead">Peaks, recoveries, and favorites.</div>
+            </div>
+            <div class="stat-hero">
               <div class="card">
                 <div class="pill">Favorite Mode</div>
-                <strong>${favoriteMode?.mode ?? "—"}</strong>
-                <p class="muted">${favoriteMode?.attempts ?? 0} runs · ${favoriteMode ? Math.round((favoriteMode.wins / favoriteMode.attempts) * 100) : 0}% success</p>
+                <div class="kpi" style="font-size:32px;">${favoriteMode?.mode ?? "—"}</div>
+                <p class="sub">${favoriteMode?.attempts ?? 0} runs · ${favoriteMode ? Math.round((favoriteMode.wins / favoriteMode.attempts) * 100) : 0}% success</p>
               </div>
               <div class="card">
                 <div class="pill">Best Game</div>
-                <strong>${bestMatch?.label ?? "—"}</strong>
-                <p class="muted">Peak ELO: ${bestMatch?.elo ?? "—"} · ${bestMatch?.result ?? ""} · ${bestMatch?.date ?? ""}</p>
+                <div class="kpi" style="font-size:26px;">${bestMatch?.label ?? "—"}</div>
+                <p class="sub">Peak ELO: ${bestMatch?.elo ?? "—"} · ${bestMatch?.result ?? ""}</p>
               </div>
               <div class="card">
-                <div class="pill">Worst Game</div>
-                <strong>${worstMatch?.label ?? "—"}</strong>
-                <p class="muted">Low ELO: ${worstMatch?.elo ?? "—"} · ${worstMatch?.result ?? ""} · ${worstMatch?.date ?? ""}</p>
+                <div class="pill">Toughest Game</div>
+                <div class="kpi" style="font-size:26px;">${worstMatch?.label ?? "—"}</div>
+                <p class="sub">Low ELO: ${worstMatch?.elo ?? "—"} · ${worstMatch?.result ?? ""}</p>
               </div>
               <div class="card">
                 <div class="pill">ELO Trend</div>
-                <p class="kpi">${acct.eloHistory.slice(-1)[0]}</p>
+                <div class="kpi">${acct.eloHistory.slice(-1)[0]}</div>
                 <p class="sub">Peak ${Math.max(...acct.eloHistory)} · Floor ${Math.min(...acct.eloHistory)}</p>
               </div>
             </div>
@@ -777,21 +883,25 @@
         title: "Forward Outlook",
         accent: "accent-bg-cyan",
         render: () => `
-          <div class="stat-grid">
-            <div class="stat">
-              <label>Focus</label>
-              <strong>Expand Guild Raids</strong>
-              <p class="muted">Continue momentum with high success duo/trio runs.</p>
+          <div class="slide-hero">
+            <div class="mega">Next Year</div>
+            <div class="lead">Where the archive points us.</div>
+          </div>
+          <div class="stat-hero">
+            <div class="card">
+              <div class="pill">Focus</div>
+              <div class="kpi" style="font-size:26px;">Expand Guild Raids</div>
+              <p class="sub">Carry momentum from duo/trio wins</p>
             </div>
-            <div class="stat">
-              <label>Skill Track</label>
-              <strong>Refine Arena Play</strong>
-              <p class="muted">Targeted practice to lift lower-ELO arenas.</p>
+            <div class="card">
+              <div class="pill">Skill</div>
+              <div class="kpi" style="font-size:26px;">Refine Arena Play</div>
+              <p class="sub">Lift the arena floor</p>
             </div>
-            <div class="stat">
-              <label>Community</label>
-              <strong>Mentor New Archivists</strong>
-              <p class="muted">Share builds and ledgers with newer accounts.</p>
+            <div class="card">
+              <div class="pill">Community</div>
+              <div class="kpi" style="font-size:26px;">Mentor Archivists</div>
+              <p class="sub">Share ledgers and builds</p>
             </div>
           </div>
           <div class="actions">
