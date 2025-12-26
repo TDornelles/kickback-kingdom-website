@@ -1346,8 +1346,11 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       setNavState(activeIndex);
 
       if (previousSection) {
+        previousSection.classList.add("leaving");
+        previousSection.style.display = "block";
         await startExitAnimation(previousSection);
         previousSection.classList.remove("active", "leaving");
+        previousSection.style.removeProperty("opacity");
         if (previousAccent) previousSection.classList.remove(previousAccent);
         previousSection.setAttribute("aria-hidden", "true");
         previousSection.style.display = "none";
