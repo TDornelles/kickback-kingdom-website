@@ -678,7 +678,7 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
             </div>
             <div class="title-present">Presents</div>
             <div class="mega">Atlas Archive 2026</div>
-            <div class="lead">Your annual checkpoint through Kickback Kingdom — stories, stats, and highlights from the realm.</div>
+            <div class="lead">Your annual reflection through Kickback Kingdom — stories, stats, and highlights from the realm.</div>
             <div class="actions" style="justify-content:center;">
               <button class="cta-primary" data-action="next">Start</button>
               <button class="cta-primary" data-action="fullscreen">Fullscreen</button>
