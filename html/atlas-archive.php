@@ -168,9 +168,10 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       position: absolute;
       inset: 18px;
       opacity: 0;
-      transform: translateY(40px) scale(0.98) rotateX(3deg);
+      transform: none;
       pointer-events: none;
-      transition: opacity 260ms ease, transform 320ms ease, filter 320ms ease;
+      transition: none;
+      z-index: 0;
       background: radial-gradient(circle at 12% 10%, rgba(255, 209, 102, 0.12), transparent 38%), radial-gradient(circle at 90% 15%, rgba(124, 183, 255, 0.16), transparent 42%), linear-gradient(180deg, rgba(16,23,32,0.94), rgba(19,29,44,0.9));
       border: 1px solid var(--border);
       border-radius: 18px;
@@ -180,21 +181,23 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       filter: drop-shadow(0 20px 40px rgba(0,0,0,0.35));
       backdrop-filter: blur(4px);
       max-width: calc(100% - 36px);
+      display: none;
     }
     .slides-stage .slide.active {
       position: relative;
       opacity: 1;
-      transform: translateY(0) scale(1) rotateX(0deg);
+      transform: none;
       pointer-events: auto;
       z-index: 2;
-      animation: slideIn 520ms ease;
+      display: block;
     }
     .slides-stage .slide.leaving {
       opacity: 0;
-      transform: translateY(-20px) scale(0.96);
+      transform: none;
       pointer-events: none;
-      filter: blur(2px);
-      transition: opacity 240ms ease, transform 240ms ease, filter 240ms ease;
+      filter: none;
+      z-index: 1;
+      transition: none;
     }
     .slide::before {
       content: "";
@@ -312,6 +315,88 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
       gap: 12px;
     }
+    .opening-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      justify-items: center;
+      gap: 18px;
+    }
+    .opening-panel {
+      position: relative;
+      overflow: hidden;
+      padding: 26px 28px;
+      max-width: 820px;
+      width: 100%;
+      text-align: center;
+      background: linear-gradient(140deg, rgba(255, 209, 102, 0.12), rgba(124, 183, 255, 0.08));
+      border: 1px solid rgba(255, 209, 102, 0.35);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+    }
+    .opening-panel::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 18% 24%, rgba(255, 209, 102, 0.18), transparent 45%), radial-gradient(circle at 82% 76%, rgba(124, 183, 255, 0.16), transparent 36%);
+      opacity: 0.6;
+      pointer-events: none;
+    }
+    .opening-panel > * { position: relative; z-index: 1; }
+    .opening-title {
+      font-size: clamp(28px, 5vw, 44px);
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
+    }
+    .opening-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin: 16px auto;
+      max-width: 640px;
+    }
+    .opening-stat {
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(12, 18, 28, 0.35);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+    .opening-stat strong {
+      display: block;
+      font-size: 26px;
+      letter-spacing: 0.04em;
+    }
+    .opening-program {
+      display: grid;
+      gap: 10px;
+      margin: 10px auto 0;
+      max-width: 680px;
+    }
+    .opening-program-item {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      text-align: left;
+    }
+    .opening-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid var(--border);
+      font-size: 12px;
+      letter-spacing: 0.04em;
+    }
     .tag {
       display: inline-block;
       margin-right: 6px;
@@ -363,12 +448,7 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       background: var(--accent);
       opacity: 0.9;
       pointer-events: none;
-      animation: sparkFly 900ms ease-out forwards;
-    }
-    @keyframes sparkFly {
-      0% { transform: translate(0,0) scale(1); opacity: 1; }
-      70% { opacity: 1; }
-      100% { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
+      animation: none;
     }
     .sub {
       font-size: 14px;
@@ -451,17 +531,7 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
     .stat-hero .kpi {
       font-size: clamp(34px, 6vw, 72px);
     }
-    .sequence-item { opacity: 0; }
-    .sequence-in { animation: sequenceIn 420ms ease forwards; }
-    .sequence-out { animation: sequenceOut 320ms ease forwards; }
-    @keyframes sequenceIn {
-      0% { opacity: 0; transform: translateY(18px) scale(0.98); }
-      100% { opacity: 1; transform: translateY(0) scale(1); }
-    }
-    @keyframes sequenceOut {
-      0% { opacity: 1; transform: translateY(0) scale(1); }
-      100% { opacity: 0; transform: translateY(-12px) scale(0.98); }
-    }
+    .sequence-item { opacity: 1; }
     .control-bar {
       background: rgba(12,18,28,0.6);
       border: 1px solid var(--border);
@@ -494,6 +564,9 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       .copy-link { width: 100%; justify-content: center; text-align: center; }
       .control-bar { width: 100%; }
       .control-bar button { flex: 1 1 120px; }
+      .opening-grid { grid-template-columns: 1fr; }
+      .opening-panel { padding: 22px 18px; }
+      .opening-program-item { grid-template-columns: 1fr; text-align: center; }
     }
   </style>
 </head>
@@ -616,21 +689,42 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
         id: "opening",
         title: "Opening Ceremony",
         render: () => `
-          <div class="two-col">
-            <div class="card accent-bg-gold">
+          <div class="opening-grid">
+            <div class="opening-panel card accent-bg-gold">
               <div class="ribbon">Grand Opening</div>
-              <div class="kpi">ATLAS ARCHIVE</div>
-              <p class="muted">Thank you for an epic year of quests, guild triumphs, and countless nights in the Realm.</p>
-              <div class="actions">
-                <button class="cta-primary" data-action="celebrate">Celebrate</button>
-                <button class="cta-primary" data-action="next">Begin</button>
+              <div class="opening-title">Atlas Archive is live</div>
+              <p class="muted">Curtains up. This year&apos;s legends, quests, and guild moments are queued for the spotlight.</p>
+              <div class="opening-stats">
+                <div class="opening-stat">
+                  <span class="pill">Archive Year</span>
+                  <strong>2026</strong>
+                  <span class="sub">Season showcase</span>
+                </div>
+                <div class="opening-stat">
+                  <span class="pill">Guilds RSVP&apos;d</span>
+                  <strong>12</strong>
+                  <span class="sub">Featured banners</span>
+                </div>
               </div>
-            </div>
-            <div class="card accent-bg-cyan">
-              <div class="ribbon">Award Show Vibes</div>
-              <p class="muted">Curtains up. The spotlight is yours. Expect applause, gold confetti, and the loudest horns in the Kingdom.</p>
-              <div class="actions">
-                <button class="cta-primary" data-action="fullscreen">Go Fullscreen</button>
+              <div class="opening-program">
+                <div class="opening-program-item">
+                  <span class="opening-chip">Highlights</span>
+                  State of the Realm, ledger sparks, and guild showstoppers.
+                </div>
+                <div class="opening-program-item">
+                  <span class="opening-chip">Allies</span>
+                  Best partners, clutch duos, and chemistry rankings.
+                </div>
+                <div class="opening-program-item">
+                  <span class="opening-chip">Future</span>
+                  Outlooks, upgrades, and where the banners fly next.
+                </div>
+              </div>
+              <div class="actions flex-wrap" style="justify-content:center; margin-top:18px;">
+                <button class="cta-primary" data-action="celebrate">Start the fanfare</button>
+                <button class="cta-primary" data-action="next">Begin the slides</button>
+                <button class="cta-primary" data-action="fullscreen">Fullscreen</button>
+                <button class="cta-primary" data-action="share">Share link</button>
               </div>
             </div>
           </div>
@@ -1044,42 +1138,10 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
         btn.classList.add("bg-ranked-1");
       });
     }
-    function resetSequenceItem(item) {
-      item.classList.remove("sequence-in", "sequence-out");
-      item.style.animationDelay = "";
-    }
-    function tagSequenceItems(section) {
-      const header = section.querySelector(".slide-header");
-      if (header) header.classList.add("sequence-item");
-      const body = section.querySelector(".slide-body");
-      if (!body) return;
-      Array.from(body.children).forEach((child) => {
-        child.classList.add("sequence-item");
-      });
-    }
-    function startEnterAnimation(section) {
-      const items = section.querySelectorAll(".sequence-item");
-      items.forEach((item, idx) => {
-        resetSequenceItem(item);
-        item.style.animationDelay = `${idx * 120}ms`;
-        // trigger reflow for restart
-        void item.offsetWidth;
-        item.classList.add("sequence-in");
-      });
-    }
-    function startExitAnimation(section) {
-      const items = section.querySelectorAll(".sequence-item");
-      const base = 320;
-      const delay = 80;
-      const duration = base + Math.max(0, (items.length - 1) * delay);
-      items.forEach((item, idx) => {
-        resetSequenceItem(item);
-        item.style.animationDelay = `${idx * delay}ms`;
-        void item.offsetWidth;
-        item.classList.add("sequence-out");
-      });
-      return duration;
-    }
+    function resetSequenceItem(item) {}
+    function tagSequenceItems() {}
+    function startEnterAnimation() {}
+    function startExitAnimation() { return 0; }
 
     function waitMs(ms) {
       return new Promise((resolve) => setTimeout(resolve, ms));
@@ -1101,27 +1163,29 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       const previousIndex = activeIndex;
       const previousSection = sectionRefs[previousIndex];
       const previousAccent = previousIndex >= 0 ? slides[previousIndex].accent : null;
-      if (previousSection) {
-        const exitDuration = startExitAnimation(previousSection);
-        previousSection.classList.add("leaving");
-        await waitMs(exitDuration);
-        previousSection.classList.remove("active", "leaving");
-        if (previousAccent) previousSection.classList.remove(previousAccent);
-        previousSection.setAttribute("aria-hidden", "true");
-      }
 
-      activeIndex = clamped;
-      const target = sectionRefs[activeIndex];
+      const target = sectionRefs[clamped];
       if (!target) {
         isTransitioning = false;
         return;
       }
 
+      const accent = slides[clamped].accent;
+
+      activeIndex = clamped;
       setNavState(activeIndex);
+
+      if (previousSection) {
+        previousSection.classList.remove("active", "leaving");
+        if (previousAccent) previousSection.classList.remove(previousAccent);
+        previousSection.setAttribute("aria-hidden", "true");
+        previousSection.style.display = "none";
+      }
+
       target.classList.add("active");
       target.classList.remove("leaving");
       target.setAttribute("aria-hidden", "false");
-      const accent = slides[activeIndex].accent;
+      target.style.display = "block";
       if (accent) target.classList.add(accent);
       startEnterAnimation(target);
       updateStageHeight(target);
@@ -1185,23 +1249,7 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
     window.addEventListener("hashchange", scrollToHash);
     scrollToHash();
 
-    function triggerCelebration() {
-      const bounds = slidesContainer.getBoundingClientRect();
-      const count = 18;
-      for (let i = 0; i < count; i++) {
-        const spark = document.createElement("div");
-        spark.className = "spark";
-        const dx = (Math.random() * 200 - 100) + "px";
-        const dy = (Math.random() * 260 - 80) + "px";
-        spark.style.setProperty("--dx", dx);
-        spark.style.setProperty("--dy", dy);
-        spark.style.left = (bounds.width / 2) + "px";
-        spark.style.top = (bounds.height / 2) + "px";
-        spark.style.background = ["#ffd166", "#7cb7ff", "#ff7edb", "#6cf0c2"][i % 4];
-        slidesContainer.appendChild(spark);
-        setTimeout(() => spark.remove(), 900);
-      }
-    }
+    function triggerCelebration() { return; }
 
     slidesContainer.addEventListener("click", (e) => {
       const target = e.target;
