@@ -5,8 +5,149 @@ $pageImage = "https://kickback-kingdom.com/assets/media/context/loading.gif";
 $pageDesc = "Yearly recap for Kickback Kingdom adventurers.";
 require_once(($_SERVER["DOCUMENT_ROOT"] ?: __DIR__) . "/Kickback/init.php");
 
+use Kickback\Services\Database;
+
 $session = require(\Kickback\SCRIPT_ROOT . "/api/v1/engine/session/verifySession.php");
 require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-info.php");
+
+$atlasYear = 2025;
+$atlasYearStart = "{$atlasYear}-01-01";
+
+/**
+ * Safely fetch a single scalar from the database.
+ *
+ * @param string $query
+ * @param array<int|string, mixed> $params
+ * @param string|null $cast
+ */
+function atlas_fetch_scalar(string $query, array $params = [], ?string $cast = 'int') : mixed
+{
+    try {
+        $result = Database::executeSqlQuery($query, $params);
+
+        if ($result instanceof \mysqli_result) {
+            $row = $result->fetch_row();
+            if ($row !== null && array_key_exists(0, $row)) {
+                $value = $row[0];
+                if ($value === null) {
+                    return null;
+                }
+
+                return match ($cast) {
+                    'float' => (float)$value,
+                    'string' => (string)$value,
+                    default => (int)$value,
+                };
+            }
+        }
+    } catch (\Throwable $e) {
+        // If something fails (ex: local dev without DB), we degrade gracefully to null.
+    }
+
+    return null;
+}
+
+$worldStats = [
+    'accounts' => atlas_fetch_scalar('SELECT COUNT(*) FROM account'),
+    'games' => atlas_fetch_scalar('SELECT COUNT(*) FROM game'),
+    'matches' => atlas_fetch_scalar('SELECT COUNT(*) FROM game_match'),
+    'records' => atlas_fetch_scalar('SELECT COUNT(*) FROM game_record'),
+    'questsPublished' => atlas_fetch_scalar('SELECT COUNT(*) FROM quest WHERE published = 1'),
+    'questLines' => atlas_fetch_scalar('SELECT COUNT(*) FROM quest_line'),
+    'questApplicants' => atlas_fetch_scalar('SELECT COUNT(*) FROM quest_applicants'),
+    'questParticipants' => atlas_fetch_scalar('SELECT COUNT(*) FROM quest_applicants WHERE participated = 1'),
+    'lootMinted' => atlas_fetch_scalar('SELECT COUNT(*) FROM loot'),
+    'items' => atlas_fetch_scalar('SELECT COUNT(*) FROM item'),
+    'trades' => atlas_fetch_scalar('SELECT COUNT(*) FROM trade'),
+    'transactions' => atlas_fetch_scalar('SELECT COUNT(*) FROM `transaction`'),
+    'shareholders' => atlas_fetch_scalar('SELECT COUNT(DISTINCT AccountId) FROM share_purchase'),
+    'sharesSold' => atlas_fetch_scalar('SELECT COALESCE(SUM(SharesPurchased),0) FROM share_purchase', [], 'float'),
+    'ticketsOpened' => atlas_fetch_scalar('SELECT COUNT(*) FROM ticket'),
+    'ticketsClosed' => atlas_fetch_scalar('SELECT COUNT(*) FROM ticket WHERE resolved_at IS NOT NULL OR closed_at IS NOT NULL'),
+    'analyticsEvents' => atlas_fetch_scalar('SELECT COUNT(*) FROM analytic')
+];
+
+$yearProgress = [
+    'accounts' => [
+        'label' => 'Adventurers Registered',
+        'start' => atlas_fetch_scalar('SELECT COUNT(*) FROM account WHERE ctime < ?', [$atlasYearStart]),
+        'end' => $worldStats['accounts'],
+    ],
+    'quests' => [
+        'label' => 'Published Quests',
+        'start' => atlas_fetch_scalar('SELECT COUNT(*) FROM quest WHERE published = 1 AND ctime < ?', [$atlasYearStart]),
+        'end' => $worldStats['questsPublished'],
+    ],
+    'matches' => [
+        'label' => 'Matches Logged',
+        'start' => atlas_fetch_scalar('SELECT COUNT(*) FROM game_match WHERE ctime < ?', [$atlasYearStart]),
+        'end' => $worldStats['matches'],
+    ],
+    'transactions' => [
+        'label' => 'Store Transactions',
+        'start' => atlas_fetch_scalar('SELECT COUNT(*) FROM `transaction` WHERE ctime < ?', [$atlasYearStart]),
+        'end' => $worldStats['transactions'],
+    ],
+];
+
+$accountPayload = null;
+
+if (!empty($activeAccountInfo->account)) {
+    $account = $activeAccountInfo->account;
+    $accountId = $account->crand;
+
+    $accountStats = [
+        'matches' => atlas_fetch_scalar('SELECT COUNT(*) FROM game_record WHERE account_id = ?', [$accountId]),
+        'wins' => atlas_fetch_scalar('SELECT COUNT(*) FROM game_record WHERE account_id = ? AND win = 1', [$accountId]),
+        'questsHosted' => atlas_fetch_scalar('SELECT COUNT(*) FROM quest WHERE host_id = ? OR host_id_2 = ?', [$accountId, $accountId]),
+        'questsJoined' => atlas_fetch_scalar('SELECT COUNT(*) FROM quest_applicants WHERE account_id = ? AND participated = 1', [$accountId]),
+        'applications' => atlas_fetch_scalar('SELECT COUNT(*) FROM quest_applicants WHERE account_id = ?', [$accountId]),
+        'badges' => atlas_fetch_scalar('SELECT COUNT(*) FROM v_account_badge_info WHERE account_id = ?', [$accountId]),
+        'loot' => atlas_fetch_scalar('SELECT COUNT(*) FROM loot WHERE account_id = ?', [$accountId]),
+        'containers' => atlas_fetch_scalar('SELECT COUNT(*) FROM loot l INNER JOIN item i ON l.item_id = i.Id WHERE l.account_id = ? AND i.is_container = 1', [$accountId]),
+        'trades' => atlas_fetch_scalar('SELECT COUNT(*) FROM trade WHERE from_account_id = ? OR to_account_id = ?', [$accountId, $accountId]),
+        'sharePurchases' => atlas_fetch_scalar('SELECT COALESCE(SUM(SharesPurchased),0) FROM share_purchase WHERE AccountId = ?', [$accountId], 'float'),
+        'ticketsFiled' => atlas_fetch_scalar('SELECT COUNT(*) FROM ticket WHERE created_by_crand = ?', [$accountId]),
+        'ticketsResolved' => atlas_fetch_scalar('SELECT COUNT(*) FROM ticket WHERE created_by_crand = ? AND resolved_at IS NOT NULL', [$accountId]),
+    ];
+
+    $winRate = null;
+    if (!empty($accountStats['matches'])) {
+        $winRate = ($accountStats['wins'] ?? 0) / max($accountStats['matches'], 1);
+    }
+
+    $accountPayload = [
+        'profile' => [
+            'username' => $account->username,
+            'title' => $account->getAccountTitle(),
+            'level' => $account->level,
+            'prestige' => $account->prestige,
+            'exp' => $account->exp,
+            'roles' => [
+                'admin' => $account->isAdmin,
+                'merchant' => $account->isMerchant,
+                'adventurer' => $account->isAdventurer,
+                'questGiver' => $account->isQuestGiver,
+                'steward' => $account->isSteward,
+                'craftsmen' => $account->isCraftsmen,
+                'artist' => $account->isArtist,
+            ],
+            'links' => [
+                'discord' => $account->isDiscordLinked(),
+                'steam' => $account->isSteamLinked(),
+            ],
+        ],
+        'stats' => $accountStats,
+        'winRate' => $winRate,
+    ];
+}
+
+$atlasPayload = [
+    'year' => $atlasYear,
+    'world' => $worldStats,
+    'yearProgress' => $yearProgress,
+    'account' => $accountPayload,
+];
 ?>
 <!doctype html>
 <html lang="en">
@@ -642,71 +783,19 @@ require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-i
   </div>
 
   <script>
-    const year = 2025;
-    const fakeData = {
-      accounts: [
-        {
-          id: "a-001",
-          name: "Aria Cloudbinder",
-          class: "Archivist",
-          joinDate: "2022-05-12",
-          level: 48,
-          reputation: "Esteemed",
-          lastLogin: "2025-01-12T10:00:00Z",
-          streakDays: 24,
-          questsCompleted: 138,
-          tasksCompleted: 54,
-          guilds: ["g-ember", "g-sapphire"],
-          eloHistory: [1210, 1280, 1325, 1290, 1375, 1402, 1386],
-          coQuestPartners: [
-            { id: "a-002", name: "Brannor of the Vale", shared: 24, successRate: 0.82, last: "2024-12-20" },
-            { id: "a-003", name: "Lyra Duskwhisper", shared: 17, successRate: 0.76, last: "2024-12-11" }
-          ],
-          modes: [
-            { mode: "Guild Raids", attempts: 32, wins: 24, bestElo: 1402, worstElo: 1210 },
-            { mode: "Arena Skirmish", attempts: 18, wins: 9, bestElo: 1350, worstElo: 1224 },
-            { mode: "Expedition Quests", attempts: 22, wins: 18, bestElo: 1380, worstElo: 1272 }
-          ],
-          matches: [
-            { id: "match-4472", label: "Guild Raid vs Obsidian Maw", elo: 1402, result: "Win", date: "2024-11-04" },
-            { id: "match-3361", label: "Arena Skirmish vs Silver Pike", elo: 1210, result: "Loss", date: "2024-02-10" }
-          ]
-        }
-      ],
-      guilds: [
-        { id: "g-ember", name: "Ember Syndicate", members: 48, completions: 204, growth: "+12 this year", tags: ["Trade", "Logistics"] },
-        { id: "g-sapphire", name: "Sapphire Accord", members: 31, completions: 144, growth: "+8 this year", tags: ["Arcana", "Support"] }
-      ],
-      tasks: [
-        { id: "t-001", title: "Stabilize the Leyline", status: "Completed", impact: "High", guild: "g-ember" },
-        { id: "t-002", title: "Escort the Sky Caravans", status: "Completed", impact: "Medium", guild: "g-sapphire" },
-        { id: "t-003", title: "Archive Lost Tomes", status: "Active", impact: "High", guild: "g-sapphire" }
-      ],
-      servers: [
-        { id: "s-1", name: "Citadel Core", uptime: "99.95%", hotspots: ["Guild Raids", "Markets"] },
-        { id: "s-2", name: "Frontier Relay", uptime: "99.80%", hotspots: ["Expeditions", "Arena"] }
-      ],
-      activity: [
-        { month: "Sep", active: 1420, returning: 280 },
-        { month: "Oct", active: 1510, returning: 320 },
-        { month: "Nov", active: 1610, returning: 340 },
-        { month: "Dec", active: 1690, returning: 360 }
-      ],
-      transactions: [
-        { id: "tx-101", type: "Trade", amount: 3200, counterparty: "Ember Syndicate" },
-        { id: "tx-102", type: "Commission", amount: 2100, counterparty: "Sapphire Accord" }
-      ],
-      ledgers: [
-        { id: "l-01", description: "Trade Volume", total: 184000, delta: "+12%" },
-        { id: "l-02", description: "Quest Payouts", total: 98000, delta: "+8%" }
-      ],
-      events: [
-        { date: "2024-03-10", title: "Skyforge Patch", note: "New raid tier unlocked" },
-        { date: "2024-07-22", title: "Summer Convergence", note: "Double rewards festival" },
-        { date: "2024-10-05", title: "Obsidian Maw Siege", note: "Realm-wide defense event" }
-      ]
-    };
+    const atlasData = <?php echo json_encode($atlasPayload, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
+    const year = atlasData?.year ?? 2025;
 
+    const fmt = (value, fallback = "—") => {
+      if (value === null || value === undefined || Number.isNaN(value)) return fallback;
+      const num = Number(value);
+      return Number.isFinite(num) ? num.toLocaleString() : `${value}`;
+    };
+    const pct = (numerator, denominator) => {
+      if (!denominator || denominator === 0 || numerator === null || numerator === undefined) return "—";
+      return `${Math.round((numerator / denominator) * 100)}%`;
+    };
+    const account = atlasData.account;
     const slides = [
       {
         id: "title",
@@ -719,416 +808,566 @@ require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-i
               <img src="https://kickback-kingdom.com/assets/images/logo-kk.png" alt="Kickback Kingdom" class="img-fluid">
             </div>
             <div class="title-present">Presents</div>
-            <div class="mega">Atlas Archive 2026</div>
-            <div class="lead">Your annual reflection through Kickback Kingdom — stories, stats, and highlights from the realm.</div>
+            <div class="mega">Atlas Archive ${year}</div>
+            <div class="lead">A recap crafted from the realm itself — live controllers, ledgers, and your account if you&apos;re logged in.</div>
             <div class="actions" style="justify-content:center;">
               <button class="cta-primary" data-action="next">Start</button>
               <button class="cta-primary" data-action="fullscreen">Fullscreen</button>
             </div>
           </div>
-        `
+        `,
       },
       {
         id: "community-thanks",
         title: "Community Spotlight",
-        render: () => `
-          <div class="opening-grid">
-            <div class="opening-panel card accent-bg-gold">
-              <div class="ribbon">Community First</div>
-              <div class="opening-title">Thank you, Kingdom!</div>
-              <p class="muted">Every late-night grind, every meme, every guild banner raised made this world possible. You are the Atlas of this archive.</p>
-              <div class="opening-stats">
-                <div class="opening-stat">
-                  <span class="pill">Adventurers</span>
-                  <strong>2,480</strong>
-                  <span class="sub">Active hearts powering the realm</span>
-                </div>
-                <div class="opening-stat">
-                  <span class="pill">Cheer Moments</span>
-                  <strong>38,000</strong>
-                  <span class="sub">Hours laughed, raided, and shared</span>
-                </div>
-              </div>
-              <div class="opening-program">
-                <div class="opening-program-item">
-                  <span class="opening-chip">Spirit</span>
-                  Your kindness and grit kept the citadel glowing. We see you, and we&apos;re cheering back.
-                </div>
-                <div class="opening-program-item">
-                  <span class="opening-chip">Allies</span>
-                  Guildmates, moderators, creators, and quiet supporters who lift every quest line.
-                </div>
-                <div class="opening-program-item">
-                  <span class="opening-chip">Promise</span>
-                  We&apos;ll keep building spaces worthy of your banners and friendships.
-                </div>
-              </div>
-              <div class="actions flex-wrap" style="justify-content:center; margin-top:18px;">
-                <button class="cta-primary" data-action="celebrate">Send Cheers</button>
-                <button class="cta-primary" data-action="next">Continue</button>
-                <button class="cta-primary" data-action="fullscreen">Fullscreen</button>
-                <button class="cta-primary" data-action="share">Share link</button>
-              </div>
-            </div>
-          </div>
-        `
-      },
-      {
-        id: "world-status",
-        title: "World Status",
-        accent: "accent-bg-cyan",
-        render: (data) => {
-          const activeAccounts = 2480;
-          const uptime = data.servers.map(s => s.uptime).join(" / ");
-          return `
-            <div class="slide-hero">
-              <div class="mega">State of the Realm</div>
-              <div class="lead">A snapshot of the Kingdom at a glance.</div>
-            </div>
-            <div class="stat-hero">
-              <div class="card">
-                <div class="pill">Active Accounts</div>
-                <div class="kpi">${activeAccounts}</div>
-                <p class="sub">Adventurers in the Kingdom</p>
-              </div>
-              <div class="card">
-                <div class="pill">Realm Uptime</div>
-                <div class="kpi">${uptime}</div>
-                <p class="sub">Citadel stability</p>
-              </div>
-              <div class="card">
-                <div class="pill">Guilds</div>
-                <div class="kpi">${data.guilds.length}</div>
-                <p class="sub">Active banners</p>
-              </div>
-              <div class="card">
-                <div class="pill">Ledgers</div>
-                <div class="kpi">${data.ledgers.length}</div>
-                <p class="sub">Economic streams</p>
-              </div>
-            </div>
-            <div class="actions">
-              <button class="cta-primary" data-action="celebrate">Spark</button>
-              <button class="cta-primary" data-action="share">Share Slide</button>
-            </div>
-          `;
-        }
-      },
-      {
-        id: "victory-lap",
-        title: "Community Victory Lap",
         accent: "accent-bg-gold",
-        render: (data) => {
-          const quests = data.accounts[0].questsCompleted + 420; // mock uplift
-          const hours = 38000;
+        render: () => {
+          const w = atlasData.world || {};
+          return `
+            <div class="opening-grid">
+              <div class="opening-panel card accent-bg-gold">
+                <div class="ribbon">Community First</div>
+                <div class="opening-title">Thank you, Kingdom!</div>
+                <p class="muted">Every quest hosted, every duel logged, and every trade forged shows up here. These numbers only exist because of you.</p>
+                <div class="opening-stats">
+                  <div class="opening-stat">
+                    <span class="pill">Adventurers</span>
+                    <strong>${fmt(w.accounts, "—")}</strong>
+                    <span class="sub">Registered heroes</span>
+                  </div>
+                  <div class="opening-stat">
+                    <span class="pill">Quests</span>
+                    <strong>${fmt(w.questsPublished, "—")}</strong>
+                    <span class="sub">Published to the realm</span>
+                  </div>
+                  <div class="opening-stat">
+                    <span class="pill">Matches</span>
+                    <strong>${fmt(w.matches, "—")}</strong>
+                    <span class="sub">Battles recorded</span>
+                  </div>
+                </div>
+                <div class="opening-program">
+                  <div class="opening-program-item">
+                    <span class="opening-chip">Builders</span>
+                    Quests, quest lines, tickets, and store transactions keep Atlas busy — thank you for the momentum.
+                  </div>
+                  <div class="opening-program-item">
+                    <span class="opening-chip">Moderators</span>
+                    Stewarding tickets and keeping play fair across ${fmt(w.analyticsEvents, "—")} analytics signals.
+                  </div>
+                  <div class="opening-program-item">
+                    <span class="opening-chip">Guildmates</span>
+                    Trades, loot handoffs, and raid parties stitched a living world together.
+                  </div>
+                </div>
+                <div class="actions flex-wrap" style="justify-content:center; margin-top:18px;">
+                  <button class="cta-primary" data-action="celebrate">Send Cheers</button>
+                  <button class="cta-primary" data-action="next">Continue</button>
+                  <button class="cta-primary" data-action="fullscreen">Fullscreen</button>
+                  <button class="cta-primary" data-action="share">Share link</button>
+                </div>
+              </div>
+            </div>
+          `;
+        },
+      },
+      {
+        id: "year-bookends",
+        title: "Where We Started vs. Where We Ended",
+        accent: "accent-bg-cyan",
+        render: () => {
+          const prog = atlasData.yearProgress || {};
+          const entries = Object.values(prog);
           return `
             <div class="slide-hero">
-              <div class="mega">Thank You, Kingdom</div>
-              <div class="lead">Your hours, victories, and friendships lit up the realm.</div>
+              <div class="mega">Bookends of ${year}</div>
+              <div class="lead">Live snapshots from the database: January 1st versus today.</div>
+            </div>
+            <div class="stat-hero">
+              ${entries.map(p => {
+                if (!p) return "";
+                const delta = (p.end ?? 0) - (p.start ?? 0);
+                const deltaLabel = delta > 0 ? `+${fmt(delta)}` : fmt(delta);
+                return `
+                  <div class="card">
+                    <div class="pill">${p.label}</div>
+                    <div class="kpi">${fmt(p.end, "—")}</div>
+                    <p class="sub">Started ${fmt(p.start, "—")} · Change ${deltaLabel}</p>
+                  </div>
+                `;
+              }).join("")}
+            </div>
+            <div class="actions">
+              <button class="cta-primary" data-action="share">Share Bookends</button>
+            </div>
+          `;
+        },
+      },
+      {
+        id: "honors-title",
+        title: "Kingdom Highlights",
+        accent: "accent-bg-violet",
+        hideHeaderTitle: true,
+        render: () => `
+          <div class="slide-hero">
+            <div class="mega">Honorable Stats & Achievements</div>
+            <div class="lead">A guided tour through quests, matches, trade, and support activity powered by controllers & ledgers.</div>
+            <div class="actions" style="justify-content:center;">
+              <button class="cta-primary" data-action="next">Begin Highlights</button>
+            </div>
+          </div>
+        `,
+      },
+      {
+        id: "realm-overview",
+        title: "Realm Ledger",
+        accent: "accent-bg-cyan",
+        render: () => {
+          const w = atlasData.world || {};
+          return `
+            <div class="slide-hero">
+              <div class="mega">Realm at a Glance</div>
+              <div class="lead">Core counts the controllers rely on.</div>
             </div>
             <div class="stat-hero">
               <div class="card">
-                <div class="pill">Play Hours</div>
-                <div class="kpi">${hours.toLocaleString()}</div>
-                <p class="sub">Moments shared in-world</p>
+                <div class="pill">Accounts</div>
+                <div class="kpi">${fmt(w.accounts, "—")}</div>
+                <p class="sub">Registered adventurers</p>
               </div>
               <div class="card">
-                <div class="pill">Quests</div>
-                <div class="kpi">${quests.toLocaleString()}</div>
-                <p class="sub">Ledgered adventures</p>
+                <div class="pill">Games</div>
+                <div class="kpi">${fmt(w.games, "—")}</div>
+                <p class="sub">Titles tracked in EloController</p>
               </div>
               <div class="card">
-                <div class="pill">Allies</div>
-                <div class="kpi">8,420</div>
-                <p class="sub">Parties and friendships</p>
+                <div class="pill">Matches</div>
+                <div class="kpi">${fmt(w.matches, "—")}</div>
+                <p class="sub">game_match rows</p>
               </div>
               <div class="card">
-                <div class="pill">Events</div>
-                <div class="kpi">${data.events.length * 4}</div>
-                <p class="sub">Realm gatherings</p>
+                <div class="pill">Match Records</div>
+                <div class="kpi">${fmt(w.records, "—")}</div>
+                <p class="sub">Per-player game_record entries</p>
               </div>
-            </div>
-            <div class="actions">
-              <button class="cta-primary" data-action="celebrate">Celebrate</button>
-              <button class="cta-primary" data-action="next">Next Highlight</button>
             </div>
           `;
-        }
+        },
       },
       {
-        id: "population",
-        title: "Population & Activity",
+        id: "questing",
+        title: "Questing Across the Realm",
+        accent: "accent-bg-gold",
+        render: () => {
+          const w = atlasData.world || {};
+          return `
+            <div class="slide-hero">
+              <div class="mega">Quest Ledger</div>
+              <div class="lead">QuestController & QuestLineController kept these moving.</div>
+            </div>
+            <div class="stat-hero">
+              <div class="card">
+                <div class="pill">Published Quests</div>
+                <div class="kpi">${fmt(w.questsPublished, "—")}</div>
+                <p class="sub">Active and archived</p>
+              </div>
+              <div class="card">
+                <div class="pill">Quest Lines</div>
+                <div class="kpi">${fmt(w.questLines, "—")}</div>
+                <p class="sub">Narratives stitched together</p>
+              </div>
+              <div class="card">
+                <div class="pill">Applications</div>
+                <div class="kpi">${fmt(w.questApplicants, "—")}</div>
+                <p class="sub">Total quest_applicants rows</p>
+              </div>
+              <div class="card">
+                <div class="pill">Participants</div>
+                <div class="kpi">${fmt(w.questParticipants, "—")}</div>
+                <p class="sub">Joined and finished adventures</p>
+              </div>
+            </div>
+          `;
+        },
+      },
+      {
+        id: "battles",
+        title: "Battles & Elo",
         accent: "accent-bg-violet",
-        render: (data) => `
-          <div class="slide-hero">
-            <div class="mega">Pulse of the Realm</div>
-            <div class="lead">How the Kingdom moved month over month.</div>
-          </div>
-          <div class="stat-hero">
-            ${data.activity.map(item => `
+        render: () => {
+          const w = atlasData.world || {};
+          return `
+            <div class="slide-hero">
+              <div class="mega">Matches & Rankings</div>
+              <div class="lead">Data tracked by EloController and GameController.</div>
+            </div>
+            <div class="stat-hero">
               <div class="card">
-                <div class="pill">${item.month}</div>
-                <div class="kpi">${item.active}</div>
-                <p class="sub">${item.returning} returning</p>
+                <div class="pill">Matches Logged</div>
+                <div class="kpi">${fmt(w.matches, "—")}</div>
+                <p class="sub">game_match table</p>
               </div>
-            `).join("")}
-          </div>
-          <div class="actions">
-            <button class="cta-primary" data-action="celebrate">Pulse</button>
-            <button class="cta-primary" data-action="share">Share Slide</button>
-          </div>
-        `
-      },
-      {
-        id: "guild-atlas",
-        title: "Guild Atlas",
-        accent: "accent-bg-cyan",
-        render: (data) => `
-          <div class="slide-hero">
-            <div class="mega">Guild Highlights</div>
-            <div class="lead">Banners that defined the year.</div>
-          </div>
-          <div class="stat-hero">
-            ${data.guilds.map(g => `
               <div class="card">
-                <div class="pill">${g.name}</div>
-                <div class="kpi">${g.members}</div>
-                <p class="sub">${g.completions} completions · ${g.growth}</p>
+                <div class="pill">Records</div>
+                <div class="kpi">${fmt(w.records, "—")}</div>
+                <p class="sub">Per-player performance rows</p>
               </div>
-            `).join("")}
-          </div>
-          <div class="actions">
-            <button class="cta-primary" data-action="celebrate">Guild Cheer</button>
-            <button class="cta-primary" data-action="share">Share Slide</button>
-          </div>
-        `
+              <div class="card">
+                <div class="pill">Analytics Events</div>
+                <div class="kpi">${fmt(w.analyticsEvents, "—")}</div>
+                <p class="sub">AnalyticController inserts</p>
+              </div>
+              <div class="card">
+                <div class="pill">Games Tracked</div>
+                <div class="kpi">${fmt(w.games, "—")}</div>
+                <p class="sub">Distinct games in ranking tables</p>
+              </div>
+            </div>
+          `;
+        },
       },
       {
         id: "economy",
-        title: "Economy Ledger",
+        title: "Economy & Craft",
         accent: "accent-bg-gold",
-        render: (data) => `
-          <div class="slide-hero">
-            <div class="mega">Economy Pulse</div>
-            <div class="lead">Volume, payouts, and trades that fueled the year.</div>
-          </div>
-          <div class="stat-hero">
-            ${data.ledgers.map(l => `
+        render: () => {
+          const w = atlasData.world || {};
+          return `
+            <div class="slide-hero">
+              <div class="mega">Economy Pulse</div>
+              <div class="lead">Ledger calls from MerchantGuildController, LootController, and store transactions.</div>
+            </div>
+            <div class="stat-hero">
               <div class="card">
-                <div class="pill">${l.description}</div>
-                <div class="kpi">${l.total.toLocaleString()}</div>
-                <p class="sub">${l.delta}</p>
+                <div class="pill">Transactions</div>
+                <div class="kpi">${fmt(w.transactions, "—")}</div>
+                <p class="sub">Store ledger entries</p>
               </div>
-            `).join("")}
-            ${data.transactions.map(tx => `
               <div class="card">
-                <div class="pill">${tx.type}</div>
-                <div class="kpi">${tx.amount.toLocaleString()}</div>
-                <p class="sub">With ${tx.counterparty}</p>
+                <div class="pill">Items</div>
+                <div class="kpi">${fmt(w.items, "—")}</div>
+                <p class="sub">Item definitions</p>
               </div>
-            `).join("")}
-          </div>
-          <div class="actions">
-            <button class="cta-primary" data-action="celebrate">Showers</button>
-            <button class="cta-primary" data-action="share">Share Slide</button>
-          </div>
-        `
+              <div class="card">
+                <div class="pill">Loot Minted</div>
+                <div class="kpi">${fmt(w.lootMinted, "—")}</div>
+                <p class="sub">LootController records</p>
+              </div>
+              <div class="card">
+                <div class="pill">Trades</div>
+                <div class="kpi">${fmt(w.trades, "—")}</div>
+                <p class="sub">Peer-to-peer exchanges</p>
+              </div>
+            </div>
+          `;
+        },
       },
       {
-        id: "systems",
-        title: "Systems Utilization",
+        id: "support",
+        title: "Support & Safety",
         accent: "accent-bg-cyan",
-        render: (data) => `
-          <div class="slide-hero">
-            <div class="mega">Systems</div>
-            <div class="lead">Where the realm stayed strong.</div>
-          </div>
-          <div class="stat-hero">
-            ${data.servers.map(s => `
+        render: () => {
+          const w = atlasData.world || {};
+          return `
+            <div class="slide-hero">
+              <div class="mega">Support Signals</div>
+              <div class="lead">Ticket pipeline monitored by Ticket models & notifications.</div>
+            </div>
+            <div class="stat-hero">
               <div class="card">
-                <div class="pill">${s.name}</div>
-                <div class="kpi">${s.uptime}</div>
-                <p class="sub">Hotspots: ${s.hotspots.join(", ")}</p>
+                <div class="pill">Tickets Opened</div>
+                <div class="kpi">${fmt(w.ticketsOpened, "—")}</div>
+                <p class="sub">ticket rows created</p>
               </div>
-            `).join("")}
-          </div>
-          <div class="actions">
-            <button class="cta-primary" data-action="celebrate">Light Up</button>
-            <button class="cta-primary" data-action="share">Share Slide</button>
-          </div>
-        `
+              <div class="card">
+                <div class="pill">Tickets Resolved</div>
+                <div class="kpi">${fmt(w.ticketsClosed, "—")}</div>
+                <p class="sub">Resolved or closed</p>
+              </div>
+              <div class="card">
+                <div class="pill">Analytics</div>
+                <div class="kpi">${fmt(w.analyticsEvents, "—")}</div>
+                <p class="sub">Geo + device signals captured</p>
+              </div>
+              <div class="card">
+                <div class="pill">Transactions</div>
+                <div class="kpi">${fmt(w.transactions, "—")}</div>
+                <p class="sub">Trust in checkout flows</p>
+              </div>
+            </div>
+          `;
+        },
       },
       {
-        id: "events",
-        title: "Notable Events Timeline",
+        id: "share-guild",
+        title: "Merchant Guild Shares",
         accent: "accent-bg-pink",
-        render: (data) => `
-          <div class="slide-hero">
-            <div class="mega">Events</div>
-            <div class="lead">Moments that shook the Kingdom.</div>
-          </div>
-          <div class="timeline">
-            ${data.events.map(ev => `
+        render: () => {
+          const w = atlasData.world || {};
+          return `
+            <div class="slide-hero">
+              <div class="mega">Shareholder Milestones</div>
+              <div class="lead">Pulled straight from share_purchase via MerchantGuildController.</div>
+            </div>
+            <div class="stat-hero">
               <div class="card">
-                <div class="pill">${ev.date}</div>
-                <div class="kpi" style="font-size:32px; letter-spacing:0.04em;">${ev.title}</div>
-                <p class="muted">${ev.note}</p>
+                <div class="pill">Shareholders</div>
+                <div class="kpi">${fmt(w.shareholders, "—")}</div>
+                <p class="sub">Distinct accounts invested</p>
               </div>
-            `).join("")}
-          </div>
-          <div class="actions">
-            <button class="cta-primary" data-action="celebrate">Fireworks</button>
-            <button class="cta-primary" data-action="share">Share Slide</button>
-          </div>
-        `
+              <div class="card">
+                <div class="pill">Shares Sold</div>
+                <div class="kpi">${fmt(w.sharesSold, "—")}</div>
+                <p class="sub">Total SharesPurchased</p>
+              </div>
+              <div class="card">
+                <div class="pill">Store Transactions</div>
+                <div class="kpi">${fmt(w.transactions, "—")}</div>
+                <p class="sub">Backing the guild treasury</p>
+              </div>
+              <div class="card">
+                <div class="pill">Loot Minted</div>
+                <div class="kpi">${fmt(w.lootMinted, "—")}</div>
+                <p class="sub">Drops distributed</p>
+              </div>
+            </div>
+          `;
+        },
       },
       {
-        id: "account-spotlight",
-        title: "Account Spotlight",
+        id: "account-hero",
+        title: "Your Atlas Spotlight",
         accent: "accent-bg-gold",
-        render: (data) => {
-          const acct = data.accounts[0];
+        render: () => {
+          if (!account) {
+            return `
+              <div class="slide-hero">
+                <div class="mega">Log in to see your story</div>
+                <div class="lead">We&apos;ll pull your AccountController profile, loot, quests, trades, and tickets automatically.</div>
+                <div class="actions" style="justify-content:center;">
+                  <a class="cta-primary" href="/login.php">Login</a>
+                </div>
+              </div>
+            `;
+          }
+          const profile = account.profile;
           return `
             <div class="slide-hero">
-              <div class="mega">${acct.name}</div>
-              <div class="lead">${acct.class} · ${acct.reputation}</div>
+              <div class="mega">${profile.username}</div>
+              <div class="lead">${profile.title} · Level ${fmt(profile.level)} · Prestige ${fmt(profile.prestige)}</div>
             </div>
             <div class="stat-hero">
               <div class="card">
-                <div class="pill">Joined</div>
-                <div class="kpi">${acct.joinDate}</div>
-                <p class="sub">Level ${acct.level}</p>
+                <div class="pill">EXP</div>
+                <div class="kpi">${fmt(profile.exp)}</div>
+                <p class="sub">Progress this year</p>
               </div>
               <div class="card">
-                <div class="pill">Quests</div>
-                <div class="kpi">${acct.questsCompleted}</div>
-                <p class="sub">${acct.tasksCompleted} tasks</p>
+                <div class="pill">Roles</div>
+                <div class="kpi" style="font-size:22px;">${Object.entries(profile.roles || {}).filter(([,v]) => v).map(([k]) => k).join(" • ") || "—"}</div>
+                <p class="sub">Flags from Session & AccountController</p>
               </div>
               <div class="card">
-                <div class="pill">Streak</div>
-                <div class="kpi">${acct.streakDays}</div>
-                <p class="sub">Days active</p>
+                <div class="pill">Links</div>
+                <div class="kpi">${profile.links.discord ? "Discord linked" : "Discord pending"}</div>
+                <p class="sub">${profile.links.steam ? "Steam linked" : "Steam pending"}</p>
               </div>
-              <div class="card">
-                <div class="pill">Guilds</div>
-                <div class="kpi" style="font-size:22px;">${acct.guilds.join(" • ")}</div>
-                <p class="sub">Current banners</p>
-              </div>
-            </div>
-            <div class="actions">
-              <button class="cta-primary" data-action="celebrate">Applause</button>
-              <button class="cta-primary" data-action="share">Share Spotlight</button>
             </div>
           `;
-        }
+        },
       },
       {
-        id: "best-friend",
-        title: "Best Friend / Frequent Ally",
+        id: "account-quests",
+        title: "Your Quest Journey",
         accent: "accent-bg-cyan",
-        render: (data) => {
-          const acct = data.accounts[0];
-          const best = acct.coQuestPartners[0];
-          const reliableTrio = acct.coQuestPartners.slice(0, 2).map(p => p.name).join(" + ");
+        render: () => {
+          if (!account) {
+            return `
+              <div class="slide-hero">
+                <div class="mega">Quest stats await</div>
+                <div class="lead">Host, apply, and participate to populate this page.</div>
+              </div>
+            `;
+          }
+          const stats = account.stats || {};
           return `
             <div class="slide-hero">
-              <div class="mega">Allies</div>
-              <div class="lead">Those who stood beside you.</div>
+              <div class="mega">Questing</div>
+              <div class="lead">Pulled from quest, quest_applicants, and QuestLineController helpers.</div>
             </div>
             <div class="stat-hero">
               <div class="card">
-                <div class="pill">Best Ally</div>
-                <div class="kpi" style="font-size:32px;">${best.name}</div>
-                <p class="sub">${best.shared} shared quests · ${Math.round(best.successRate * 100)}% win</p>
+                <div class="pill">Hosted</div>
+                <div class="kpi">${fmt(stats.questsHosted, "—")}</div>
+                <p class="sub">Quest hosts</p>
               </div>
               <div class="card">
-                <div class="pill">Party Chemistry</div>
-                <div class="kpi" style="font-size:24px;">${reliableTrio}</div>
-                <p class="sub">Highest synergy trio</p>
+                <div class="pill">Applications</div>
+                <div class="kpi">${fmt(stats.applications, "—")}</div>
+                <p class="sub">Total submitted</p>
+              </div>
+              <div class="card">
+                <div class="pill">Participated</div>
+                <div class="kpi">${fmt(stats.questsJoined, "—")}</div>
+                <p class="sub">Accepted and played</p>
+              </div>
+              <div class="card">
+                <div class="pill">Badges</div>
+                <div class="kpi">${fmt(stats.badges, "—")}</div>
+                <p class="sub">Earned via LootController</p>
               </div>
             </div>
-            <div class="actions">
-              <button class="cta-primary" data-action="celebrate">Cheer Duo</button>
-              <button class="cta-primary" data-action="share">Share Link</button>
-            </div>
           `;
-        }
+        },
       },
       {
-        id: "games",
-        title: "Favorite, Best, and Worst Games",
+        id: "account-play",
+        title: "Your Match History",
         accent: "accent-bg-violet",
-        render: (data) => {
-          const acct = data.accounts[0];
-          const bestMatch = acct.matches.find(m => m.elo === Math.max(...acct.eloHistory)) || acct.matches[0];
-          const worstMatch = acct.matches.find(m => m.elo === Math.min(...acct.eloHistory)) || acct.matches[acct.matches.length - 1];
-          const favoriteMode = acct.modes.reduce((top, mode) => (mode.attempts > (top?.attempts ?? 0) ? mode : top), null);
+        render: () => {
+          if (!account) {
+            return `
+              <div class="slide-hero">
+                <div class="mega">Play a match</div>
+                <div class="lead">Once you log battles, Elo & win rate will auto-populate.</div>
+              </div>
+            `;
+          }
+          const stats = account.stats || {};
+          const winRate = account.winRate !== null && account.winRate !== undefined ? pct(stats.wins, stats.matches) : "—";
           return `
             <div class="slide-hero">
-              <div class="mega">Games & Glory</div>
-              <div class="lead">Peaks, recoveries, and favorites.</div>
+              <div class="mega">Battle Ledger</div>
+              <div class="lead">game_record rows for your account.</div>
             </div>
             <div class="stat-hero">
               <div class="card">
-                <div class="pill">Favorite Mode</div>
-                <div class="kpi" style="font-size:32px;">${favoriteMode?.mode ?? "—"}</div>
-                <p class="sub">${favoriteMode?.attempts ?? 0} runs · ${favoriteMode ? Math.round((favoriteMode.wins / favoriteMode.attempts) * 100) : 0}% success</p>
+                <div class="pill">Matches</div>
+                <div class="kpi">${fmt(stats.matches, "—")}</div>
+                <p class="sub">game_record rows</p>
               </div>
               <div class="card">
-                <div class="pill">Best Game</div>
-                <div class="kpi" style="font-size:26px;">${bestMatch?.label ?? "—"}</div>
-                <p class="sub">Peak ELO: ${bestMatch?.elo ?? "—"} · ${bestMatch?.result ?? ""}</p>
+                <div class="pill">Wins</div>
+                <div class="kpi">${fmt(stats.wins, "—")}</div>
+                <p class="sub">Victory count</p>
               </div>
               <div class="card">
-                <div class="pill">Toughest Game</div>
-                <div class="kpi" style="font-size:26px;">${worstMatch?.label ?? "—"}</div>
-                <p class="sub">Low ELO: ${worstMatch?.elo ?? "—"} · ${worstMatch?.result ?? ""}</p>
+                <div class="pill">Win Rate</div>
+                <div class="kpi">${winRate}</div>
+                <p class="sub">Calculated on the fly</p>
               </div>
               <div class="card">
-                <div class="pill">ELO Trend</div>
-                <div class="kpi">${acct.eloHistory.slice(-1)[0]}</div>
-                <p class="sub">Peak ${Math.max(...acct.eloHistory)} · Floor ${Math.min(...acct.eloHistory)}</p>
+                <div class="pill">Hosted Quests</div>
+                <div class="kpi">${fmt(stats.questsHosted, "—")}</div>
+                <p class="sub">Leadership on the board</p>
               </div>
-            </div>
-            <div class="actions">
-              <button class="cta-primary" data-action="celebrate">Confetti</button>
-              <button class="cta-primary" data-action="share">Share Game</button>
             </div>
           `;
-        }
+        },
       },
       {
-        id: "outlook",
-        title: "Forward Outlook",
+        id: "account-inventory",
+        title: "Your Collection & Trade",
+        accent: "accent-bg-gold",
+        render: () => {
+          if (!account) {
+            return `
+              <div class="slide-hero">
+                <div class="mega">Claim loot to unlock</div>
+                <div class="lead">Containers, loot, trades, and merchant shares will render after login.</div>
+              </div>
+            `;
+          }
+          const stats = account.stats || {};
+          return `
+            <div class="slide-hero">
+              <div class="mega">Loot & Commerce</div>
+              <div class="lead">LootController, Trade records, and MerchantGuild purchases tied to your account.</div>
+            </div>
+            <div class="stat-hero">
+              <div class="card">
+                <div class="pill">Loot</div>
+                <div class="kpi">${fmt(stats.loot, "—")}</div>
+                <p class="sub">Items owned</p>
+              </div>
+              <div class="card">
+                <div class="pill">Containers</div>
+                <div class="kpi">${fmt(stats.containers, "—")}</div>
+                <p class="sub">Ready for storage</p>
+              </div>
+              <div class="card">
+                <div class="pill">Trades</div>
+                <div class="kpi">${fmt(stats.trades, "—")}</div>
+                <p class="sub">From trade table</p>
+              </div>
+              <div class="card">
+                <div class="pill">Shares Purchased</div>
+                <div class="kpi">${fmt(stats.sharePurchases, "—")}</div>
+                <p class="sub">Merchant Guild stake</p>
+              </div>
+            </div>
+          `;
+        },
+      },
+      {
+        id: "account-support",
+        title: "Your Support & Safety",
         accent: "accent-bg-cyan",
+        render: () => {
+          if (!account) {
+            return `
+              <div class="slide-hero">
+                <div class="mega">Support footprint</div>
+                <div class="lead">Open tickets, resolve them, and your record will appear.</div>
+              </div>
+            `;
+          }
+          const stats = account.stats || {};
+          return `
+            <div class="slide-hero">
+              <div class="mega">Signals & Care</div>
+              <div class="lead">Pulled from ticket table and linked profiles.</div>
+            </div>
+            <div class="stat-hero">
+              <div class="card">
+                <div class="pill">Tickets Filed</div>
+                <div class="kpi">${fmt(stats.ticketsFiled, "—")}</div>
+                <p class="sub">Support requests</p>
+              </div>
+              <div class="card">
+                <div class="pill">Tickets Resolved</div>
+                <div class="kpi">${fmt(stats.ticketsResolved, "—")}</div>
+                <p class="sub">Completed for you</p>
+              </div>
+              <div class="card">
+                <div class="pill">Discord</div>
+                <div class="kpi">${account.profile.links.discord ? "Linked" : "Not linked"}</div>
+                <p class="sub">Session + AccountController</p>
+              </div>
+              <div class="card">
+                <div class="pill">Steam</div>
+                <div class="kpi">${account.profile.links.steam ? "Linked" : "Not linked"}</div>
+                <p class="sub">Third-party presence</p>
+              </div>
+            </div>
+          `;
+        },
+      },
+      {
+        id: "farewell",
+        title: "Farewell",
+        accent: "accent-bg-pink",
         render: () => `
           <div class="slide-hero">
-            <div class="mega">Next Year</div>
-            <div class="lead">Where the archive points us.</div>
-          </div>
-          <div class="stat-hero">
-            <div class="card">
-              <div class="pill">Focus</div>
-              <div class="kpi" style="font-size:26px;">Expand Guild Raids</div>
-              <p class="sub">Carry momentum from duo/trio wins</p>
-            </div>
-            <div class="card">
-              <div class="pill">Skill</div>
-              <div class="kpi" style="font-size:26px;">Refine Arena Play</div>
-              <p class="sub">Lift the arena floor</p>
-            </div>
-            <div class="card">
-              <div class="pill">Community</div>
-              <div class="kpi" style="font-size:26px;">Mentor Archivists</div>
-              <p class="sub">Share ledgers and builds</p>
+            <div class="mega">Thank you for building ${year}</div>
+            <div class="lead">From controllers to quests, every row tells a story. See you in the next chapter.</div>
+            <div class="actions" style="justify-content:center;">
+              <button class="cta-primary" data-action="celebrate">Raise Banner</button>
+              <button class="cta-primary" data-action="share">Share Archive</button>
             </div>
           </div>
-          <div class="actions">
-            <button class="cta-primary" data-action="celebrate">Raise Banner</button>
-            <button class="cta-primary" data-action="share">Share Outlook</button>
-          </div>
-        `
-      }
+        `,
+      },
     ];
 
     const slidesContainer = document.getElementById("slides");
@@ -1229,7 +1468,7 @@ require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-i
           </div>
           <button class="copy-link" data-slide="${slide.id}">Copy link</button>
         </div>
-        <div class="slide-body">${slide.render(fakeData)}</div>
+        <div class="slide-body">${slide.render(atlasData)}</div>
       `;
       slidesContainer.appendChild(section);
       sectionRefs.push(section);
