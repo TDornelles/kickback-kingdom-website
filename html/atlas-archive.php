@@ -4,6 +4,9 @@ require_once(($_SERVER["DOCUMENT_ROOT"] ?: __DIR__) . "/Kickback/init.php");
 
 use Kickback\Backend\Controllers\SeasonController;
 
+$session = require(\Kickback\SCRIPT_ROOT . "/api/v1/engine/session/verifySession.php");
+require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-info.php");
+
 $seasonController = new SeasonController();
 $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
 ?>
@@ -1491,5 +1494,14 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
 
   </script>
   <script src="/assets/vendors/bootstrap/bootstrap.bundle.min.js"></script>
+  <!-- FX Overlays -->
+  <div class="confetti-box" style="z-index:10000; pointer-events:none;">
+    <div class="js-container-confetti" style="width:100vw; height:100vh;"></div>
+  </div>
+  <div class="fireworks-box" style="z-index:10000; pointer-events:none;">
+    <div class="js-container-fireworks" style="width:100vw; height:100vh;"></div>
+  </div>
+  <?php require("php-components/base-page-version-popup.php"); ?>
+  <?php require("php-components/base-page-javascript.php"); ?>
 </body>
 </html>

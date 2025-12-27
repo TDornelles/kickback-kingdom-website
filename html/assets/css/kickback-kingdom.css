@@ -544,6 +544,17 @@ word-wrap: break-word; /* Allow the body content to break into multiple lines if
     pointer-events: none;
 }
 
+.fireworks-box {
+    overflow: hidden;
+    position: fixed;
+    z-index: 9999;
+    width: 100vw;
+    height: 100vh;
+    left: 0px;
+    top: 0px;
+    pointer-events: none;
+}
+
 @keyframes confetti-slow {
 0% {
     transform: translate3d(0, 0, 0) rotateX(0) rotateY(0);
@@ -594,6 +605,96 @@ animation: confetti-medium 1.75s linear 1 forwards;
 }
 .confetti--animation-fast {
 animation: confetti-fast 1.25s linear 1 forwards;
+}
+
+.fireworks-container {
+perspective: 800px;
+position: absolute;
+overflow: hidden;
+top: 0;
+right: 0;
+bottom: 0;
+left: 0;
+pointer-events: none;
+}
+
+.firework-rocket {
+position: absolute;
+bottom: -20px;
+width: 6px;
+height: 18px;
+background: linear-gradient(180deg, #ffffff 0%, var(--trail-color, #ffffff) 60%, rgba(255,255,255,0.35) 100%);
+box-shadow: 0 0 12px var(--trail-color, #ffffff), 0 0 24px rgba(255,255,255,0.85), 0 0 34px rgba(255,255,255,0.45);
+border-radius: 999px;
+animation: firework-rise var(--firework-duration, 1800ms) ease-out forwards;
+mix-blend-mode: screen;
+}
+
+.firework-explosion {
+position: absolute;
+width: 0;
+height: 0;
+pointer-events: none;
+}
+
+.firework-particle {
+position: absolute;
+width: 9px;
+height: 9px;
+border-radius: 50%;
+background: radial-gradient(circle at 35% 35%, #ffffff 0%, #fff6d9 30%, var(--particle-color, #ffd166) 55%, rgba(0,0,0,0) 75%);
+box-shadow: 0 0 14px var(--particle-color, #ffd166), 0 0 24px rgba(255,255,255,0.55), 0 0 36px var(--particle-color, #ffd166);
+transform: translate(0, 0) scale(1);
+opacity: 1;
+animation: firework-burst 900ms cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+will-change: transform, opacity;
+mix-blend-mode: screen;
+}
+
+@keyframes firework-rise {
+from {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+}
+to {
+    transform: translateY(var(--rise-height, -320px)) scale(0.85);
+    opacity: 0.25;
+}
+}
+
+@keyframes firework-burst {
+from {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+}
+to {
+    transform: translate(var(--dx, 0), var(--dy, 0)) scale(0.8);
+    opacity: 0;
+}
+}
+
+.firework-smoke {
+position: absolute;
+width: 10px;
+height: 10px;
+border-radius: 50%;
+background: radial-gradient(circle, rgba(200,200,200,0.6) 0%, rgba(180,180,180,0.45) 60%, rgba(180,180,180,0) 100%);
+filter: blur(0.5px);
+opacity: 0.65;
+animation: firework-smoke 850ms ease-out forwards;
+will-change: transform, opacity;
+pointer-events: none;
+}
+
+@keyframes firework-smoke {
+from {
+    transform: translate(0, 0) scale(0.8);
+    opacity: 0.6;
+}
+to {
+    transform: translate(var(--smoke-offset-x, 0), var(--smoke-offset-y, 14px)) scale(1.6);
+    opacity: 0;
+}
 }
 
 .modal-chest {

@@ -70,6 +70,13 @@ if (!Session::isLoggedIn()) {
     </div>
 </div>
 
+<!--FIREWORKS-->
+<div class="fireworks-box">
+    <div class="js-container-fireworks" style="width:100vw; height:100vh;">
+
+    </div>
+</div>
+
 
 
 
