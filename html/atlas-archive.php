@@ -151,7 +151,7 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       background: linear-gradient(160deg, rgba(16,23,32,0.92), rgba(12,18,28,0.96));
       box-shadow: var(--shadow);
       height: min(85vh, 980px);
-      padding: 96px 24px 24px;
+      padding: 88px 18px 18px;
       isolation: isolate;
       max-width: 1200px;
       margin: 0 auto;
@@ -169,21 +169,22 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
     }
     .slides-stage .slide {
       position: absolute;
-      inset: 18px;
+      inset: 8px 10px 10px 10px;
       opacity: 0;
       transform: none;
       pointer-events: none;
       transition: none;
       z-index: 0;
-      background: radial-gradient(circle at 12% 10%, rgba(255, 209, 102, 0.12), transparent 38%), radial-gradient(circle at 90% 15%, rgba(124, 183, 255, 0.16), transparent 42%), linear-gradient(180deg, rgba(16,23,32,0.94), rgba(19,29,44,0.9));
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 26px;
-      box-shadow: var(--shadow);
+      background: none;
+      border-radius: 14px;
+      padding: 22px;
+      min-height: 100%;
       overflow: hidden;
-      filter: drop-shadow(0 20px 40px rgba(0,0,0,0.35));
+      box-shadow: none;
+      filter: none;
       backdrop-filter: blur(4px);
-      max-width: calc(100% - 36px);
+      max-width: none;
+      outline: none;
       display: none;
       flex-direction: column;
       overflow: hidden;
@@ -203,6 +204,33 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       filter: none;
       z-index: 1;
       transition: none;
+    }
+    #slides {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 14px;
+      scrollbar-gutter: stable;
+      scrollbar-width: thin;
+      scrollbar-color: var(--accent) rgba(255,255,255,0.06);
+    }
+    #slides::-webkit-scrollbar {
+      width: 12px;
+    }
+    #slides::-webkit-scrollbar-track {
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      border-radius: 999px;
+    }
+    #slides::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, rgba(255,209,102,0.55), rgba(124,183,255,0.7));
+      border-radius: 999px;
+      border: 2px solid rgba(12,18,28,0.9);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+    #slides::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, rgba(255,209,102,0.7), rgba(124,183,255,0.85));
     }
     .slide::before {
       content: "";
@@ -226,9 +254,9 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       opacity: 0.6;
       pointer-events: none;
     }
-    .slide:focus {
-      outline: 2px solid var(--accent);
-      outline-offset: 4px;
+    .slides-stage .slide:focus,
+    .slides-stage .slide:focus-visible {
+      outline: none;
     }
     .slide-header {
       display: flex;
@@ -240,9 +268,8 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
     }
     .slide-body {
       flex: 1;
-      overflow-y: auto;
-      overflow-x: hidden;
-      padding-right: 6px;
+      overflow: visible;
+      padding-right: 0;
     }
     .slide-title {
       display: flex;
