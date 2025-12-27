@@ -791,6 +791,17 @@ $atlasPayload = [
       const num = Number(value);
       return Number.isFinite(num) ? num.toLocaleString() : `${value}`;
     };
+    const numericOrNull = (value) => {
+      const num = Number(value);
+      return Number.isFinite(num) ? num : null;
+    };
+    const renderKpi = (value, fallback = "—") => {
+      const num = numericOrNull(value);
+      const attr = num !== null ? `data-target="${num}"` : "";
+      const cls = num !== null ? "kpi stat-number" : "kpi";
+      const display = num !== null ? fmt(num) : fallback;
+      return `<div class="${cls}" ${attr}>${display}</div>`;
+    };
     const pct = (numerator, denominator) => {
       if (!denominator || denominator === 0 || numerator === null || numerator === undefined) return "—";
       return `${Math.round((numerator / denominator) * 100)}%`;
@@ -832,17 +843,17 @@ $atlasPayload = [
                 <div class="opening-stats">
                   <div class="opening-stat">
                     <span class="pill">Adventurers</span>
-                    <strong>${fmt(w.accounts, "—")}</strong>
+                    ${renderKpi(w.accounts)}
                     <span class="sub">Registered heroes</span>
                   </div>
                   <div class="opening-stat">
                     <span class="pill">Quests</span>
-                    <strong>${fmt(w.questsPublished, "—")}</strong>
+                    ${renderKpi(w.questsPublished)}
                     <span class="sub">Published to the realm</span>
                   </div>
                   <div class="opening-stat">
                     <span class="pill">Matches</span>
-                    <strong>${fmt(w.matches, "—")}</strong>
+                    ${renderKpi(w.matches)}
                     <span class="sub">Battles recorded</span>
                   </div>
                 </div>
@@ -891,7 +902,7 @@ $atlasPayload = [
                 return `
                   <div class="card">
                     <div class="pill">${p.label}</div>
-                    <div class="kpi">${fmt(p.end, "—")}</div>
+                    ${renderKpi(p.end)}
                     <p class="sub">Started ${fmt(p.start, "—")} · Change ${deltaLabel}</p>
                   </div>
                 `;
@@ -932,22 +943,22 @@ $atlasPayload = [
             <div class="stat-hero">
               <div class="card">
                 <div class="pill">Accounts</div>
-                <div class="kpi">${fmt(w.accounts, "—")}</div>
+                ${renderKpi(w.accounts)}
                 <p class="sub">Registered adventurers</p>
               </div>
               <div class="card">
                 <div class="pill">Games</div>
-                <div class="kpi">${fmt(w.games, "—")}</div>
+                ${renderKpi(w.games)}
                 <p class="sub">Titles tracked in EloController</p>
               </div>
               <div class="card">
                 <div class="pill">Matches</div>
-                <div class="kpi">${fmt(w.matches, "—")}</div>
+                ${renderKpi(w.matches)}
                 <p class="sub">game_match rows</p>
               </div>
               <div class="card">
                 <div class="pill">Match Records</div>
-                <div class="kpi">${fmt(w.records, "—")}</div>
+                ${renderKpi(w.records)}
                 <p class="sub">Per-player game_record entries</p>
               </div>
             </div>
@@ -968,22 +979,22 @@ $atlasPayload = [
             <div class="stat-hero">
               <div class="card">
                 <div class="pill">Published Quests</div>
-                <div class="kpi">${fmt(w.questsPublished, "—")}</div>
+                ${renderKpi(w.questsPublished)}
                 <p class="sub">Active and archived</p>
               </div>
               <div class="card">
                 <div class="pill">Quest Lines</div>
-                <div class="kpi">${fmt(w.questLines, "—")}</div>
+                ${renderKpi(w.questLines)}
                 <p class="sub">Narratives stitched together</p>
               </div>
               <div class="card">
                 <div class="pill">Applications</div>
-                <div class="kpi">${fmt(w.questApplicants, "—")}</div>
+                ${renderKpi(w.questApplicants)}
                 <p class="sub">Total quest_applicants rows</p>
               </div>
               <div class="card">
                 <div class="pill">Participants</div>
-                <div class="kpi">${fmt(w.questParticipants, "—")}</div>
+                ${renderKpi(w.questParticipants)}
                 <p class="sub">Joined and finished adventures</p>
               </div>
             </div>
@@ -1004,22 +1015,22 @@ $atlasPayload = [
             <div class="stat-hero">
               <div class="card">
                 <div class="pill">Matches Logged</div>
-                <div class="kpi">${fmt(w.matches, "—")}</div>
+                ${renderKpi(w.matches)}
                 <p class="sub">game_match table</p>
               </div>
               <div class="card">
                 <div class="pill">Records</div>
-                <div class="kpi">${fmt(w.records, "—")}</div>
+                ${renderKpi(w.records)}
                 <p class="sub">Per-player performance rows</p>
               </div>
               <div class="card">
                 <div class="pill">Analytics Events</div>
-                <div class="kpi">${fmt(w.analyticsEvents, "—")}</div>
+                ${renderKpi(w.analyticsEvents)}
                 <p class="sub">AnalyticController inserts</p>
               </div>
               <div class="card">
                 <div class="pill">Games Tracked</div>
-                <div class="kpi">${fmt(w.games, "—")}</div>
+                ${renderKpi(w.games)}
                 <p class="sub">Distinct games in ranking tables</p>
               </div>
             </div>
@@ -1040,22 +1051,22 @@ $atlasPayload = [
             <div class="stat-hero">
               <div class="card">
                 <div class="pill">Transactions</div>
-                <div class="kpi">${fmt(w.transactions, "—")}</div>
+                ${renderKpi(w.transactions)}
                 <p class="sub">Store ledger entries</p>
               </div>
               <div class="card">
                 <div class="pill">Items</div>
-                <div class="kpi">${fmt(w.items, "—")}</div>
+                ${renderKpi(w.items)}
                 <p class="sub">Item definitions</p>
               </div>
               <div class="card">
                 <div class="pill">Loot Minted</div>
-                <div class="kpi">${fmt(w.lootMinted, "—")}</div>
+                ${renderKpi(w.lootMinted)}
                 <p class="sub">LootController records</p>
               </div>
               <div class="card">
                 <div class="pill">Trades</div>
-                <div class="kpi">${fmt(w.trades, "—")}</div>
+                ${renderKpi(w.trades)}
                 <p class="sub">Peer-to-peer exchanges</p>
               </div>
             </div>
@@ -1076,22 +1087,22 @@ $atlasPayload = [
             <div class="stat-hero">
               <div class="card">
                 <div class="pill">Tickets Opened</div>
-                <div class="kpi">${fmt(w.ticketsOpened, "—")}</div>
+                ${renderKpi(w.ticketsOpened)}
                 <p class="sub">ticket rows created</p>
               </div>
               <div class="card">
                 <div class="pill">Tickets Resolved</div>
-                <div class="kpi">${fmt(w.ticketsClosed, "—")}</div>
+                ${renderKpi(w.ticketsClosed)}
                 <p class="sub">Resolved or closed</p>
               </div>
               <div class="card">
                 <div class="pill">Analytics</div>
-                <div class="kpi">${fmt(w.analyticsEvents, "—")}</div>
+                ${renderKpi(w.analyticsEvents)}
                 <p class="sub">Geo + device signals captured</p>
               </div>
               <div class="card">
                 <div class="pill">Transactions</div>
-                <div class="kpi">${fmt(w.transactions, "—")}</div>
+                ${renderKpi(w.transactions)}
                 <p class="sub">Trust in checkout flows</p>
               </div>
             </div>
@@ -1112,22 +1123,22 @@ $atlasPayload = [
             <div class="stat-hero">
               <div class="card">
                 <div class="pill">Shareholders</div>
-                <div class="kpi">${fmt(w.shareholders, "—")}</div>
+                ${renderKpi(w.shareholders)}
                 <p class="sub">Distinct accounts invested</p>
               </div>
               <div class="card">
                 <div class="pill">Shares Sold</div>
-                <div class="kpi">${fmt(w.sharesSold, "—")}</div>
+                ${renderKpi(w.sharesSold)}
                 <p class="sub">Total SharesPurchased</p>
               </div>
               <div class="card">
                 <div class="pill">Store Transactions</div>
-                <div class="kpi">${fmt(w.transactions, "—")}</div>
+                ${renderKpi(w.transactions)}
                 <p class="sub">Backing the guild treasury</p>
               </div>
               <div class="card">
                 <div class="pill">Loot Minted</div>
-                <div class="kpi">${fmt(w.lootMinted, "—")}</div>
+                ${renderKpi(w.lootMinted)}
                 <p class="sub">Drops distributed</p>
               </div>
             </div>
@@ -1159,7 +1170,7 @@ $atlasPayload = [
             <div class="stat-hero">
               <div class="card">
                 <div class="pill">EXP</div>
-                <div class="kpi">${fmt(profile.exp)}</div>
+                ${renderKpi(profile.exp)}
                 <p class="sub">Progress this year</p>
               </div>
               <div class="card">
@@ -1198,22 +1209,22 @@ $atlasPayload = [
             <div class="stat-hero">
               <div class="card">
                 <div class="pill">Hosted</div>
-                <div class="kpi">${fmt(stats.questsHosted, "—")}</div>
+                ${renderKpi(stats.questsHosted)}
                 <p class="sub">Quest hosts</p>
               </div>
               <div class="card">
                 <div class="pill">Applications</div>
-                <div class="kpi">${fmt(stats.applications, "—")}</div>
+                ${renderKpi(stats.applications)}
                 <p class="sub">Total submitted</p>
               </div>
               <div class="card">
                 <div class="pill">Participated</div>
-                <div class="kpi">${fmt(stats.questsJoined, "—")}</div>
+                ${renderKpi(stats.questsJoined)}
                 <p class="sub">Accepted and played</p>
               </div>
               <div class="card">
                 <div class="pill">Badges</div>
-                <div class="kpi">${fmt(stats.badges, "—")}</div>
+                ${renderKpi(stats.badges)}
                 <p class="sub">Earned via LootController</p>
               </div>
             </div>
@@ -1243,12 +1254,12 @@ $atlasPayload = [
             <div class="stat-hero">
               <div class="card">
                 <div class="pill">Matches</div>
-                <div class="kpi">${fmt(stats.matches, "—")}</div>
+                ${renderKpi(stats.matches)}
                 <p class="sub">game_record rows</p>
               </div>
               <div class="card">
                 <div class="pill">Wins</div>
-                <div class="kpi">${fmt(stats.wins, "—")}</div>
+                ${renderKpi(stats.wins)}
                 <p class="sub">Victory count</p>
               </div>
               <div class="card">
@@ -1258,7 +1269,7 @@ $atlasPayload = [
               </div>
               <div class="card">
                 <div class="pill">Hosted Quests</div>
-                <div class="kpi">${fmt(stats.questsHosted, "—")}</div>
+                ${renderKpi(stats.questsHosted)}
                 <p class="sub">Leadership on the board</p>
               </div>
             </div>
@@ -1287,22 +1298,22 @@ $atlasPayload = [
             <div class="stat-hero">
               <div class="card">
                 <div class="pill">Loot</div>
-                <div class="kpi">${fmt(stats.loot, "—")}</div>
+                ${renderKpi(stats.loot)}
                 <p class="sub">Items owned</p>
               </div>
               <div class="card">
                 <div class="pill">Containers</div>
-                <div class="kpi">${fmt(stats.containers, "—")}</div>
+                ${renderKpi(stats.containers)}
                 <p class="sub">Ready for storage</p>
               </div>
               <div class="card">
                 <div class="pill">Trades</div>
-                <div class="kpi">${fmt(stats.trades, "—")}</div>
+                ${renderKpi(stats.trades)}
                 <p class="sub">From trade table</p>
               </div>
               <div class="card">
                 <div class="pill">Shares Purchased</div>
-                <div class="kpi">${fmt(stats.sharePurchases, "—")}</div>
+                ${renderKpi(stats.sharePurchases)}
                 <p class="sub">Merchant Guild stake</p>
               </div>
             </div>
@@ -1331,12 +1342,12 @@ $atlasPayload = [
             <div class="stat-hero">
               <div class="card">
                 <div class="pill">Tickets Filed</div>
-                <div class="kpi">${fmt(stats.ticketsFiled, "—")}</div>
+                ${renderKpi(stats.ticketsFiled)}
                 <p class="sub">Support requests</p>
               </div>
               <div class="card">
                 <div class="pill">Tickets Resolved</div>
-                <div class="kpi">${fmt(stats.ticketsResolved, "—")}</div>
+                ${renderKpi(stats.ticketsResolved)}
                 <p class="sub">Completed for you</p>
               </div>
               <div class="card">
@@ -1473,6 +1484,7 @@ $atlasPayload = [
       slidesContainer.appendChild(section);
       sectionRefs.push(section);
       tagSequenceItems(section);
+      primeNumberElements(section);
 
       const dot = document.createElement("button");
       dot.className = "hud-dot";
@@ -1540,6 +1552,16 @@ $atlasPayload = [
         }
       });
     }
+    function primeNumberElements(section) {
+      section.querySelectorAll(".stat-number").forEach((node) => {
+        const raw = node.dataset.target ?? node.textContent;
+        const num = numericOrNull(raw);
+        if (num !== null) {
+          node.dataset.target = `${num}`;
+          node.textContent = "0";
+        }
+      });
+    }
     function getSlideAnimationConfig(sectionId) {
       const overrides = animationConfig.slides[sectionId] || {};
       return {
@@ -1580,6 +1602,26 @@ $atlasPayload = [
         return true;
       });
     }
+    function animateNumbers(section) {
+      const nodes = section.querySelectorAll(".stat-number[data-target]");
+      const formatter = new Intl.NumberFormat();
+      nodes.forEach((node) => {
+        const target = Number(node.dataset.target);
+        if (!Number.isFinite(target)) return;
+        const duration = 900;
+        const start = 0;
+        const startTime = performance.now();
+        const step = (now) => {
+          const progress = Math.min((now - startTime) / duration, 1);
+          const value = Math.round(start + (target - start) * progress);
+          node.textContent = formatter.format(value);
+          if (progress < 1) {
+            requestAnimationFrame(step);
+          }
+        };
+        requestAnimationFrame(step);
+      });
+    }
     function startEnterAnimation(section) {
       const config = getSlideAnimationConfig(section.id);
       const elementAnimations = collectElementAnimations(section, config);
@@ -1587,6 +1629,7 @@ $atlasPayload = [
       elementAnimations.forEach((item) => {
         applyAnimation(item.el, item.enter, { delay: item.delay, duration: item.duration });
       });
+      animateNumbers(section);
     }
     function startExitAnimation(section) {
       const config = getSlideAnimationConfig(section.id);
