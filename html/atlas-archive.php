@@ -483,7 +483,7 @@ require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-i
       background: var(--accent);
       opacity: 0.9;
       pointer-events: none;
-      animation: none;
+      animation: sparkFly 800ms ease-out forwards;
     }
     .sub {
       font-size: 14px;
@@ -586,6 +586,10 @@ require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-i
     .control-bar button:disabled {
       opacity: 0.5;
       cursor: not-allowed;
+    }
+    @keyframes sparkFly {
+      0% { transform: translate(0, 0) scale(1); opacity: 1; }
+      100% { transform: translate(var(--dx), var(--dy)) scale(0.35); opacity: 0; }
     }
     @media (max-width: 960px) {
       .page { grid-template-columns: 1fr; }
@@ -719,43 +723,43 @@ require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-i
         `
       },
       {
-        id: "opening",
-        title: "Opening Ceremony",
+        id: "community-thanks",
+        title: "Community Spotlight",
         render: () => `
           <div class="opening-grid">
             <div class="opening-panel card accent-bg-gold">
-              <div class="ribbon">Grand Opening</div>
-              <div class="opening-title">Atlas Archive is live</div>
-              <p class="muted">Curtains up. This year&apos;s legends, quests, and guild moments are queued for the spotlight.</p>
+              <div class="ribbon">Community First</div>
+              <div class="opening-title">Thank you, Kingdom!</div>
+              <p class="muted">Every late-night grind, every meme, every guild banner raised made this world possible. You are the Atlas of this archive.</p>
               <div class="opening-stats">
                 <div class="opening-stat">
-                  <span class="pill">Archive Year</span>
-                  <strong>2026</strong>
-                  <span class="sub">Season showcase</span>
+                  <span class="pill">Adventurers</span>
+                  <strong>2,480</strong>
+                  <span class="sub">Active hearts powering the realm</span>
                 </div>
                 <div class="opening-stat">
-                  <span class="pill">Guilds RSVP&apos;d</span>
-                  <strong>12</strong>
-                  <span class="sub">Featured banners</span>
+                  <span class="pill">Cheer Moments</span>
+                  <strong>38,000</strong>
+                  <span class="sub">Hours laughed, raided, and shared</span>
                 </div>
               </div>
               <div class="opening-program">
                 <div class="opening-program-item">
-                  <span class="opening-chip">Highlights</span>
-                  State of the Realm, ledger sparks, and guild showstoppers.
+                  <span class="opening-chip">Spirit</span>
+                  Your kindness and grit kept the citadel glowing. We see you, and we&apos;re cheering back.
                 </div>
                 <div class="opening-program-item">
                   <span class="opening-chip">Allies</span>
-                  Best partners, clutch duos, and chemistry rankings.
+                  Guildmates, moderators, creators, and quiet supporters who lift every quest line.
                 </div>
                 <div class="opening-program-item">
-                  <span class="opening-chip">Future</span>
-                  Outlooks, upgrades, and where the banners fly next.
+                  <span class="opening-chip">Promise</span>
+                  We&apos;ll keep building spaces worthy of your banners and friendships.
                 </div>
               </div>
               <div class="actions flex-wrap" style="justify-content:center; margin-top:18px;">
-                <button class="cta-primary" data-action="celebrate">Start the fanfare</button>
-                <button class="cta-primary" data-action="next">Begin the slides</button>
+                <button class="cta-primary" data-action="celebrate">Send Cheers</button>
+                <button class="cta-primary" data-action="next">Continue</button>
                 <button class="cta-primary" data-action="fullscreen">Fullscreen</button>
                 <button class="cta-primary" data-action="share">Share link</button>
               </div>
@@ -1126,6 +1130,7 @@ require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-i
     const prevBtn = document.getElementById("prev-btn");
     const nextBtn = document.getElementById("next-btn");
     const counter = document.getElementById("counter");
+    const slideStage = document.querySelector(".slides-stage");
     const animationConfig = {
       duration: 900,
       exitDuration: 650,
@@ -1154,7 +1159,7 @@ require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-i
             { selector: ".actions .cta-primary", enter: "animate__zoomIn", stagger: true, delay: 500 },
           ],
         },
-        opening: {
+        "community-thanks": {
           elements: [
             { selector: ".opening-panel", enter: "animate__fadeInUp", exit: "animate__fadeOutDown" },
             { selector: ".opening-stat", enter: "animate__fadeInUp", stagger: true },
@@ -1302,6 +1307,7 @@ require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-i
       config.elements.forEach((def, defIdx) => {
         const nodes = section.querySelectorAll(def.selector);
         nodes.forEach((node, nodeIdx) => {
+          if (node.classList.contains("bg-ranked-1")) return;
           collected.push({
             el: node,
             enter: def.enter || animationConfig.defaultElement.enter,
@@ -1312,6 +1318,7 @@ require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-i
         });
       });
       section.querySelectorAll("[data-animate]").forEach((node) => {
+        if (node.classList.contains("bg-ranked-1")) return;
         collected.push({
           el: node,
           enter: node.dataset.animate,
@@ -1450,7 +1457,8 @@ require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-i
     });
 
     function scrollToHash() {
-      const hash = window.location.hash.replace("#", "");
+      const rawHash = window.location.hash.replace("#", "");
+      const hash = rawHash === "opening" ? "community-thanks" : rawHash;
       if (!hash) return;
       const idx = slides.findIndex(s => s.id === hash);
       if (idx >= 0) {
@@ -1461,7 +1469,25 @@ require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-i
     window.addEventListener("hashchange", scrollToHash);
     scrollToHash();
 
-    function triggerCelebration() { return; }
+    let celebrationLock = false;
+    function triggerCelebration() {
+      if (celebrationLock) return;
+      celebrationLock = true;
+      const targetStage = slideStage || document.body;
+      const sparks = 18;
+      for (let i = 0; i < sparks; i++) {
+        const spark = document.createElement("div");
+        spark.className = "spark";
+        spark.style.setProperty("--dx", `${(Math.random() - 0.5) * 180}px`);
+        spark.style.setProperty("--dy", `${(Math.random() - 0.4) * 240}px`);
+        spark.style.left = `${50 + (Math.random() - 0.5) * 40}%`;
+        spark.style.top = `${50 + (Math.random() - 0.5) * 30}%`;
+        spark.style.animationDuration = `${700 + Math.random() * 400}ms`;
+        targetStage.appendChild(spark);
+        spark.addEventListener("animationend", () => spark.remove());
+      }
+      setTimeout(() => { celebrationLock = false; }, 800);
+    }
 
     slidesContainer.addEventListener("click", (e) => {
       const target = e.target;
@@ -1479,7 +1505,7 @@ require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-i
         const url = `${window.location.origin}${window.location.pathname}#${slideId}`;
         navigator.clipboard.writeText(url).then(() => {
           target.textContent = "Copied!";
-          setTimeout(() => target.textContent = "Share Slide", 1200);
+          setTimeout(() => target.textContent = "Share link", 1200);
         });
       }
     });
