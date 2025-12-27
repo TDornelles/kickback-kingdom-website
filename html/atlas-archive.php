@@ -178,6 +178,7 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       background: none;
       border-radius: 14px;
       padding: 22px;
+      min-height: 100%;
       overflow: hidden;
       box-shadow: none;
       filter: none;
