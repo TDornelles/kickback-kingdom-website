@@ -363,10 +363,11 @@ require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-i
       max-width: 820px;
       width: 100%;
       text-align: center;
-      background: linear-gradient(140deg, rgba(255, 209, 102, 0.12), rgba(124, 183, 255, 0.08));
+      background: linear-gradient(140deg, rgba(255, 209, 102, 0.16), rgba(124, 183, 255, 0.14));
       border: 1px solid rgba(255, 209, 102, 0.35);
       border-radius: 18px;
       box-shadow: var(--shadow);
+      color: #f8fbff;
     }
     .opening-panel::after {
       content: "";
@@ -382,6 +383,7 @@ require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-i
       font-weight: 900;
       letter-spacing: -0.02em;
       margin-bottom: 10px;
+      color: #fefefe;
     }
     .opening-stats {
       display: grid;
@@ -394,7 +396,7 @@ require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-i
       padding: 12px;
       border: 1px solid var(--border);
       border-radius: 12px;
-      background: rgba(12, 18, 28, 0.35);
+      background: rgba(12, 18, 28, 0.55);
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
     }
     .opening-stat strong {
@@ -407,6 +409,7 @@ require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-i
       gap: 10px;
       margin: 10px auto 0;
       max-width: 680px;
+      color: #f5f7ff;
     }
     .opening-program-item {
       display: grid;
@@ -415,11 +418,12 @@ require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-i
       gap: 12px;
       padding: 12px 14px;
       border-radius: 12px;
-      background: rgba(255,255,255,0.03);
+      background: rgba(255,255,255,0.08);
       border: 1px solid var(--border);
       font-weight: 700;
       letter-spacing: 0.02em;
       text-align: left;
+      color: #f3f6ff;
     }
     .opening-chip {
       display: inline-flex;
@@ -487,20 +491,22 @@ require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-i
     }
     .sub {
       font-size: 14px;
-      color: var(--muted);
+      color: #e7edf8;
     }
     .ribbon {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      padding: 6px 10px;
+      padding: 6px 14px;
       border-radius: 999px;
       border: 1px solid rgba(255, 209, 102, 0.4);
       background: linear-gradient(90deg, rgba(255, 209, 102, 0.12), rgba(124, 183, 255, 0.1));
       font-weight: 700;
       color: #ffd166;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.04em;
+      font-size: 12px;
+      white-space: nowrap;
     }
     .spotlight {
       display: grid;
