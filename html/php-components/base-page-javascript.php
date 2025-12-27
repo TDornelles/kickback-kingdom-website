@@ -1471,8 +1471,6 @@ use Kickback\Common\Version;
             this.fireworkInterval = null;
             this.minLaunchDelay = 350;
             this.maxLaunchDelay = 900;
-            this.minRiseHeight = 220;
-            this.maxRiseHeight = 420;
             this.particlesPerExplosion = 20;
             this.colors = ['#ff6b6b', '#ffd93d', '#6bcBef', '#b48def', '#8fd694', '#f88f01'];
 
@@ -1508,12 +1506,27 @@ use Kickback\Common\Version;
             rocketEl.style.setProperty('--trail-color', trailColor);
             rocketEl.style.left = Math.floor(Math.random() * this.el.offsetWidth) + 'px';
             rocketEl.style.setProperty('--firework-duration', (Math.floor(Math.random() * 400) + 1400) + 'ms');
-            rocketEl.style.setProperty('--rise-height', (-1 * (Math.floor(Math.random() * (this.maxRiseHeight - this.minRiseHeight)) + this.minRiseHeight)) + 'px');
+            const targetHeight = Math.random() * (this.el.offsetHeight * 0.75);
+            rocketEl.style.setProperty('--rise-height', (-1 * targetHeight) + 'px');
 
             const explosionEl = document.createElement('div');
             explosionEl.classList.add('firework-explosion');
 
+            const smokeInterval = setInterval(() => {
+                const smoke = document.createElement('div');
+                smoke.classList.add('firework-smoke');
+                const originRect = rocketEl.getBoundingClientRect();
+                const containerRect = this.containerEl.getBoundingClientRect();
+                smoke.style.left = (originRect.left - containerRect.left + originRect.width / 2) + 'px';
+                smoke.style.top = (originRect.top - containerRect.top + originRect.height) + 'px';
+                smoke.style.setProperty('--smoke-offset-x', ((Math.random() * 12) - 6) + 'px');
+                smoke.style.setProperty('--smoke-offset-y', ((Math.random() * 10) + 8) + 'px');
+                this.containerEl.appendChild(smoke);
+                smoke.addEventListener('animationend', () => smoke.remove());
+            }, 70);
+
             rocketEl.addEventListener('animationend', () => {
+                clearInterval(smokeInterval);
                 this._createExplosion(explosionEl, rocketEl, particleColor);
                 rocketEl.remove();
             });
@@ -1534,11 +1547,16 @@ use Kickback\Common\Version;
             for (let i = 0; i < this.particlesPerExplosion; i++) {
                 const particle = document.createElement('div');
                 particle.classList.add('firework-particle');
+                const size = Math.random() * 5 + 6;
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
                 const angle = Math.random() * Math.PI * 2;
                 const speed = Math.random() * 80 + 40;
                 particle.style.setProperty('--dx', Math.cos(angle) * speed + 'px');
                 particle.style.setProperty('--dy', Math.sin(angle) * speed + 'px');
                 particle.style.setProperty('--particle-color', particleColor);
+                const duration = Math.random() * 350 + 700;
+                particle.style.animationDuration = duration + 'ms';
                 explosionEl.appendChild(particle);
 
                 particle.addEventListener('animationend', () => {
