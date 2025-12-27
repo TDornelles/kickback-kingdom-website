@@ -226,10 +226,7 @@ class Session {
             return new Response(false, $accountResp->message, $info);
         }
 
-        $fullAccount = $accountResp->data;
-        // Keep the detailed account hydrated both in the response and the session cache.
-        $info->account = $fullAccount;
-        self::setCurrentAccount($fullAccount);
+        self::setCurrentAccount($account);
         $chestsResp = AccountController::getAccountChests($account);
         // @phpstan-ignore assign.propertyType
         $info->chests = $chestsResp->data;

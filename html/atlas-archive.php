@@ -6,6 +6,8 @@ $pageDesc = "Yearly recap for Kickback Kingdom adventurers.";
 require_once(($_SERVER["DOCUMENT_ROOT"] ?: __DIR__) . "/Kickback/init.php");
 
 use Kickback\Services\Database;
+use Kickback\Backend\Controllers\AccountController;
+use Kickback\Backend\Views\vRecordId;
 
 $session = require(\Kickback\SCRIPT_ROOT . "/api/v1/engine/session/verifySession.php");
 require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-info.php");
@@ -91,10 +93,31 @@ $yearProgress = [
 ];
 
 $accountPayload = null;
+$atlasAccount = null;
 
-if (!empty($activeAccountInfo->account)) {
-    $account = $activeAccountInfo->account;
-    $accountId = $account->crand;
+$requestedAccountId = filter_input(INPUT_GET, 'accountId', FILTER_VALIDATE_INT);
+$requestedUsername = filter_input(INPUT_GET, 'accountUsername', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+
+if ($requestedAccountId !== null && $requestedAccountId !== false) {
+    $resp = AccountController::getAccountById(new vRecordId('', (int)$requestedAccountId));
+    if ($resp->success) {
+        $atlasAccount = $resp->data;
+    }
+}
+
+if (is_null($atlasAccount) && !empty($requestedUsername)) {
+    $resp = AccountController::getAccountByUsername($requestedUsername);
+    if ($resp->success) {
+        $atlasAccount = $resp->data;
+    }
+}
+
+if (is_null($atlasAccount) && !empty($activeAccountInfo->account)) {
+    $atlasAccount = $activeAccountInfo->account;
+}
+
+if (!is_null($atlasAccount)) {
+    $accountId = $atlasAccount->crand;
 
     $accountStats = [
         'matches' => atlas_fetch_scalar('SELECT COUNT(*) FROM game_record WHERE account_id = ?', [$accountId]),
@@ -118,23 +141,23 @@ if (!empty($activeAccountInfo->account)) {
 
     $accountPayload = [
         'profile' => [
-            'username' => $account->username,
-            'title' => $account->getAccountTitle(),
-            'level' => $account->level,
-            'prestige' => $account->prestige,
-            'exp' => $account->exp,
+            'username' => $atlasAccount->username,
+            'title' => $atlasAccount->getAccountTitle(),
+            'level' => $atlasAccount->level,
+            'prestige' => $atlasAccount->prestige,
+            'exp' => $atlasAccount->exp,
             'roles' => [
-                'admin' => $account->isAdmin,
-                'merchant' => $account->isMerchant,
-                'adventurer' => $account->isAdventurer,
-                'questGiver' => $account->isQuestGiver,
-                'steward' => $account->isSteward,
-                'craftsmen' => $account->isCraftsmen,
-                'artist' => $account->isArtist,
+                'admin' => $atlasAccount->isAdmin,
+                'merchant' => $atlasAccount->isMerchant,
+                'adventurer' => $atlasAccount->isAdventurer,
+                'questGiver' => $atlasAccount->isQuestGiver,
+                'steward' => $atlasAccount->isSteward,
+                'craftsmen' => $atlasAccount->isCraftsmen,
+                'artist' => $atlasAccount->isArtist,
             ],
             'links' => [
-                'discord' => $account->isDiscordLinked(),
-                'steam' => $account->isSteamLinked(),
+                'discord' => $atlasAccount->isDiscordLinked(),
+                'steam' => $atlasAccount->isSteamLinked(),
             ],
         ],
         'stats' => $accountStats,
