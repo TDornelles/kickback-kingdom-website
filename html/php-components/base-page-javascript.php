@@ -1473,8 +1473,11 @@ use Kickback\Common\Version;
             this.maxLaunchDelay = 900;
             this.particlesPerExplosion = 20;
             this.colors = ['#ff6b6b', '#ffd93d', '#6bcBef', '#b48def', '#8fd694', '#f88f01'];
+            this.isPaused = false;
+            this.visibilityHandler = this._handleVisibilityChange.bind(this);
 
             this._setupElements();
+            document.addEventListener('visibilitychange', this.visibilityHandler);
             this._startFireworks();
         };
 
@@ -1569,6 +1572,9 @@ use Kickback\Common\Version;
         };
 
         Fireworks.prototype._scheduleNextLaunch = function () {
+            if (this.isPaused) {
+                return;
+            }
             const delay = Math.floor(Math.random() * (this.maxLaunchDelay - this.minLaunchDelay)) + this.minLaunchDelay;
             this.fireworkInterval = setTimeout(() => {
                 this._launchFirework();
@@ -1580,6 +1586,36 @@ use Kickback\Common\Version;
             this._scheduleNextLaunch();
         };
 
+        Fireworks.prototype._handleVisibilityChange = function () {
+            if (document.hidden) {
+                this._pause();
+            } else {
+                this._resume();
+            }
+        };
+
+        Fireworks.prototype._pause = function () {
+            this.isPaused = true;
+            if (this.fireworkInterval) {
+                clearTimeout(this.fireworkInterval);
+                this.fireworkInterval = null;
+            }
+            if (this.containerEl) {
+                Array.from(this.containerEl.querySelectorAll('.firework-rocket, .firework-explosion, .firework-smoke')).forEach(el => el.remove());
+            }
+        };
+
+        Fireworks.prototype._resume = function () {
+            if (!this.isPaused) {
+                return;
+            }
+            this.isPaused = false;
+            if (this.fireworkInterval) {
+                clearTimeout(this.fireworkInterval);
+            }
+            this._scheduleNextLaunch();
+        };
+
         Fireworks.prototype.stop = function () {
             if (this.fireworkInterval) {
                 clearTimeout(this.fireworkInterval);
@@ -1588,6 +1624,8 @@ use Kickback\Common\Version;
             if (this.containerEl) {
                 this.containerEl.innerHTML = '';
             }
+            document.removeEventListener('visibilitychange', this.visibilityHandler);
+            this.isPaused = false;
         };
 
         function StartFireworks()
