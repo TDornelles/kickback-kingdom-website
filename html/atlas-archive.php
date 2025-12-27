@@ -514,91 +514,11 @@ $atlasPayload = [
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
       gap: 12px;
     }
-    .opening-grid {
+    .community-grid {
       display: grid;
-      grid-template-columns: 1fr;
-      justify-items: center;
-      gap: 18px;
-    }
-    .opening-panel {
-      position: relative;
-      overflow: hidden;
-      padding: 26px 28px;
-      max-width: 820px;
-      width: 100%;
-      text-align: center;
-      background: linear-gradient(140deg, rgba(255, 209, 102, 0.16), rgba(124, 183, 255, 0.14));
-      border: 1px solid rgba(255, 209, 102, 0.35);
-      border-radius: 18px;
-      box-shadow: var(--shadow);
-      color: #f8fbff;
-    }
-    .opening-panel::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(circle at 18% 24%, rgba(255, 209, 102, 0.18), transparent 45%), radial-gradient(circle at 82% 76%, rgba(124, 183, 255, 0.16), transparent 36%);
-      opacity: 0.6;
-      pointer-events: none;
-    }
-    .opening-panel > * { position: relative; z-index: 1; }
-    .opening-title {
-      font-size: clamp(28px, 5vw, 44px);
-      font-weight: 900;
-      letter-spacing: -0.02em;
-      margin-bottom: 10px;
-      color: #fefefe;
-    }
-    .opening-stats {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
       gap: 12px;
-      margin: 16px auto;
-      max-width: 640px;
-    }
-    .opening-stat {
-      padding: 12px;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      background: rgba(12, 18, 28, 0.55);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
-    }
-    .opening-stat strong {
-      display: block;
-      font-size: 26px;
-      letter-spacing: 0.04em;
-    }
-    .opening-program {
-      display: grid;
-      gap: 10px;
-      margin: 10px auto 0;
-      max-width: 680px;
-      color: #f5f7ff;
-    }
-    .opening-program-item {
-      display: grid;
-      grid-template-columns: 120px 1fr;
-      align-items: center;
-      gap: 12px;
-      padding: 12px 14px;
-      border-radius: 12px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid var(--border);
-      font-weight: 700;
-      letter-spacing: 0.02em;
-      text-align: left;
-      color: #f3f6ff;
-    }
-    .opening-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid var(--border);
-      font-size: 12px;
-      letter-spacing: 0.04em;
+      margin-top: 12px;
     }
     .tag {
       display: inline-block;
@@ -773,9 +693,6 @@ $atlasPayload = [
       .copy-link { width: 100%; justify-content: center; text-align: center; }
       .control-bar { width: 100%; }
       .control-bar button { flex: 1 1 120px; }
-      .opening-grid { grid-template-columns: 1fr; }
-      .opening-panel { padding: 22px 18px; }
-      .opening-program-item { grid-template-columns: 1fr; text-align: center; }
     }
   </style>
   <div class="page-shell scanlines">
@@ -858,49 +775,46 @@ $atlasPayload = [
         render: () => {
           const w = atlasData.world || {};
           return `
-            <div class="opening-grid">
-              <div class="opening-panel card accent-bg-gold">
-                <div class="ribbon">Community First</div>
-                <div class="opening-title">Thank you, Kingdom!</div>
-                <p class="muted">Every quest hosted, every duel logged, and every trade forged shows up here. These numbers only exist because of you.</p>
-                <div class="opening-stats">
-                  <div class="opening-stat">
-                    <span class="pill">Adventurers</span>
-                    ${renderKpi(w.accounts)}
-                    <span class="sub">Registered heroes</span>
-                  </div>
-                  <div class="opening-stat">
-                    <span class="pill">Quests</span>
-                    ${renderKpi(w.questsPublished)}
-                    <span class="sub">Published to the realm</span>
-                  </div>
-                  <div class="opening-stat">
-                    <span class="pill">Matches</span>
-                    ${renderKpi(w.matches)}
-                    <span class="sub">Battles recorded</span>
-                  </div>
-                </div>
-                <div class="opening-program">
-                  <div class="opening-program-item">
-                    <span class="opening-chip">Builders</span>
-                    Quests, quest lines, tickets, and store transactions keep Atlas busy — thank you for the momentum.
-                  </div>
-                  <div class="opening-program-item">
-                    <span class="opening-chip">Moderators</span>
-                    Stewarding tickets and keeping play fair across ${fmt(w.analyticsEvents, "—")} analytics signals.
-                  </div>
-                  <div class="opening-program-item">
-                    <span class="opening-chip">Guildmates</span>
-                    Trades, loot handoffs, and raid parties stitched a living world together.
-                  </div>
-                </div>
-                <div class="actions flex-wrap" style="justify-content:center; margin-top:18px;">
-                  <button class="cta-primary" data-action="celebrate">Send Cheers</button>
-                  <button class="cta-primary" data-action="next">Continue</button>
-                  <button class="cta-primary" data-action="fullscreen">Fullscreen</button>
-                  <button class="cta-primary" data-action="share">Share link</button>
-                </div>
+            <div class="slide-hero">
+              <div class="mega">Thank you, Kingdom!</div>
+              <div class="lead">Every quest hosted, every duel logged, and every trade forged shows up here. These numbers only exist because of you.</div>
+            </div>
+            <div class="stat-hero">
+              <div class="card">
+                <div class="pill">Adventurers</div>
+                ${renderKpi(w.accounts)}
+                <p class="sub">Registered heroes</p>
               </div>
+              <div class="card">
+                <div class="pill">Quests</div>
+                ${renderKpi(w.questsPublished)}
+                <p class="sub">Published to the realm</p>
+              </div>
+              <div class="card">
+                <div class="pill">Matches</div>
+                ${renderKpi(w.matches)}
+                <p class="sub">Battles recorded</p>
+              </div>
+            </div>
+            <div class="community-grid">
+              <div class="card">
+                <div class="pill">Builders</div>
+                <p class="sub">Quests, quest lines, tickets, and store transactions keep Atlas busy — thank you for the momentum.</p>
+              </div>
+              <div class="card">
+                <div class="pill">Moderators</div>
+                <p class="sub">Stewarding tickets and keeping play fair across ${fmt(w.analyticsEvents, "—")} analytics signals.</p>
+              </div>
+              <div class="card">
+                <div class="pill">Guildmates</div>
+                <p class="sub">Trades, loot handoffs, and raid parties stitched a living world together.</p>
+              </div>
+            </div>
+            <div class="actions flex-wrap" style="justify-content:flex-start; margin-top:18px;">
+              <button class="cta-primary" data-action="celebrate">Send Cheers</button>
+              <button class="cta-primary" data-action="next">Continue</button>
+              <button class="cta-primary" data-action="fullscreen">Fullscreen</button>
+              <button class="cta-primary" data-action="share">Share link</button>
             </div>
           `;
         },
@@ -1440,9 +1354,10 @@ $atlasPayload = [
         },
         "community-thanks": {
           elements: [
-            { selector: ".opening-panel", enter: "animate__fadeInUp", exit: "animate__fadeOutDown" },
-            { selector: ".opening-stat", enter: "animate__fadeInUp", stagger: true },
-            { selector: ".opening-program-item", enter: "animate__fadeInLeft", stagger: true },
+            { selector: ".slide-hero", enter: "animate__fadeInUp", exit: "animate__fadeOutDown" },
+            { selector: ".stat-hero .card", enter: "animate__fadeInUp", stagger: true },
+            { selector: ".community-grid .card", enter: "animate__fadeInUp", stagger: true },
+            { selector: ".actions .cta-primary", enter: "animate__zoomIn", stagger: true },
           ],
         },
         "world-status": {
@@ -1631,7 +1546,7 @@ $atlasPayload = [
       nodes.forEach((node) => {
         const target = Number(node.dataset.target);
         if (!Number.isFinite(target)) return;
-        const duration = 900;
+        const duration = 1800;
         const start = 0;
         const startTime = performance.now();
         const step = (now) => {
