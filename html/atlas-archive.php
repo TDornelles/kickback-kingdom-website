@@ -1,24 +1,17 @@
 <?php
 // Kickback Kingdom - Atlas Archive (POC with immersive award-show styling)
+$pageTitle = "Atlas Archive - Yearly Review (POC)";
+$pageImage = "https://kickback-kingdom.com/assets/media/context/loading.gif";
+$pageDesc = "Yearly recap for Kickback Kingdom adventurers.";
 require_once(($_SERVER["DOCUMENT_ROOT"] ?: __DIR__) . "/Kickback/init.php");
-
-use Kickback\Backend\Controllers\SeasonController;
 
 $session = require(\Kickback\SCRIPT_ROOT . "/api/v1/engine/session/verifySession.php");
 require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-info.php");
-
-$seasonController = new SeasonController();
-$seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
 ?>
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Atlas Archive - Yearly Review (POC)</title>
-  <link rel="stylesheet" href="/assets/vendors/bootstrap/bootstrap.min.css" />
-  <link rel="stylesheet" href="/assets/css/kickback-kingdom.css" />
-  <link rel="stylesheet" href="/assets/vendors/animate/animate.min.css" />
+<?php require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-head.php"); ?>
+<body>
   <style>
     :root {
       --bg: #060910;
@@ -38,7 +31,8 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
     body {
       margin: 0;
       font-family: var(--sans);
-      background: <?php echo $seasonBackgroundUrl ? "url('{$seasonBackgroundUrl}')" : "var(--gradient)"; ?>;
+      background-color: #060910;
+      background-image: var(--gradient);
       background-size: cover;
       background-position: center;
       background-attachment: fixed;
@@ -610,8 +604,6 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
       .opening-program-item { grid-template-columns: 1fr; text-align: center; }
     }
   </style>
-</head>
-<body>
   <div class="page-shell scanlines">
     <div class="film-grain"></div>
     <div class="page container-fluid py-4">
