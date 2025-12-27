@@ -609,6 +609,14 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
   </style>
 </head>
 <body>
+  <!--FX Overlays-->
+  <div class="confetti-box">
+    <div class="js-container-confetti" style="width:100vw; height:100vh;"></div>
+  </div>
+  <div class="fireworks-box">
+    <div class="js-container-fireworks" style="width:100vw; height:100vh;"></div>
+  </div>
+
   <div class="page-shell scanlines">
     <div class="film-grain"></div>
     <div class="page container-fluid py-4">
@@ -1491,5 +1499,6 @@ $seasonBackgroundUrl = $seasonController->getBackgroundImageUrl();
 
   </script>
   <script src="/assets/vendors/bootstrap/bootstrap.bundle.min.js"></script>
+  <?php require("php-components/base-page-javascript.php"); ?>
 </body>
 </html>
