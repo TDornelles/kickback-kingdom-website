@@ -1465,6 +1465,130 @@ use Kickback\Common\Version;
             $("div").remove(".confetti-container");
         }
 
+        const Fireworks = function (el) {
+            this.el = el;
+            this.containerEl = null;
+            this.fireworkInterval = null;
+            this.minLaunchDelay = 350;
+            this.maxLaunchDelay = 900;
+            this.minRiseHeight = 220;
+            this.maxRiseHeight = 420;
+            this.particlesPerExplosion = 20;
+            this.colors = ['#ff6b6b', '#ffd93d', '#6bcBef', '#b48def', '#8fd694', '#f88f01'];
+
+            this._setupElements();
+            this._startFireworks();
+        };
+
+        Fireworks.prototype._setupElements = function () {
+            const containerEl = document.createElement('div');
+            const elPosition = this.el.style.position;
+
+            if (elPosition !== 'relative' || elPosition !== 'absolute') {
+                this.el.style.position = 'relative';
+            }
+
+            containerEl.classList.add('fireworks-container');
+            containerEl.style = "pointer-events:none;z-index:10000;";
+            this.el.appendChild(containerEl);
+
+            this.containerEl = containerEl;
+        };
+
+        Fireworks.prototype._randomColor = function () {
+            return this.colors[Math.floor(Math.random() * this.colors.length)];
+        };
+
+        Fireworks.prototype._launchFirework = function () {
+            const rocketEl = document.createElement('div');
+            const trailColor = this._randomColor();
+            const particleColor = this._randomColor();
+
+            rocketEl.classList.add('firework-rocket');
+            rocketEl.style.setProperty('--trail-color', trailColor);
+            rocketEl.style.left = Math.floor(Math.random() * this.el.offsetWidth) + 'px';
+            rocketEl.style.setProperty('--firework-duration', (Math.floor(Math.random() * 400) + 1400) + 'ms');
+            rocketEl.style.setProperty('--rise-height', (-1 * (Math.floor(Math.random() * (this.maxRiseHeight - this.minRiseHeight)) + this.minRiseHeight)) + 'px');
+
+            const explosionEl = document.createElement('div');
+            explosionEl.classList.add('firework-explosion');
+
+            rocketEl.addEventListener('animationend', () => {
+                this._createExplosion(explosionEl, rocketEl, particleColor);
+                rocketEl.remove();
+            });
+
+            this.containerEl.appendChild(rocketEl);
+            this.containerEl.appendChild(explosionEl);
+        };
+
+        Fireworks.prototype._createExplosion = function (explosionEl, originEl, particleColor) {
+            const originRect = originEl.getBoundingClientRect();
+            const containerRect = this.containerEl.getBoundingClientRect();
+            const originX = originRect.left - containerRect.left + (originRect.width / 2);
+            const originY = originRect.top - containerRect.top;
+            explosionEl.style.left = originX + 'px';
+            explosionEl.style.top = originY + 'px';
+            explosionEl.style.setProperty('--particle-color', particleColor);
+
+            for (let i = 0; i < this.particlesPerExplosion; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('firework-particle');
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 80 + 40;
+                particle.style.setProperty('--dx', Math.cos(angle) * speed + 'px');
+                particle.style.setProperty('--dy', Math.sin(angle) * speed + 'px');
+                particle.style.setProperty('--particle-color', particleColor);
+                explosionEl.appendChild(particle);
+
+                particle.addEventListener('animationend', () => {
+                    particle.remove();
+                    if (!explosionEl.hasChildNodes()) {
+                        explosionEl.remove();
+                    }
+                });
+            }
+        };
+
+        Fireworks.prototype._scheduleNextLaunch = function () {
+            const delay = Math.floor(Math.random() * (this.maxLaunchDelay - this.minLaunchDelay)) + this.minLaunchDelay;
+            this.fireworkInterval = setTimeout(() => {
+                this._launchFirework();
+                this._scheduleNextLaunch();
+            }, delay);
+        };
+
+        Fireworks.prototype._startFireworks = function () {
+            this._scheduleNextLaunch();
+        };
+
+        Fireworks.prototype.stop = function () {
+            if (this.fireworkInterval) {
+                clearTimeout(this.fireworkInterval);
+                this.fireworkInterval = null;
+            }
+            if (this.containerEl) {
+                this.containerEl.innerHTML = '';
+            }
+        };
+
+        function StartFireworks()
+        {
+            if (window.fireworks) {
+                window.fireworks.stop();
+            }
+            window.fireworks = new Fireworks(document.querySelector('.js-container-fireworks'));
+        }
+
+        function StopFireworks()
+        {
+            if (window.fireworks) {
+                window.fireworks.stop();
+                delete window.fireworks;
+            }
+            $("div").remove(".fireworks-container");
+        }
+
 
         
         function enableBeta() {
