@@ -728,6 +728,25 @@ $atlasPayload = [
     const atlasData = <?php echo json_encode($atlasPayload, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
     const requestedInitialTab = <?php echo json_encode($initialTab); ?>;
     const year = atlasData?.year ?? <?php echo json_encode($atlasYear); ?>;
+    const account = atlasData.account;
+
+    const slugifySegment = (value, fallback) => {
+      const cleaned = (value ?? "")
+        .toString()
+        .trim()
+        .replace(/[^a-zA-Z0-9\s-_]/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-+|-+$/g, "");
+      return encodeURIComponent(cleaned || fallback);
+    };
+
+    const buildShareUrl = (slideId) => {
+      const slideSegment = slugifySegment(slideId, "opening");
+      const audienceSegment = slugifySegment(account?.profile?.username, "kingdom");
+      const yearSegment = encodeURIComponent(year ?? new Date().getFullYear());
+      return `${window.location.origin}/atlas-archive/${yearSegment}/${audienceSegment}/${slideSegment}/`;
+    };
 
     const fmt = (value, fallback = "—") => {
       if (value === null || value === undefined || Number.isNaN(value)) return fallback;
@@ -749,7 +768,6 @@ $atlasPayload = [
       if (!denominator || denominator === 0 || numerator === null || numerator === undefined) return "—";
       return `${Math.round((numerator / denominator) * 100)}%`;
     };
-    const account = atlasData.account;
     const slides = [
       {
         id: "title",
@@ -1681,7 +1699,7 @@ $atlasPayload = [
       const btn = e.target.closest(".copy-link");
       if (!btn) return;
       const slideId = btn.dataset.slide;
-      const url = `${window.location.origin}${window.location.pathname}${window.location.search}#${slideId}`;
+      const url = buildShareUrl(slideId);
       navigator.clipboard.writeText(url).then(() => {
         btn.textContent = "Copied!";
         setTimeout(() => (btn.textContent = "Copy link"), 1200);
@@ -1734,7 +1752,7 @@ $atlasPayload = [
       }
       if (target.matches(".cta-primary[data-action='share']")) {
         const slideId = slides[activeIndex].id;
-        const url = `${window.location.origin}${window.location.pathname}${window.location.search}#${slideId}`;
+        const url = buildShareUrl(slideId);
         navigator.clipboard.writeText(url).then(() => {
           target.textContent = "Copied!";
           setTimeout(() => target.textContent = "Share link", 1200);
