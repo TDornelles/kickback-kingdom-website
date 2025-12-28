@@ -15,6 +15,8 @@ $session = require(\Kickback\SCRIPT_ROOT . "/api/v1/engine/session/verifySession
 require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-info.php");
 
 $atlasYearStart = sprintf('%04d-01-01', $atlasYear);
+$previousYearStart = sprintf('%04d-01-01', $atlasYear - 1);
+$accountCount = atlas_fetch_scalar('SELECT COUNT(*) FROM account WHERE ctime < ?', [$atlasYearStart]);
 
 /**
  * Safely fetch a single scalar from the database.
@@ -51,11 +53,17 @@ function atlas_fetch_scalar(string $query, array $params = [], ?string $cast = '
 }
 
 $worldStats = [
-    'accounts' => atlas_fetch_scalar('SELECT COUNT(*) FROM account'),
+    'accounts' => $accountCount,
+    'guildsmen' => $accountCount,
     'games' => atlas_fetch_scalar('SELECT COUNT(*) FROM game'),
     'matches' => atlas_fetch_scalar('SELECT COUNT(*) FROM game_match'),
+    'rankedMatches' => atlas_fetch_scalar('SELECT COUNT(*) FROM game_match WHERE `set` IN (0,1)'),
     'records' => atlas_fetch_scalar('SELECT COUNT(*) FROM game_record'),
     'questsPublished' => atlas_fetch_scalar('SELECT COUNT(*) FROM quest WHERE published = 1'),
+    'questsRanPriorYear' => atlas_fetch_scalar(
+        'SELECT COUNT(*) FROM quest WHERE finished = 1 AND end_date >= ? AND end_date < ?',
+        [$previousYearStart, $atlasYearStart]
+    ),
     'questLines' => atlas_fetch_scalar('SELECT COUNT(*) FROM quest_line'),
     'questApplicants' => atlas_fetch_scalar('SELECT COUNT(*) FROM quest_applicants'),
     'questParticipants' => atlas_fetch_scalar('SELECT COUNT(*) FROM quest_applicants WHERE participated = 1'),
@@ -802,19 +810,19 @@ $atlasPayload = [
             </div>
             <div class="stat-hero">
               <div class="card">
-                <div class="pill">Adventurers</div>
-                ${renderKpi(w.accounts)}
-                <p class="sub">Registered heroes</p>
+                <div class="pill">Guildsmen</div>
+                ${renderKpi(w.guildsmen)}
+                <p class="sub">Adventurers across the realm</p>
               </div>
               <div class="card">
                 <div class="pill">Quests</div>
-                ${renderKpi(w.questsPublished)}
-                <p class="sub">Published to the realm</p>
+                ${renderKpi(w.questsRanPriorYear)}
+                <p class="sub">Ran in the prior year</p>
               </div>
               <div class="card">
-                <div class="pill">Matches</div>
-                ${renderKpi(w.matches)}
-                <p class="sub">Battles recorded</p>
+                <div class="pill">Ranked Matches</div>
+                ${renderKpi(w.rankedMatches)}
+                <p class="sub">Set 0 (single) or set 1 (multi)</p>
               </div>
             </div>
             <div class="community-grid">
@@ -835,7 +843,7 @@ $atlasPayload = [
               <button class="cta-primary" data-action="celebrate">Send Cheers</button>
               <button class="cta-primary" data-action="next">Continue</button>
               <button class="cta-primary" data-action="fullscreen">Fullscreen</button>
-              <button class="cta-primary" data-action="share">Share link</button>
+              <button class="cta-primary" data-action="share">Share Slide</button>
             </div>
           `;
         },
@@ -1436,10 +1444,9 @@ $atlasPayload = [
       section.innerHTML = `
         <div class="slide-header">
           <div class="slide-title">
-            <span class="pill">Archive Node</span>
             ${heading}
           </div>
-          <button class="copy-link" data-slide="${slide.id}">Copy link</button>
+          <button class="copy-link" data-slide="${slide.id}">Share Slide</button>
         </div>
         <div class="slide-body">${slide.render(atlasData)}</div>
       `;
@@ -1702,7 +1709,7 @@ $atlasPayload = [
       const url = buildShareUrl(slideId);
       navigator.clipboard.writeText(url).then(() => {
         btn.textContent = "Copied!";
-        setTimeout(() => (btn.textContent = "Copy link"), 1200);
+        setTimeout(() => (btn.textContent = "Share Slide"), 1200);
       });
     });
 
@@ -1755,8 +1762,14 @@ $atlasPayload = [
         const url = buildShareUrl(slideId);
         navigator.clipboard.writeText(url).then(() => {
           target.textContent = "Copied!";
-          setTimeout(() => target.textContent = "Share link", 1200);
+          setTimeout(() => target.textContent = "Share Slide", 1200);
         });
+      }
+    });
+
+    window.addEventListener("load", () => {
+      if (typeof StartFireworks === "function") {
+        StartFireworks();
       }
     });
 
