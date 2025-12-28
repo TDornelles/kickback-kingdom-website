@@ -43,6 +43,22 @@ RewriteRule ^(.*)$ /blogpost.php?blogLocator=%1&postLocator=%2 [L,E=ORIGINAL_URI
 RewriteCond %{REQUEST_URI} ^/beta/blog/([^/]+)/([^/]+)$
 RewriteRule ^(.*)$ /beta/blogpost.php?blogLocator=%1&postLocator=%2 [L,E=ORIGINAL_URI:%{REQUEST_URI}]
 
+# Redirect /atlas-archive/year/username/tab URLs to atlas-archive.php
+RewriteCond %{REQUEST_URI} ^/atlas-archive/([0-9]{4})/([^/]+)/([^/]+)/?$
+RewriteRule ^(.*)$ /atlas-archive.php?year=%1&accountUsername=%2&tab=%3 [L,E=ORIGINAL_URI:%{REQUEST_URI}]
+
+# Redirect /atlas-archive/year/username URLs to atlas-archive.php
+RewriteCond %{REQUEST_URI} ^/atlas-archive/([0-9]{4})/([^/]+)/?$
+RewriteRule ^(.*)$ /atlas-archive.php?year=%1&accountUsername=%2 [L,E=ORIGINAL_URI:%{REQUEST_URI}]
+
+# Redirect /beta/atlas-archive/year/username/tab URLs to beta atlas-archive.php
+RewriteCond %{REQUEST_URI} ^/beta/atlas-archive/([0-9]{4})/([^/]+)/([^/]+)/?$
+RewriteRule ^(.*)$ /beta/atlas-archive.php?year=%1&accountUsername=%2&tab=%3 [L,E=ORIGINAL_URI:%{REQUEST_URI}]
+
+# Redirect /beta/atlas-archive/year/username URLs to beta atlas-archive.php
+RewriteCond %{REQUEST_URI} ^/beta/atlas-archive/([0-9]{4})/([^/]+)/?$
+RewriteRule ^(.*)$ /beta/atlas-archive.php?year=%1&accountUsername=%2 [L,E=ORIGINAL_URI:%{REQUEST_URI}]
+
 # Redirect /quest-line/ URLs to quest-line.php
 RewriteCond %{REQUEST_URI} ^/quest-line/([^/]+)$
 RewriteRule ^(.*)$ /quest-line.php?locator=%1 [L,E=ORIGINAL_URI:%{REQUEST_URI}]

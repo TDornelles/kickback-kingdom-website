@@ -1,8 +1,10 @@
 <?php
 // Kickback Kingdom - Atlas Archive (POC with immersive award-show styling)
-$pageTitle = "Atlas Archive - Yearly Review (POC)";
+$requestedAtlasYear = filter_input(INPUT_GET, 'year', FILTER_VALIDATE_INT, ['options' => ['min_range' => 2000, 'max_range' => 3000]]);
+$atlasYear = $requestedAtlasYear === false || $requestedAtlasYear === null ? 2026 : $requestedAtlasYear;
+$pageTitle = "Atlas Archive {$atlasYear} - Yearly Review (POC)";
 $pageImage = "https://kickback-kingdom.com/assets/media/context/loading.gif";
-$pageDesc = "Yearly recap for Kickback Kingdom adventurers.";
+$pageDesc = "Yearly recap for Kickback Kingdom adventurers in {$atlasYear}.";
 require_once(($_SERVER["DOCUMENT_ROOT"] ?: __DIR__) . "/Kickback/init.php");
 
 use Kickback\Services\Database;
@@ -12,8 +14,7 @@ use Kickback\Backend\Views\vRecordId;
 $session = require(\Kickback\SCRIPT_ROOT . "/api/v1/engine/session/verifySession.php");
 require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-info.php");
 
-$atlasYear = 2025;
-$atlasYearStart = "{$atlasYear}-01-01";
+$atlasYearStart = sprintf('%04d-01-01', $atlasYear);
 
 /**
  * Safely fetch a single scalar from the database.
@@ -97,6 +98,7 @@ $atlasAccount = null;
 
 $requestedAccountId = filter_input(INPUT_GET, 'accountId', FILTER_VALIDATE_INT);
 $requestedUsername = filter_input(INPUT_GET, 'accountUsername', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+$initialTab = filter_input(INPUT_GET, 'tab', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 
 if ($requestedAccountId !== null && $requestedAccountId !== false) {
     $resp = AccountController::getAccountById(new vRecordId('', (int)$requestedAccountId));
@@ -704,7 +706,7 @@ $atlasPayload = [
             <div class="hud floating d-flex align-items-center justify-content-between flex-wrap gap-2">
               <div class="hud-left d-inline-flex align-items-center gap-2 flex-wrap">
                 <span class="pill">Atlas</span>
-                <span class="pill">2025</span>
+                <span class="pill"><?php echo htmlspecialchars((string)$atlasYear, ENT_QUOTES, 'UTF-8'); ?></span>
               </div>
               <div class="hud-dots d-inline-flex gap-2" id="dot-nav" aria-label="Slide navigation"></div>
             </div>
@@ -724,7 +726,8 @@ $atlasPayload = [
 
   <script>
     const atlasData = <?php echo json_encode($atlasPayload, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
-    const year = atlasData?.year ?? 2025;
+    const requestedInitialTab = <?php echo json_encode($initialTab); ?>;
+    const year = atlasData?.year ?? <?php echo json_encode($atlasYear); ?>;
 
     const fmt = (value, fallback = "—") => {
       if (value === null || value === undefined || Number.isNaN(value)) return fallback;
@@ -1318,6 +1321,9 @@ $atlasPayload = [
       },
     ];
 
+    const slideIds = slides.map((slide) => slide.id);
+    const preferredInitialTab = slideIds.includes(requestedInitialTab) ? requestedInitialTab : null;
+
     const slidesContainer = document.getElementById("slides");
     const dotNav = document.getElementById("dot-nav");
     const prevBtn = document.getElementById("prev-btn");
@@ -1636,7 +1642,7 @@ $atlasPayload = [
       startEnterAnimation(target);
 
       if (opts.updateHash) {
-        const newUrl = `${window.location.pathname}#${slides[activeIndex].id}`;
+        const newUrl = `${window.location.pathname}${window.location.search}#${slides[activeIndex].id}`;
         history.replaceState(null, "", newUrl);
       }
 
@@ -1653,7 +1659,7 @@ $atlasPayload = [
 
     slides.forEach(createSlideSection);
     applyCtaBranding();
-    setActiveSlide(0);
+    setActiveSlide(0, { scroll: false, updateHash: false });
 
     prevBtn.addEventListener("click", () => setActiveSlide(activeIndex - 1, { scroll: true }));
     nextBtn.addEventListener("click", () => setActiveSlide(activeIndex + 1, { scroll: true }));
@@ -1675,15 +1681,15 @@ $atlasPayload = [
       const btn = e.target.closest(".copy-link");
       if (!btn) return;
       const slideId = btn.dataset.slide;
-      const url = `${window.location.origin}${window.location.pathname}#${slideId}`;
+      const url = `${window.location.origin}${window.location.pathname}${window.location.search}#${slideId}`;
       navigator.clipboard.writeText(url).then(() => {
         btn.textContent = "Copied!";
         setTimeout(() => (btn.textContent = "Copy link"), 1200);
       });
     });
 
-    function scrollToHash() {
-      const rawHash = window.location.hash.replace("#", "");
+    function scrollToHash(preferredTab = preferredInitialTab) {
+      const rawHash = (window.location.hash || (preferredTab ? `#${preferredTab}` : "")).replace("#", "");
       const hash = rawHash === "opening" ? "community-thanks" : rawHash;
       if (!hash) return;
       const idx = slides.findIndex(s => s.id === hash);
@@ -1692,7 +1698,7 @@ $atlasPayload = [
       }
     }
 
-    window.addEventListener("hashchange", scrollToHash);
+    window.addEventListener("hashchange", () => scrollToHash(null));
     scrollToHash();
 
     let celebrationLock = false;
@@ -1728,7 +1734,7 @@ $atlasPayload = [
       }
       if (target.matches(".cta-primary[data-action='share']")) {
         const slideId = slides[activeIndex].id;
-        const url = `${window.location.origin}${window.location.pathname}#${slideId}`;
+        const url = `${window.location.origin}${window.location.pathname}${window.location.search}#${slideId}`;
         navigator.clipboard.writeText(url).then(() => {
           target.textContent = "Copied!";
           setTimeout(() => target.textContent = "Share link", 1200);
