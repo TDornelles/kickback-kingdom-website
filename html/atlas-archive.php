@@ -81,7 +81,7 @@ $worldStats = [
 $yearProgress = [
     'accounts' => [
         'label' => 'Adventurers Registered',
-        'start' => atlas_fetch_scalar('SELECT COUNT(*) FROM account WHERE ctime < ?', [$atlasYearStart]),
+        'start' => atlas_fetch_scalar('SELECT COUNT(*) FROM account WHERE DateCreated < ?', [$atlasYearStart]),
         'end' => $worldStats['accounts'],
     ],
     'quests' => [
@@ -825,25 +825,8 @@ $atlasPayload = [
                 <p class="sub">Set 0 (single) or set 1 (multi)</p>
               </div>
             </div>
-            <div class="community-grid">
-              <div class="card">
-                <div class="pill">Builders</div>
-                <p class="sub">Quests, quest lines, tickets, and store transactions keep Atlas busy — thank you for the momentum.</p>
-              </div>
-              <div class="card">
-                <div class="pill">Moderators</div>
-                <p class="sub">Stewarding tickets and keeping play fair across ${fmt(w.analyticsEvents, "—")} analytics signals.</p>
-              </div>
-              <div class="card">
-                <div class="pill">Guildmates</div>
-                <p class="sub">Trades, loot handoffs, and raid parties stitched a living world together.</p>
-              </div>
-            </div>
-            <div class="actions flex-wrap" style="justify-content:flex-start; margin-top:18px;">
-              <button class="cta-primary" data-action="celebrate">Send Cheers</button>
+            <div class="actions" style="justify-content:flex-start; margin-top:18px;">
               <button class="cta-primary" data-action="next">Continue</button>
-              <button class="cta-primary" data-action="fullscreen">Fullscreen</button>
-              <button class="cta-primary" data-action="share">Share Slide</button>
             </div>
           `;
         },
