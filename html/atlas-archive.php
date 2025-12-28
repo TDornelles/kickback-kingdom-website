@@ -16,7 +16,7 @@ require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-i
 
 $atlasYearStart = sprintf('%04d-01-01', $atlasYear);
 $previousYearStart = sprintf('%04d-01-01', $atlasYear - 1);
-$accountCount = atlas_fetch_scalar('SELECT COUNT(*) FROM account WHERE ctime < ?', [$atlasYearStart]);
+$accountCount = atlas_fetch_scalar('SELECT COUNT(*) FROM account WHERE DateCreated < ?', [$atlasYearStart]);
 
 /**
  * Safely fetch a single scalar from the database.
