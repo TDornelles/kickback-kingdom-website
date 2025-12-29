@@ -1449,13 +1449,11 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       section.id = slide.id;
       section.tabIndex = -1;
       section.dataset.index = index;
-      const heading = slide.hideHeaderTitle ? "" : `<div class="slide-title"><h2>${slide.title}</h2></div>`;
       section.innerHTML = `
         <button class="copy-link slide-share" data-slide="${slide.id}" aria-label="Share slide ${slide.title}">
           <i class="fa-solid fa-link"></i>
         </button>
         <div class="slide-body">
-          ${heading}
           ${slide.render(atlasData)}
         </div>
       `;
