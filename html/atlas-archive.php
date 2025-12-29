@@ -19,6 +19,22 @@ $previousYearStart = sprintf('%04d-01-01', $atlasYear - 1);
 $twoYearsBackStart = sprintf('%04d-01-01', $atlasYear - 2);
 $accountCountEndOfDataYear = atlas_fetch_scalar('SELECT COUNT(*) FROM account WHERE DateCreated < ?', [$atlasYearStart]);
 $accountCountEndOfPriorYear = atlas_fetch_scalar('SELECT COUNT(*) FROM account WHERE DateCreated < ?', [$previousYearStart]);
+$questsHostedPreviousYear = atlas_fetch_scalar(
+    'SELECT COUNT(*) FROM quest WHERE end_date >= ? AND end_date < ?',
+    [$previousYearStart, $atlasYearStart]
+);
+$questsHostedBeforeYear = atlas_fetch_scalar(
+    'SELECT COUNT(*) FROM quest WHERE end_date < ?',
+    [$atlasYearStart]
+);
+$rankedMatchesPreviousYear = atlas_fetch_scalar(
+    'SELECT COUNT(*) FROM game_match WHERE `set` IN (0,1) AND Date >= ? AND Date < ?',
+    [$previousYearStart, $atlasYearStart]
+);
+$rankedMatchesBeforeYear = atlas_fetch_scalar(
+    'SELECT COUNT(*) FROM game_match WHERE `set` IN (0,1) AND Date < ?',
+    [$atlasYearStart]
+);
 
 /**
  * Safely fetch a single scalar from the database.
@@ -66,6 +82,10 @@ $worldStats = [
         'SELECT COUNT(*) FROM quest WHERE finished = 1 AND end_date >= ? AND end_date < ?',
         [$previousYearStart, $atlasYearStart]
     ),
+    'questsHostedPreviousYear' => $questsHostedPreviousYear,
+    'questsHostedBeforeYear' => $questsHostedBeforeYear,
+    'rankedMatchesPreviousYear' => $rankedMatchesPreviousYear,
+    'rankedMatchesBeforeYear' => $rankedMatchesBeforeYear,
     'questLines' => atlas_fetch_scalar('SELECT COUNT(*) FROM quest_line'),
     'questApplicants' => atlas_fetch_scalar('SELECT COUNT(*) FROM quest_applicants'),
     'questParticipants' => atlas_fetch_scalar('SELECT COUNT(*) FROM quest_applicants WHERE participated = 1'),
@@ -756,6 +776,7 @@ $atlasPayload = [
     const atlasData = <?php echo json_encode($atlasPayload, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
     const requestedInitialTab = <?php echo json_encode($initialTab); ?>;
     const year = atlasData?.year ?? <?php echo json_encode($atlasYear); ?>;
+    const previousYear = (year ?? new Date().getFullYear()) - 1;
     const account = atlasData.account;
 
     const slugifySegment = (value, fallback) => {
@@ -831,20 +852,27 @@ $atlasPayload = [
               label: "Guildsmen",
               sub: "Adventurers across the realm",
               fallbackEnd: w.guildsmen,
+              entryKey: "accounts",
             },
             {
-              key: "quests",
-              label: "Quests",
-              sub: "Published quests across the realm",
-              fallbackEnd: w.questsPublished ?? w.questsRanPriorYear,
-              primary: "yearCount",
+              key: "questsHosted",
+              label: "Quests Hosted",
+              sub: `Quests hosted during ${previousYear}`,
+              fallbackEnd: w.questsHostedPreviousYear ?? w.questsHostedBeforeYear,
+              primary: "direct",
+              mainValue: w.questsHostedPreviousYear,
+              secondaryValue: w.questsHostedBeforeYear,
+              secondaryLabel: `All quests before ${year}`,
             },
             {
               key: "matches",
-              label: "Matches",
-              sub: "Duels and skirmishes logged",
-              fallbackEnd: w.matches ?? w.rankedMatches,
-              primary: "yearCount",
+              label: "Ranked Matches",
+              sub: `Matches in sets 0-1 during ${previousYear}`,
+              fallbackEnd: w.rankedMatchesPreviousYear ?? w.rankedMatchesBeforeYear,
+              primary: "direct",
+              mainValue: w.rankedMatchesPreviousYear,
+              secondaryValue: w.rankedMatchesBeforeYear,
+              secondaryLabel: `All ranked matches before ${year}`,
             },
           ];
 
@@ -874,10 +902,19 @@ $atlasPayload = [
               return renderKpi(yearCount, fmt(endNum, "—"));
             }
 
+            if (metric.primary === "direct") {
+              const directValue = metric.mainValue ?? endValue ?? fallbackEnd;
+              return renderKpi(directValue);
+            }
+
             return renderKpi(endValue);
           };
 
-          const renderSecondaryLine = (metric, entry, fallbackEnd) => {
+          const renderSecondaryLine = (metric, entry, fallbackEnd, endValue) => {
+            if (metric.secondaryValue !== undefined) {
+              return `<p class="sub">${metric.secondaryLabel ?? "Total"}: ${fmt(metric.secondaryValue, "—")}</p>`;
+            }
+
             if (metric.primary === "yearCount") {
               const startNum = numericOrNull(entry?.start);
               const startLabel = fmt(startNum, "—");
@@ -894,13 +931,13 @@ $atlasPayload = [
             </div>
             <div class="stat-hero">
               ${metricCards.map((metric) => {
-                const entry = prog[metric.key];
-                const endValue = entry?.end ?? metric.fallbackEnd;
+                const entry = metric.entryKey ? prog[metric.entryKey] : prog[metric.key];
+                const endValue = metric.mainValue ?? entry?.end ?? metric.fallbackEnd;
                 return `
                   <div class="card">
                     <div class="pill">${metric.label}</div>
                     ${renderPrimaryKpi(metric, entry, metric.fallbackEnd, endValue)}
-                    ${renderSecondaryLine(metric, entry, metric.fallbackEnd)}
+                    ${renderSecondaryLine(metric, entry, metric.fallbackEnd, endValue)}
                     <p class="sub">${metric.sub}</p>
                   </div>
                 `;
