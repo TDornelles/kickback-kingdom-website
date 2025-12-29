@@ -20,11 +20,11 @@ $twoYearsBackStart = sprintf('%04d-01-01', $atlasYear - 2);
 $accountCountEndOfDataYear = atlas_fetch_scalar('SELECT COUNT(*) FROM account WHERE DateCreated < ?', [$atlasYearStart]);
 $accountCountEndOfPriorYear = atlas_fetch_scalar('SELECT COUNT(*) FROM account WHERE DateCreated < ?', [$previousYearStart]);
 $questsHostedPreviousYear = atlas_fetch_scalar(
-    'SELECT COUNT(*) FROM quest WHERE end_date >= ? AND end_date < ?',
+    'SELECT COUNT(*) FROM quest WHERE published = 1 and finished = 1 and end_date >= ? AND end_date < ?',
     [$previousYearStart, $atlasYearStart]
 );
 $questsHostedBeforeYear = atlas_fetch_scalar(
-    'SELECT COUNT(*) FROM quest WHERE end_date < ?',
+    'SELECT COUNT(*) FROM quest WHERE published = 1 and finished = 1 and end_date < ?',
     [$atlasYearStart]
 );
 $rankedMatchesPreviousYear = atlas_fetch_scalar(
@@ -862,17 +862,17 @@ $atlasPayload = [
               primary: "direct",
               mainValue: w.questsHostedPreviousYear,
               secondaryValue: w.questsHostedBeforeYear,
-              secondaryLabel: `All quests before ${year}`,
+              secondaryLabel: `Total`,
             },
             {
               key: "matches",
               label: "Ranked Matches",
-              sub: `Matches in sets 0-1 during ${previousYear}`,
+              sub: `Matches held in ${previousYear}`,
               fallbackEnd: w.rankedMatchesPreviousYear ?? w.rankedMatchesBeforeYear,
               primary: "direct",
               mainValue: w.rankedMatchesPreviousYear,
               secondaryValue: w.rankedMatchesBeforeYear,
-              secondaryLabel: `All ranked matches before ${year}`,
+              secondaryLabel: `Total`,
             },
           ];
 
