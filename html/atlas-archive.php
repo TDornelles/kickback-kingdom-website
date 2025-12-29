@@ -816,12 +816,15 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         </div>
       `;
     };
-    const renderStatPill = (label, value, detail, extra) => {
+    const renderStatPill = (label, value, detail, extra, options = {}) => {
+      const { hideValue = false, hideDetail = false } = options ?? {};
+      const valueMarkup = hideValue ? "" : `<div class="value">${fmt(value)}</div>`;
+      const detailMarkup = !hideDetail && detail ? `<div class="muted">${detail}</div>` : "";
       return `
         <div class="stat-pill">
           <div class="label">${label}</div>
-          <div class="value">${fmt(value)}</div>
-          ${detail ? `<div class="muted">${detail}</div>` : ""}
+          ${valueMarkup}
+          ${detailMarkup}
           ${extra ?? ""}
         </div>
       `;
@@ -997,8 +1000,8 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
               ${renderHonorProfile(entry, `Led the bracket in ${previousYear}`)}
               ${entry ? `
                 <div class="honor-stats">
-                  ${renderStatPill("Tournaments Won", entry.tournamentsWon, `Finished first in ${previousYear}`)}
-                  ${renderStatPill("Games Spanned", entry.gamesCount, "Different titles conquered", renderGameIconRow(entry.games))}
+                  ${renderStatPill("Tournaments Won", entry.tournamentsWon, null)}
+                  ${renderStatPill("Games Spanned", entry.gamesCount, null, renderGameIconRow(entry.games), { hideValue: true })}
                 </div>
               ` : `<div class="muted">No tournament victories recorded for ${previousYear}.</div>`}
             </div>
