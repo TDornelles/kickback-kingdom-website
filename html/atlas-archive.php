@@ -801,11 +801,12 @@ $atlasPayload = [
         id: "community-thanks",
         title: "Community Spotlight",
         accent: "accent-bg-gold",
+        hideHeaderTitle: true,
         render: () => {
           const w = atlasData.world || {};
           return `
             <div class="slide-hero">
-              <div class="mega">Thank you, Kingdom!</div>
+              <div class="mega">Cheers to the Kingdom!</div>
               <div class="lead">Every quest hosted, every duel logged, and every trade forged shows up here. These numbers only exist because of you.</div>
             </div>
             <div class="stat-hero">
