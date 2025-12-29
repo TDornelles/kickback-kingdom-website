@@ -804,62 +804,67 @@ $atlasPayload = [
         hideHeaderTitle: true,
         render: () => {
           const w = atlasData.world || {};
+          const prog = atlasData.yearProgress || {};
+          const metricCards = [
+            {
+              key: "accounts",
+              label: "Guildsmen",
+              sub: "Adventurers across the realm",
+              fallbackEnd: w.guildsmen,
+            },
+            {
+              key: "quests",
+              label: "Quests",
+              sub: "Published quests across the realm",
+              fallbackEnd: w.questsPublished ?? w.questsRanPriorYear,
+            },
+            {
+              key: "matches",
+              label: "Matches",
+              sub: "Duels and skirmishes logged",
+              fallbackEnd: w.matches ?? w.rankedMatches,
+            },
+          ];
+
+          const renderDeltaLine = (entry, fallbackEnd) => {
+            if (!entry) {
+              return `<p class="sub">Started — · Change —</p>`;
+            }
+
+            const startNum = numericOrNull(entry.start);
+            const endNum = numericOrNull(entry.end ?? fallbackEnd);
+            const startLabel = fmt(startNum, "—");
+            let deltaLabel = "—";
+
+            if (startNum !== null && endNum !== null) {
+              const delta = endNum - startNum;
+              deltaLabel = delta > 0 ? `+${fmt(delta)}` : fmt(delta);
+            }
+
+            return `<p class="sub">Started ${startLabel} · Change ${deltaLabel}</p>`;
+          };
+
           return `
             <div class="slide-hero">
               <div class="mega">Cheers to the Kingdom!</div>
-              <div class="lead">Every quest hosted, every duel logged, and every trade forged shows up here. These numbers only exist because of you.</div>
+              <div class="lead">Every quest hosted, every duel logged, and every trade forged shows up here. These numbers only exist because of you — and here&apos;s how far they moved.</div>
             </div>
             <div class="stat-hero">
-              <div class="card">
-                <div class="pill">Guildsmen</div>
-                ${renderKpi(w.guildsmen)}
-                <p class="sub">Adventurers across the realm</p>
-              </div>
-              <div class="card">
-                <div class="pill">Quests</div>
-                ${renderKpi(w.questsRanPriorYear)}
-                <p class="sub">Ran in the prior year</p>
-              </div>
-              <div class="card">
-                <div class="pill">Ranked Matches</div>
-                ${renderKpi(w.rankedMatches)}
-                <p class="sub">Set 0 (single) or set 1 (multi)</p>
-              </div>
-            </div>
-            <div class="actions" style="justify-content:flex-start; margin-top:18px;">
-              <button class="cta-primary" data-action="next">Continue</button>
-            </div>
-          `;
-        },
-      },
-      {
-        id: "year-bookends",
-        title: "Where We Started vs. Where We Ended",
-        accent: "accent-bg-cyan",
-        render: () => {
-          const prog = atlasData.yearProgress || {};
-          const entries = Object.values(prog);
-          return `
-            <div class="slide-hero">
-              <div class="mega">Bookends of ${year}</div>
-              <div class="lead">Live snapshots from the database: January 1st versus today.</div>
-            </div>
-            <div class="stat-hero">
-              ${entries.map(p => {
-                if (!p) return "";
-                const delta = (p.end ?? 0) - (p.start ?? 0);
-                const deltaLabel = delta > 0 ? `+${fmt(delta)}` : fmt(delta);
+              ${metricCards.map((metric) => {
+                const entry = prog[metric.key];
+                const endValue = entry?.end ?? metric.fallbackEnd;
                 return `
                   <div class="card">
-                    <div class="pill">${p.label}</div>
-                    ${renderKpi(p.end)}
-                    <p class="sub">Started ${fmt(p.start, "—")} · Change ${deltaLabel}</p>
+                    <div class="pill">${metric.label}</div>
+                    ${renderKpi(endValue)}
+                    ${renderDeltaLine(entry, metric.fallbackEnd)}
+                    <p class="sub">${metric.sub}</p>
                   </div>
                 `;
               }).join("")}
             </div>
-            <div class="actions">
-              <button class="cta-primary" data-action="share">Share Bookends</button>
+            <div class="actions" style="justify-content:flex-start; margin-top:18px;">
+              <button class="cta-primary" data-action="next">Continue</button>
             </div>
           `;
         },
