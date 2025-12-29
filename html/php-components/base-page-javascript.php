@@ -1628,13 +1628,31 @@ use Kickback\Common\Version;
             this.isPaused = false;
         };
 
-        function StartFireworks()
+        function StartFireworks(options = {})
         {
+            const { forceRestart = false } = options;
+            const targetEl = document.querySelector('.js-container-fireworks');
+            if (!targetEl) {
+                return null;
+            }
+
             if (window.fireworks) {
+                if (!forceRestart) {
+                    return window.fireworks;
+                }
                 window.fireworks.stop();
             }
-            window.fireworks = new Fireworks(document.querySelector('.js-container-fireworks'));
+            window.fireworks = new Fireworks(targetEl);
+            return window.fireworks;
         }
+
+        // Make sure fireworks are torn down when the page goes away (SPA navigation or tab close).
+        const stopFireworksHandler = () => {
+            StopFireworks();
+        };
+
+        window.addEventListener('pagehide', stopFireworksHandler);
+        window.addEventListener('beforeunload', stopFireworksHandler);
 
         function StopFireworks()
         {
