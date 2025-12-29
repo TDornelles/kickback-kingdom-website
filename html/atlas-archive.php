@@ -226,6 +226,9 @@ $honors = [
     'kingOfGames' => null,
 ];
 
+$honorsPeriodStart = $previousYearStart;
+$honorsPeriodEnd = $atlasYearStart;
+
 $tournamentRow = atlas_fetch_one(
     'SELECT tr.team_captain AS account_id, COUNT(*) AS tournaments_won, COUNT(DISTINCT t.game_id) AS games_played
      FROM tournament_record tr
@@ -234,7 +237,7 @@ $tournamentRow = atlas_fetch_one(
      GROUP BY tr.team_captain
      ORDER BY tournaments_won DESC, games_played DESC
      LIMIT 1',
-    [$atlasYearStart, $atlasYearEnd]
+    [$honorsPeriodStart, $honorsPeriodEnd]
 );
 if (!empty($tournamentRow['account_id'])) {
     $profile = atlas_fetch_account_profile((int)$tournamentRow['account_id']);
@@ -256,7 +259,7 @@ $prestigeRow = atlas_fetch_one(
      GROUP BY account_id_to
      ORDER BY net_prestige DESC, unique_givers DESC
      LIMIT 1',
-    [$atlasYearStart, $atlasYearEnd]
+    [$honorsPeriodStart, $honorsPeriodEnd]
 );
 if (!empty($prestigeRow['account_id'])) {
     $profile = atlas_fetch_account_profile((int)$prestigeRow['account_id']);
@@ -277,7 +280,7 @@ $questerRow = atlas_fetch_one(
      GROUP BY qa.account_id
      ORDER BY quests_participated DESC
      LIMIT 1',
-    [$atlasYearStart, $atlasYearEnd]
+    [$honorsPeriodStart, $honorsPeriodEnd]
 );
 if (!empty($questerRow['account_id'])) {
     $profile = atlas_fetch_account_profile((int)$questerRow['account_id']);
@@ -307,7 +310,7 @@ $hostRow = atlas_fetch_one(
      GROUP BY host_account_id
      ORDER BY (hosting_score IS NULL), hosting_score DESC, quests_hosted DESC
      LIMIT 1',
-    [$atlasYearStart, $atlasYearEnd, $atlasYearStart, $atlasYearEnd]
+    [$honorsPeriodStart, $honorsPeriodEnd, $honorsPeriodStart, $honorsPeriodEnd]
 );
 if (!empty($hostRow['account_id'])) {
     $profile = atlas_fetch_account_profile((int)$hostRow['account_id']);
@@ -327,7 +330,7 @@ $renownRow = atlas_fetch_one(
      GROUP BY account_id
      ORDER BY badge_count DESC
      LIMIT 1',
-    [$atlasYearStart, $atlasYearEnd]
+    [$honorsPeriodStart, $honorsPeriodEnd]
 );
 if (!empty($renownRow['account_id'])) {
     $profile = atlas_fetch_account_profile((int)$renownRow['account_id']);
@@ -338,7 +341,7 @@ if (!empty($renownRow['account_id'])) {
              WHERE account_id = ? AND dateObtained >= ? AND dateObtained < ?
              ORDER BY dateObtained DESC
              LIMIT 12',
-            [$renownRow['account_id'], $atlasYearStart, $atlasYearEnd]
+            [$renownRow['account_id'], $honorsPeriodStart, $honorsPeriodEnd]
         );
         $honors['renown'] = [
             'profile' => $profile,
@@ -366,7 +369,7 @@ $kingRow = atlas_fetch_one(
      GROUP BY account_id
      ORDER BY gold_cards DESC, elo_sum DESC
      LIMIT 1',
-    [$atlasYearStart, $atlasYearEnd]
+    [$honorsPeriodStart, $honorsPeriodEnd]
 );
 if (!empty($kingRow['account_id'])) {
     $profile = atlas_fetch_account_profile((int)$kingRow['account_id']);
