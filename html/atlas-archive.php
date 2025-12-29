@@ -818,6 +818,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         title: "Atlas Archive",
         accent: "accent-bg-cyan",
         hideHeaderTitle: true,
+        showNextCta: false,
         nextCtaLabel: "Begin",
         render: () => `
           <div class="slide-hero">
@@ -839,6 +840,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         title: "Community Spotlight",
         accent: "accent-bg-gold",
         hideHeaderTitle: true,
+        showNextCta: false,
         nextCtaLabel: "Continue",
         render: () => {
           const w = atlasData.world || {};
@@ -954,6 +956,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         title: "Kingdom Highlights",
         accent: "accent-bg-violet",
         hideHeaderTitle: true,
+        showNextCta: false,
         nextCtaLabel: "Begin Highlights",
         render: () => `
           <div class="slide-hero">
@@ -1483,6 +1486,10 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
     const sectionRefs = [];
     const dotRefs = [];
 
+    function shouldShowNextCta(slide) {
+      return slide.showNextCta !== false;
+    }
+
     function createSlideSection(slide, index) {
       const section = document.createElement("section");
       section.className = "slide";
@@ -1498,15 +1505,17 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         </div>
       `;
       const slideBody = section.querySelector(".slide-body");
-      const navRow = document.createElement("div");
-      navRow.className = "slide-progress actions";
-      const nextButton = document.createElement("button");
-      nextButton.className = "cta-primary";
-      nextButton.dataset.action = "slide-next";
-      nextButton.dataset.defaultLabel = slide.nextCtaLabel || "Continue";
-      nextButton.textContent = slide.nextCtaLabel || "Continue";
-      navRow.appendChild(nextButton);
-      slideBody.appendChild(navRow);
+      if (shouldShowNextCta(slide)) {
+        const navRow = document.createElement("div");
+        navRow.className = "slide-progress actions";
+        const nextButton = document.createElement("button");
+        nextButton.className = "cta-primary";
+        nextButton.dataset.action = "slide-next";
+        nextButton.dataset.defaultLabel = slide.nextCtaLabel || "Continue";
+        nextButton.textContent = slide.nextCtaLabel || "Continue";
+        navRow.appendChild(nextButton);
+        slideBody.appendChild(navRow);
+      }
       slidesContainer.appendChild(section);
       sectionRefs.push(section);
       tagSequenceItems(section);
