@@ -840,7 +840,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         title: "Community Spotlight",
         accent: "accent-bg-gold",
         hideHeaderTitle: true,
-        showNextCta: false,
+        showNextCta: true,
         nextCtaLabel: "Continue",
         render: () => {
           const w = atlasData.world || {};
@@ -945,9 +945,6 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
                 `;
               }).join("")}
             </div>
-            <div class="actions" style="justify-content:flex-start; margin-top:18px;">
-              <button class="cta-primary" data-action="next">Continue</button>
-            </div>
           `;
         },
       },
@@ -978,10 +975,10 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           return `
             <div class="slide-hero">
               <div class="mega">Most Tournaments Won</div>
-              <div class="lead">Champion with the most trophies in ${previousYear}. Distinct games played are counted for cross-discipline glory.</div>
+              <div class="lead">This goes to our adventurer with the most championships in ${previousYear}! Nothing can stop them!</div>
             </div>
             <div class="honor-card">
-              ${renderHonorProfile(entry, `Led the bracket in ${previousYear}`)}
+              ${renderHonorProfile(entry, `Led the ranked quests in ${previousYear}`)}
               ${entry ? `
                 <div class="honor-stats">
                   ${renderStatPill("Tournaments Won", entry.tournamentsWon, null)}
@@ -1002,14 +999,14 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           return `
             <div class="slide-hero">
               <div class="mega">Most Prestigious</div>
-              <div class="lead">Highest net prestige earned from unique commendations during ${previousYear}.</div>
+              <div class="lead">This guildsman is beloved by the community and was most recognized in ${previousYear} for their valiant efforts.</div>
             </div>
             <div class="honor-card">
               ${renderHonorProfile(entry, `Commended the most in ${previousYear}`)}
               ${entry ? `
                 <div class="honor-stats">
-                  ${renderStatPill("Net Prestige", entry.netPrestige, "Commends minus denouncements")}
-                  ${renderStatPill("Unique Givers", entry.uniqueGivers, "Different accounts who granted prestige")}
+                  ${renderStatPill("Total Commendations", entry.netPrestige)}
+                  ${renderStatPill("Unique Commenders", entry.uniqueGivers)}
                 </div>
               ` : `<div class="muted">No prestige activity recorded for ${previousYear}.</div>`}
             </div>
@@ -1018,21 +1015,21 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       },
       {
         id: "honor-quester",
-        title: "Biggest Quester",
+        title: "Most Adventurous",
         accent: "accent-bg-cyan",
         nextCtaLabel: "Next Highlight",
         render: () => {
           const entry = honors?.quester;
           return `
             <div class="slide-hero">
-              <div class="mega">Biggest Quester</div>
-              <div class="lead">Most quest participations for ${previousYear}, using finished quests within the calendar window.</div>
+              <div class="mega">Most Adventurous</div>
+              <div class="lead">This hero answered the call and completed more quests than any other in ${previousYear}.</div>
             </div>
             <div class="honor-card">
-              ${renderHonorProfile(entry, `Participated the most in ${previousYear}`)}
+              ${renderHonorProfile(entry, `Completed the most quests in ${previousYear}`)}
               ${entry ? `
                 <div class="honor-stats">
-                  ${renderStatPill("Quests Participated", entry.questsParticipated, "Finished quests joined")}
+                  ${renderStatPill("Quests Completed", entry.questsParticipated)}
                 </div>
               ` : `<div class="muted">No quest participation detected for ${previousYear}.</div>`}
             </div>
@@ -1041,22 +1038,23 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       },
       {
         id: "honor-host",
-        title: "Best Host",
+        title: "Greatest Quest Giver",
         accent: "accent-bg-gold",
         nextCtaLabel: "Next Highlight",
         render: () => {
           const entry = honors?.host;
           return `
             <div class="slide-hero">
-              <div class="mega">Best Host</div>
-              <div class="lead">Highest hosting score from participant feedback on published, finished quests in ${previousYear}.</div>
+              <div class="mega">Greatest Quest Giver</div>
+              <div class="lead">In ${previousYear}, they united the Adventurers' Guild and safeguarded the realm by crafting the quests that heroes rose to complete.
+</div>
             </div>
             <div class="honor-card">
-              ${renderHonorProfile(entry, `Host excellence in ${previousYear}`)}
+              ${renderHonorProfile(entry, `Greatest Quest Giver in ${previousYear}`)}
               ${entry ? `
                 <div class="honor-stats">
-                  ${renderStatPill("Hosting Score", entry.hostingScore?.toFixed ? Number(entry.hostingScore).toFixed(2) : entry.hostingScore, "Average host rating")}
-                  ${renderStatPill("Quests Hosted", entry.questsHosted, "Published & finished in-year")}
+                  ${renderStatPill("Quest Giver Score", entry.hostingScore?.toFixed ? Number(entry.hostingScore).toFixed(2) : entry.hostingScore)}
+                  ${renderStatPill("Quests Hosted", entry.questsHosted)}
                 </div>
               ` : `<div class="muted">No hosted quests with feedback in ${previousYear}.</div>`}
             </div>
@@ -1073,14 +1071,11 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           return `
             <div class="slide-hero">
               <div class="mega">Most Renown</div>
-              <div class="lead">Most badges earned during ${previousYear}, showcasing their iconic art.</div>
+              <div class="lead">In ${previousYear}, no name carried greater renown, as they earned more badges than any other in the realm.</div>
             </div>
             <div class="honor-card">
               ${renderHonorProfile(entry, `Badge haul in ${previousYear}`)}
               ${entry ? `
-                <div class="honor-stats">
-                  ${renderStatPill("Badges Earned", entry.badgesEarned, `${previousYear} only`)}
-                </div>
                 ${renderBadgeRow(entry.badgeIcons)}
               ` : `<div class="muted">No badge awards recorded for ${previousYear}.</div>`}
             </div>
@@ -1097,14 +1092,14 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           return `
             <div class="slide-hero">
               <div class="mega">Most Treasure Collected</div>
-              <div class="lead">The adventurer who uncovered the most hidden treasure across all hunts in ${previousYear}.</div>
+              <div class="lead">In ${previousYear}, no secret stayed buried — this adventurer uncovered more hidden treasure than any other across the realm.</div>
             </div>
             <div class="honor-card">
-              ${renderHonorProfile(entry, `Treasure champion of ${previousYear}`)}
+              ${renderHonorProfile(entry, `Greatest treasure hunter of ${previousYear}`)}
               ${entry ? `
                 <div class="honor-stats">
-                  ${renderStatPill("Treasure Found", entry.treasuresCollected, "Hidden objects collected")}
-                  ${renderStatPill("Treasure Events", entry.eventsCount, "Events explored")}
+                  ${renderStatPill("Hidden Treasures Unearthed", entry.treasuresCollected)}
+                  ${renderStatPill("Expeditions Undertaken", entry.eventsCount)}
                 </div>
               ` : `<div class="muted">No treasure hunts recorded for ${previousYear}.</div>`}
             </div>
@@ -1121,14 +1116,14 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           return `
             <div class="slide-hero">
               <div class="mega">Luckiest Person</div>
-              <div class="lead">Most raffles won in ${previousYear}, with the tie-breaker going to the fewest tickets spent.</div>
+              <div class="lead">In ${previousYear}, fortune smiled brightest on this adventurer, granting them more raffle victories than any other.</div>
             </div>
             <div class="honor-card">
-              ${renderHonorProfile(entry, `Raffle luck legend in ${previousYear}`)}
+              ${renderHonorProfile(entry, `Fortune's favorite in ${previousYear}`)}
               ${entry ? `
                 <div class="honor-stats">
-                  ${renderStatPill("Raffles Won", entry.rafflesWon, null)}
-                  ${renderStatPill("Tickets Spent", entry.ticketsUsed, "Tie-breaker: lower is luckier")}
+                  ${renderStatPill("Raffles Won", entry.rafflesWon)}
+                  ${renderStatPill("Tickets Wagered", entry.ticketsUsed)}
                 </div>
               ` : `<div class="muted">No raffle winners recorded for ${previousYear}.</div>`}
             </div>
@@ -1145,15 +1140,15 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           return `
             <div class="slide-hero">
               <div class="mega">King of Games</div>
-              <div class="lead">Most gold cards (#1 Elo per game) among accounts active in ${previousYear}; tie-breaks by Elo sum and profile level.</div>
+              <div class="lead">In ${previousYear}, songs were sung of one who mastered every contest, crowned by fate as the King of Games — a legend that will echo through the ages.</div>
             </div>
             <div class="honor-card">
-              ${renderHonorProfile(entry, `Top of the ladders in ${previousYear}`)}
+              ${renderHonorProfile(entry, `The King of Games in ${previousYear}`)}
               ${entry ? `
                 <div class="honor-stats">
-                  ${renderStatPill("Gold Cards Held", entry.goldCards, "Games where they are rank #1")}
-                  ${renderStatPill("Elo Sum", entry.eloSum, "Tie-break metric")}
-                  ${entry.profile?.level !== undefined ? renderStatPill("Profile Level", entry.profile.level, "Secondary tie-breaker") : ""}
+                  ${renderStatPill("Gold Cards Held", entry.goldCards)}
+                  ${renderStatPill("Elo Sum", entry.eloSum)}
+                  ${entry.profile?.level !== undefined ? renderStatPill("Profile Level", entry.profile.level) : ""}
                 </div>
               ` : `<div class="muted">No ranked ladders with gold card holders recorded for ${previousYear}.</div>`}
             </div>
