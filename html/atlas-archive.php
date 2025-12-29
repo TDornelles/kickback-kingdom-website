@@ -837,12 +837,14 @@ $atlasPayload = [
               label: "Quests",
               sub: "Published quests across the realm",
               fallbackEnd: w.questsPublished ?? w.questsRanPriorYear,
+              primary: "yearCount",
             },
             {
               key: "matches",
               label: "Matches",
               sub: "Duels and skirmishes logged",
               fallbackEnd: w.matches ?? w.rankedMatches,
+              primary: "yearCount",
             },
           ];
 
@@ -864,6 +866,27 @@ $atlasPayload = [
             return `<p class="sub">Started ${startLabel} · Change ${deltaLabel}</p>`;
           };
 
+          const renderPrimaryKpi = (metric, entry, fallbackEnd, endValue) => {
+            if (metric.primary === "yearCount") {
+              const startNum = numericOrNull(entry?.start);
+              const endNum = numericOrNull(entry?.end ?? fallbackEnd);
+              const yearCount = startNum !== null && endNum !== null ? endNum - startNum : null;
+              return renderKpi(yearCount, fmt(endNum, "—"));
+            }
+
+            return renderKpi(endValue);
+          };
+
+          const renderSecondaryLine = (metric, entry, fallbackEnd) => {
+            if (metric.primary === "yearCount") {
+              const startNum = numericOrNull(entry?.start);
+              const startLabel = fmt(startNum, "—");
+              return `<p class="sub">Total on Jan 1: ${startLabel}</p>`;
+            }
+
+            return renderDeltaLine(entry, fallbackEnd);
+          };
+
           return `
             <div class="slide-hero">
               <div class="mega">Cheers to the Kingdom!</div>
@@ -876,8 +899,8 @@ $atlasPayload = [
                 return `
                   <div class="card">
                     <div class="pill">${metric.label}</div>
-                    ${renderKpi(endValue)}
-                    ${renderDeltaLine(entry, metric.fallbackEnd)}
+                    ${renderPrimaryKpi(metric, entry, metric.fallbackEnd, endValue)}
+                    ${renderSecondaryLine(metric, entry, metric.fallbackEnd)}
                     <p class="sub">${metric.sub}</p>
                   </div>
                 `;
