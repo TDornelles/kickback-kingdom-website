@@ -835,7 +835,7 @@ $atlasPayload = [
             </div>
             <div class="title-present">Presents</div>
             <div class="mega">Atlas Archive ${year}</div>
-            <div class="lead">A recap crafted from the realm itself — live controllers, ledgers, and your account if you&apos;re logged in.</div>
+            <div class="lead">A reflection of what we have achieved together in the past year.</div>
             <div class="actions" style="justify-content:center;">
               <button class="cta-primary" data-action="next">Start</button>
               <button class="cta-primary" data-action="fullscreen">Fullscreen</button>
@@ -860,7 +860,7 @@ $atlasPayload = [
               primary: "direct",
               mainValue: w.accountsCreatedPreviousYear,
               secondaryValue: w.guildsmen,
-              secondaryLabel: "Total on Jan 1",
+              secondaryLabel: "Total",
             },
             {
               key: "questsHosted",
@@ -935,7 +935,7 @@ $atlasPayload = [
           return `
             <div class="slide-hero">
               <div class="mega">Cheers to the Kingdom!</div>
-              <div class="lead">Every quest hosted, every duel logged, and every trade forged shows up here. These numbers only exist because of you — and here&apos;s how far they moved.</div>
+              <div class="lead">${previousYear} brought new friendships, lasting memories, and unforgettable moments of fierce competition.</div>
             </div>
             <div class="stat-hero">
               ${metricCards.map((metric) => {
@@ -965,7 +965,7 @@ $atlasPayload = [
         render: () => `
           <div class="slide-hero">
             <div class="mega">Honorable Stats & Achievements</div>
-            <div class="lead">A guided tour through quests, matches, trade, and support activity powered by controllers & ledgers.</div>
+            <div class="lead">Remembering our most epic moments and legendary heroes!</div>
             <div class="actions" style="justify-content:center;">
               <button class="cta-primary" data-action="next">Begin Highlights</button>
             </div>
