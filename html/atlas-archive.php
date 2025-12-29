@@ -333,26 +333,58 @@ if (!empty($questerRow['account_id'])) {
     }
 }
 
-$hostRow = atlas_fetch_one(
-    'SELECT host_account_id AS account_id,
-            COUNT(DISTINCT quest_id) AS quests_hosted,
-            AVG(host_rating) AS hosting_score
-     FROM (
-         SELECT q.Id AS quest_id, q.host_id AS host_account_id, qa.host_rating
-         FROM quest q
-         LEFT JOIN quest_applicants qa ON qa.quest_id = q.Id
-         WHERE q.end_date >= ? AND q.end_date < ? AND q.published = 1 AND q.finished = 1
-         UNION ALL
-         SELECT q.Id AS quest_id, q.host_id_2 AS host_account_id, qa.host_rating
-         FROM quest q
-         LEFT JOIN quest_applicants qa ON qa.quest_id = q.Id
-         WHERE q.host_id_2 IS NOT NULL AND q.end_date >= ? AND q.end_date < ? AND q.published = 1 AND q.finished = 1
-     ) hosted
-     GROUP BY host_account_id
-     ORDER BY (hosting_score IS NULL), hosting_score DESC, quests_hosted DESC
-     LIMIT 1',
-    [$honorsPeriodStart, $honorsPeriodEnd, $honorsPeriodStart, $honorsPeriodEnd]
-);
+$hostRow = null;
+$hostQueries = [
+    [
+        'sql' => 'SELECT host_account_id AS account_id,
+                         COUNT(DISTINCT quest_id) AS quests_hosted,
+                         AVG(host_rating) AS hosting_score
+                  FROM (
+                      SELECT q.Id AS quest_id, q.host_id AS host_account_id, qa.host_rating
+                      FROM quest q
+                      LEFT JOIN quest_applicants qa ON qa.quest_id = q.Id
+                      WHERE q.end_date >= ? AND q.end_date < ? AND q.published = 1 AND q.finished = 1
+                      UNION ALL
+                      SELECT q.Id AS quest_id, q.host_id_2 AS host_account_id, qa.host_rating
+                      FROM quest q
+                      LEFT JOIN quest_applicants qa ON qa.quest_id = q.Id
+                      WHERE q.host_id_2 IS NOT NULL AND q.end_date >= ? AND q.end_date < ? AND q.published = 1 AND q.finished = 1
+                  ) hosted
+                  WHERE host_account_id IS NOT NULL
+                  GROUP BY host_account_id
+                  ORDER BY (hosting_score IS NULL), hosting_score DESC, quests_hosted DESC
+                  LIMIT 1',
+        'params' => [$honorsPeriodStart, $honorsPeriodEnd, $honorsPeriodStart, $honorsPeriodEnd],
+    ],
+    [
+        'sql' => 'SELECT host_account_id AS account_id,
+                         COUNT(DISTINCT quest_id) AS quests_hosted,
+                         AVG(host_rating) AS hosting_score
+                  FROM (
+                      SELECT q.Id AS quest_id, q.host AS host_account_id, qa.host_rating
+                      FROM quest q
+                      LEFT JOIN quest_applicants qa ON qa.quest_id = q.Id
+                      WHERE q.end_date >= ? AND q.end_date < ? AND q.published = 1 AND q.finished = 1
+                      UNION ALL
+                      SELECT q.Id AS quest_id, q.host_2 AS host_account_id, qa.host_rating
+                      FROM quest q
+                      LEFT JOIN quest_applicants qa ON qa.quest_id = q.Id
+                      WHERE q.host_2 IS NOT NULL AND q.end_date >= ? AND q.end_date < ? AND q.published = 1 AND q.finished = 1
+                  ) hosted
+                  WHERE host_account_id IS NOT NULL
+                  GROUP BY host_account_id
+                  ORDER BY (hosting_score IS NULL), hosting_score DESC, quests_hosted DESC
+                  LIMIT 1',
+        'params' => [$honorsPeriodStart, $honorsPeriodEnd, $honorsPeriodStart, $honorsPeriodEnd],
+    ],
+];
+foreach ($hostQueries as $query) {
+    $row = atlas_fetch_one($query['sql'], $query['params']);
+    if (!empty($row['account_id'])) {
+        $hostRow = $row;
+        break;
+    }
+}
 if (!empty($hostRow['account_id'])) {
     $profile = atlas_fetch_account_profile((int)$hostRow['account_id']);
     if ($profile) {
