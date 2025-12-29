@@ -15,8 +15,10 @@ $session = require(\Kickback\SCRIPT_ROOT . "/api/v1/engine/session/verifySession
 require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-info.php");
 
 $atlasYearStart = sprintf('%04d-01-01', $atlasYear);
+$nextYearStart = sprintf('%04d-01-01', $atlasYear + 1);
 $previousYearStart = sprintf('%04d-01-01', $atlasYear - 1);
-$accountCount = atlas_fetch_scalar('SELECT COUNT(*) FROM account WHERE DateCreated < ?', [$atlasYearStart]);
+$accountCountTotal = atlas_fetch_scalar('SELECT COUNT(*) FROM account WHERE DateCreated < ?', [$nextYearStart]);
+$accountCountAtYearStart = atlas_fetch_scalar('SELECT COUNT(*) FROM account WHERE DateCreated < ?', [$atlasYearStart]);
 
 /**
  * Safely fetch a single scalar from the database.
@@ -53,8 +55,8 @@ function atlas_fetch_scalar(string $query, array $params = [], ?string $cast = '
 }
 
 $worldStats = [
-    'accounts' => $accountCount,
-    'guildsmen' => $accountCount,
+    'accounts' => $accountCountTotal,
+    'guildsmen' => $accountCountTotal,
     'games' => atlas_fetch_scalar('SELECT COUNT(*) FROM game'),
     'matches' => atlas_fetch_scalar('SELECT COUNT(*) FROM game_match'),
     'rankedMatches' => atlas_fetch_scalar('SELECT COUNT(*) FROM game_match WHERE `set` IN (0,1)'),
@@ -81,7 +83,7 @@ $worldStats = [
 $yearProgress = [
     'accounts' => [
         'label' => 'Adventurers Registered',
-        'start' => atlas_fetch_scalar('SELECT COUNT(*) FROM account WHERE DateCreated < ?', [$atlasYearStart]),
+        'start' => $accountCountAtYearStart,
         'end' => $worldStats['accounts'],
     ],
     'quests' => [
