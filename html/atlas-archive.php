@@ -15,6 +15,7 @@ $session = require(\Kickback\SCRIPT_ROOT . "/api/v1/engine/session/verifySession
 require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-info.php");
 
 $atlasYearStart = sprintf('%04d-01-01', $atlasYear);
+$atlasYearEnd = sprintf('%04d-01-01', $atlasYear + 1);
 $previousYearStart = sprintf('%04d-01-01', $atlasYear - 1);
 $twoYearsBackStart = sprintf('%04d-01-01', $atlasYear - 2);
 $accountCountEndOfDataYear = atlas_fetch_scalar('SELECT COUNT(*) FROM account WHERE DateCreated < ?', [$atlasYearStart]);
@@ -72,6 +73,76 @@ function atlas_fetch_scalar(string $query, array $params = [], ?string $cast = '
     }
 
     return null;
+}
+
+/**
+ * Fetch a single associative row.
+ *
+ * @param string $query
+ * @param array<int|string, mixed> $params
+ */
+function atlas_fetch_one(string $query, array $params = []) : ?array
+{
+    try {
+        $result = Database::executeSqlQuery($query, $params);
+        if ($result instanceof \mysqli_result) {
+            $row = $result->fetch_assoc();
+            return $row !== null ? $row : null;
+        }
+    } catch (\Throwable $e) {
+        // Gracefully degrade to null.
+    }
+
+    return null;
+}
+
+/**
+ * Fetch all rows as associative arrays.
+ *
+ * @param string $query
+ * @param array<int|string, mixed> $params
+ * @return array<int, array<string, mixed>>
+ */
+function atlas_fetch_all(string $query, array $params = []) : array
+{
+    try {
+        $result = Database::executeSqlQuery($query, $params);
+        if ($result instanceof \mysqli_result) {
+            $rows = [];
+            while ($row = $result->fetch_assoc()) {
+                $rows[] = $row;
+            }
+            return $rows;
+        }
+    } catch (\Throwable $e) {
+        // Gracefully degrade to an empty set.
+    }
+
+    return [];
+}
+
+/**
+ * Fetch a lightweight account profile with avatar and level.
+ */
+function atlas_fetch_account_profile(int $accountId) : ?array
+{
+    $row = atlas_fetch_one(
+        'SELECT Id, Username, avatar_media, level, prestige, badges FROM v_account_info WHERE Id = ? LIMIT 1',
+        [$accountId]
+    );
+
+    if (!$row) {
+        return null;
+    }
+
+    return [
+        'id' => (int)$row['Id'],
+        'username' => (string)$row['Username'],
+        'avatar' => $row['avatar_media'] ?? null,
+        'level' => isset($row['level']) ? (int)$row['level'] : null,
+        'prestige' => isset($row['prestige']) ? (int)$row['prestige'] : null,
+        'badges' => isset($row['badges']) ? (int)$row['badges'] : null,
+    ];
 }
 
 $worldStats = [
@@ -145,6 +216,168 @@ $yearProgress = [
         ),
     ],
 ];
+
+$honors = [
+    'tournaments' => null,
+    'prestige' => null,
+    'quester' => null,
+    'host' => null,
+    'renown' => null,
+    'kingOfGames' => null,
+];
+
+$tournamentRow = atlas_fetch_one(
+    'SELECT tr.team_captain AS account_id, COUNT(*) AS tournaments_won, COUNT(DISTINCT t.game_id) AS games_played
+     FROM tournament_record tr
+     INNER JOIN tournament t ON tr.tournament_id = t.Id
+     WHERE tr.win = 1 AND tr.team_captain IS NOT NULL AND t.Date >= ? AND t.Date < ?
+     GROUP BY tr.team_captain
+     ORDER BY tournaments_won DESC, games_played DESC
+     LIMIT 1',
+    [$atlasYearStart, $atlasYearEnd]
+);
+if (!empty($tournamentRow['account_id'])) {
+    $profile = atlas_fetch_account_profile((int)$tournamentRow['account_id']);
+    if ($profile) {
+        $honors['tournaments'] = [
+            'profile' => $profile,
+            'tournamentsWon' => (int)$tournamentRow['tournaments_won'],
+            'gamesCount' => (int)$tournamentRow['games_played'],
+        ];
+    }
+}
+
+$prestigeRow = atlas_fetch_one(
+    'SELECT account_id_to AS account_id,
+            SUM(CASE WHEN commend = 1 THEN 1 ELSE -1 END) AS net_prestige,
+            COUNT(DISTINCT account_id_from) AS unique_givers
+     FROM prestige
+     WHERE date >= ? AND date < ?
+     GROUP BY account_id_to
+     ORDER BY net_prestige DESC, unique_givers DESC
+     LIMIT 1',
+    [$atlasYearStart, $atlasYearEnd]
+);
+if (!empty($prestigeRow['account_id'])) {
+    $profile = atlas_fetch_account_profile((int)$prestigeRow['account_id']);
+    if ($profile) {
+        $honors['prestige'] = [
+            'profile' => $profile,
+            'netPrestige' => (int)$prestigeRow['net_prestige'],
+            'uniqueGivers' => (int)$prestigeRow['unique_givers'],
+        ];
+    }
+}
+
+$questerRow = atlas_fetch_one(
+    'SELECT qa.account_id AS account_id, COUNT(*) AS quests_participated
+     FROM quest_applicants qa
+     INNER JOIN quest q ON qa.quest_id = q.Id
+     WHERE qa.participated = 1 AND q.end_date >= ? AND q.end_date < ?
+     GROUP BY qa.account_id
+     ORDER BY quests_participated DESC
+     LIMIT 1',
+    [$atlasYearStart, $atlasYearEnd]
+);
+if (!empty($questerRow['account_id'])) {
+    $profile = atlas_fetch_account_profile((int)$questerRow['account_id']);
+    if ($profile) {
+        $honors['quester'] = [
+            'profile' => $profile,
+            'questsParticipated' => (int)$questerRow['quests_participated'],
+        ];
+    }
+}
+
+$hostRow = atlas_fetch_one(
+    'SELECT host_account_id AS account_id,
+            COUNT(DISTINCT quest_id) AS quests_hosted,
+            AVG(host_rating) AS hosting_score
+     FROM (
+         SELECT q.Id AS quest_id, q.host_id AS host_account_id, qa.host_rating
+         FROM quest q
+         LEFT JOIN quest_applicants qa ON qa.quest_id = q.Id
+         WHERE q.end_date >= ? AND q.end_date < ? AND q.published = 1 AND q.finished = 1
+         UNION ALL
+         SELECT q.Id AS quest_id, q.host_id_2 AS host_account_id, qa.host_rating
+         FROM quest q
+         LEFT JOIN quest_applicants qa ON qa.quest_id = q.Id
+         WHERE q.host_id_2 IS NOT NULL AND q.end_date >= ? AND q.end_date < ? AND q.published = 1 AND q.finished = 1
+     ) hosted
+     GROUP BY host_account_id
+     ORDER BY (hosting_score IS NULL), hosting_score DESC, quests_hosted DESC
+     LIMIT 1',
+    [$atlasYearStart, $atlasYearEnd, $atlasYearStart, $atlasYearEnd]
+);
+if (!empty($hostRow['account_id'])) {
+    $profile = atlas_fetch_account_profile((int)$hostRow['account_id']);
+    if ($profile) {
+        $honors['host'] = [
+            'profile' => $profile,
+            'questsHosted' => (int)$hostRow['quests_hosted'],
+            'hostingScore' => isset($hostRow['hosting_score']) ? (float)$hostRow['hosting_score'] : null,
+        ];
+    }
+}
+
+$renownRow = atlas_fetch_one(
+    'SELECT account_id, COUNT(*) AS badge_count
+     FROM v_account_badge_info
+     WHERE dateObtained >= ? AND dateObtained < ?
+     GROUP BY account_id
+     ORDER BY badge_count DESC
+     LIMIT 1',
+    [$atlasYearStart, $atlasYearEnd]
+);
+if (!empty($renownRow['account_id'])) {
+    $profile = atlas_fetch_account_profile((int)$renownRow['account_id']);
+    if ($profile) {
+        $badgeRows = atlas_fetch_all(
+            'SELECT SmallImgPath
+             FROM v_account_badge_info
+             WHERE account_id = ? AND dateObtained >= ? AND dateObtained < ?
+             ORDER BY dateObtained DESC
+             LIMIT 12',
+            [$renownRow['account_id'], $atlasYearStart, $atlasYearEnd]
+        );
+        $honors['renown'] = [
+            'profile' => $profile,
+            'badgesEarned' => (int)$renownRow['badge_count'],
+            'badgeIcons' => array_values(array_filter(array_map(fn($row) => $row['SmallImgPath'] ?? null, $badgeRows))),
+        ];
+    }
+}
+
+$kingRow = atlas_fetch_one(
+    'WITH yearly_players AS (
+         SELECT DISTINCT gr.account_id, gr.game_id
+         FROM game_record gr
+         INNER JOIN game_match gm ON gm.Id = gr.game_match_id
+         WHERE gm.Date >= ? AND gm.Date < ?
+     ),
+     top_ranks AS (
+         SELECT v.account_id, v.game_id, v.elo_rating, v.rank
+         FROM v_game_elo_rank_info v
+         INNER JOIN yearly_players yp ON yp.account_id = v.account_id AND yp.game_id = v.game_id
+         WHERE v.rank = 1
+     )
+     SELECT account_id, COUNT(*) AS gold_cards, SUM(elo_rating) AS elo_sum
+     FROM top_ranks
+     GROUP BY account_id
+     ORDER BY gold_cards DESC, elo_sum DESC
+     LIMIT 1',
+    [$atlasYearStart, $atlasYearEnd]
+);
+if (!empty($kingRow['account_id'])) {
+    $profile = atlas_fetch_account_profile((int)$kingRow['account_id']);
+    if ($profile) {
+        $honors['kingOfGames'] = [
+            'profile' => $profile,
+            'goldCards' => (int)$kingRow['gold_cards'],
+            'eloSum' => isset($kingRow['elo_sum']) ? (float)$kingRow['elo_sum'] : null,
+        ];
+    }
+}
 
 $accountPayload = null;
 $atlasAccount = null;
@@ -224,6 +457,7 @@ $atlasPayload = [
     'year' => $atlasYear,
     'world' => $worldStats,
     'yearProgress' => $yearProgress,
+    'honors' => $honors,
     'account' => $accountPayload,
 ];
 ?>
@@ -711,6 +945,69 @@ $atlasPayload = [
     .stat-hero .kpi {
       font-size: clamp(34px, 6vw, 72px);
     }
+    .honor-card {
+      border: 1px solid rgba(255, 209, 102, 0.35);
+      border-radius: 14px;
+      padding: 18px;
+      background: linear-gradient(160deg, rgba(255, 209, 102, 0.08), rgba(12,18,28,0.85));
+      box-shadow: var(--shadow);
+      display: grid;
+      gap: 14px;
+    }
+    .honor-profile {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .honor-avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+    .honor-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .honor-meta {
+      display: grid;
+      gap: 2px;
+    }
+    .honor-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+    }
+    .stat-pill {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.02);
+    }
+    .stat-pill .label { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-pill .value { font-size: 26px; font-weight: 800; color: var(--accent); }
+    .badge-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+      padding-top: 4px;
+    }
+    .badge-row img {
+      width: 46px;
+      height: 46px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      object-fit: cover;
+      background: rgba(255,255,255,0.05);
+    }
     .sequence-item { opacity: 1; }
     .control-bar {
       background: rgba(12,18,28,0.6);
@@ -783,6 +1080,7 @@ $atlasPayload = [
     const year = atlasData?.year ?? <?php echo json_encode($atlasYear); ?>;
     const previousYear = (year ?? new Date().getFullYear()) - 1;
     const account = atlasData.account;
+    const honors = atlasData?.honors || {};
 
     const slugifySegment = (value, fallback) => {
       const cleaned = (value ?? "")
@@ -821,6 +1119,56 @@ $atlasPayload = [
     const pct = (numerator, denominator) => {
       if (!denominator || denominator === 0 || numerator === null || numerator === undefined) return "—";
       return `${Math.round((numerator / denominator) * 100)}%`;
+    };
+    const safeAvatar = (url) => {
+      if (!url) return null;
+      if (url.startsWith("http")) return url;
+      return url.startsWith("/") ? url : `/${url}`;
+    };
+    const renderHonorProfile = (entry, subtitle) => {
+      const profile = entry?.profile;
+      if (!profile) {
+        return `
+          <div class="honor-profile">
+            <div class="honor-avatar"></div>
+            <div class="honor-meta">
+              <div class="mega" style="font-size:32px;">No data</div>
+              <div class="muted">Not enough records in ${year}</div>
+            </div>
+          </div>
+        `;
+      }
+      const avatar = safeAvatar(profile.avatar);
+      const profileUrl = `/profile.php?u=${encodeURIComponent(profile.username)}`;
+      return `
+        <div class="honor-profile">
+          <div class="honor-avatar">
+            ${avatar ? `<img src="${avatar}" alt="${profile.username} avatar">` : `<span class="muted">No avatar</span>`}
+          </div>
+          <div class="honor-meta">
+            <div class="mega" style="font-size:32px;">${profile.username}</div>
+            <div class="muted">${subtitle || ""}</div>
+            <div class="actions">
+              <a class="cta-primary" href="${profileUrl}" target="_blank" rel="noopener">Open Profile</a>
+            </div>
+          </div>
+        </div>
+      `;
+    };
+    const renderStatPill = (label, value, detail) => {
+      return `
+        <div class="stat-pill">
+          <div class="label">${label}</div>
+          <div class="value">${fmt(value)}</div>
+          ${detail ? `<div class="muted">${detail}</div>` : ""}
+        </div>
+      `;
+    };
+    const renderBadgeRow = (icons) => {
+      if (!icons || icons.length === 0) {
+        return `<div class="muted">No badge art recorded for this year.</div>`;
+      }
+      return `<div class="badge-row">${icons.map((src) => `<img src="${safeAvatar(src) ?? ""}" alt="Badge icon">`).join("")}</div>`;
     };
     const slides = [
       {
@@ -971,6 +1319,144 @@ $atlasPayload = [
             </div>
           </div>
         `,
+      },
+      {
+        id: "honor-tournaments",
+        title: "Most Tournaments Won",
+        accent: "accent-bg-gold",
+        render: () => {
+          const entry = honors?.tournaments;
+          return `
+            <div class="slide-hero">
+              <div class="mega">Most Tournaments Won</div>
+              <div class="lead">Champion with the most trophies in ${year}. Distinct games played are counted for cross-discipline glory.</div>
+            </div>
+            <div class="honor-card">
+              ${renderHonorProfile(entry, `Led the bracket in ${year}`)}
+              ${entry ? `
+                <div class="honor-stats">
+                  ${renderStatPill("Tournaments Won", entry.tournamentsWon, `Finished first in ${year}`)}
+                  ${renderStatPill("Games Spanned", entry.gamesCount, "Different titles conquered")}
+                </div>
+              ` : `<div class="muted">No tournament victories recorded for ${year}.</div>`}
+            </div>
+          `;
+        },
+      },
+      {
+        id: "honor-prestige",
+        title: "Most Prestigious",
+        accent: "accent-bg-pink",
+        render: () => {
+          const entry = honors?.prestige;
+          return `
+            <div class="slide-hero">
+              <div class="mega">Most Prestigious</div>
+              <div class="lead">Highest net prestige earned from unique commendations during ${year}.</div>
+            </div>
+            <div class="honor-card">
+              ${renderHonorProfile(entry, `Commended the most in ${year}`)}
+              ${entry ? `
+                <div class="honor-stats">
+                  ${renderStatPill("Net Prestige", entry.netPrestige, "Commends minus denouncements")}
+                  ${renderStatPill("Unique Givers", entry.uniqueGivers, "Different accounts who granted prestige")}
+                </div>
+              ` : `<div class="muted">No prestige activity recorded for ${year}.</div>`}
+            </div>
+          `;
+        },
+      },
+      {
+        id: "honor-quester",
+        title: "Biggest Quester",
+        accent: "accent-bg-cyan",
+        render: () => {
+          const entry = honors?.quester;
+          return `
+            <div class="slide-hero">
+              <div class="mega">Biggest Quester</div>
+              <div class="lead">Most quest participations for ${year}, using finished quests within the calendar window.</div>
+            </div>
+            <div class="honor-card">
+              ${renderHonorProfile(entry, `Participated the most in ${year}`)}
+              ${entry ? `
+                <div class="honor-stats">
+                  ${renderStatPill("Quests Participated", entry.questsParticipated, "Finished quests joined")}
+                </div>
+              ` : `<div class="muted">No quest participation detected for ${year}.</div>`}
+            </div>
+          `;
+        },
+      },
+      {
+        id: "honor-host",
+        title: "Best Host",
+        accent: "accent-bg-gold",
+        render: () => {
+          const entry = honors?.host;
+          return `
+            <div class="slide-hero">
+              <div class="mega">Best Host</div>
+              <div class="lead">Highest hosting score from participant feedback on published, finished quests in ${year}.</div>
+            </div>
+            <div class="honor-card">
+              ${renderHonorProfile(entry, `Host excellence in ${year}`)}
+              ${entry ? `
+                <div class="honor-stats">
+                  ${renderStatPill("Hosting Score", entry.hostingScore?.toFixed ? Number(entry.hostingScore).toFixed(2) : entry.hostingScore, "Average host rating")}
+                  ${renderStatPill("Quests Hosted", entry.questsHosted, "Published & finished in-year")}
+                </div>
+              ` : `<div class="muted">No hosted quests with feedback in ${year}.</div>`}
+            </div>
+          `;
+        },
+      },
+      {
+        id: "honor-renown",
+        title: "Most Renown",
+        accent: "accent-bg-violet",
+        render: () => {
+          const entry = honors?.renown;
+          return `
+            <div class="slide-hero">
+              <div class="mega">Most Renown</div>
+              <div class="lead">Most badges earned during ${year}, showcasing their iconic art.</div>
+            </div>
+            <div class="honor-card">
+              ${renderHonorProfile(entry, `Badge haul in ${year}`)}
+              ${entry ? `
+                <div class="honor-stats">
+                  ${renderStatPill("Badges Earned", entry.badgesEarned, `${year} only`)}
+                </div>
+                ${renderBadgeRow(entry.badgeIcons)}
+              ` : `<div class="muted">No badge awards recorded for ${year}.</div>`}
+            </div>
+          `;
+        },
+      },
+      {
+        id: "honor-king-games",
+        title: "King of Games",
+        accent: "accent-bg-cyan",
+        render: () => {
+          const entry = honors?.kingOfGames;
+          return `
+            <div class="slide-hero">
+              <div class="mega">King of Games</div>
+              <div class="lead">Most gold cards (#1 Elo per game) among accounts active in ${year}; tie-breaks by Elo sum and profile level.</div>
+            </div>
+            <div class="honor-card">
+              ${renderHonorProfile(entry, `Top of the ladders in ${year}`)}
+              ${entry ? `
+                <div class="honor-stats">
+                  ${renderStatPill("Gold Cards Held", entry.goldCards, "Games where they are rank #1")}
+                  ${renderStatPill("Elo Sum", entry.eloSum, "Tie-break metric")}
+                  ${entry.profile?.level !== undefined ? renderStatPill("Profile Level", entry.profile.level, "Secondary tie-breaker") : ""}
+                </div>
+              ` : `<div class="muted">No ranked ladders with gold card holders recorded for ${year}.</div>`}
+            </div>
+          `;
+        },
       },
       {
         id: "realm-overview",
