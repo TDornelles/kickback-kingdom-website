@@ -168,6 +168,8 @@ class AtlasArchiveController
             'quester' => $this->buildQuesterHonor($periodStart, $periodEnd),
             'host' => $this->buildHostHonor($periodStart, $periodEnd),
             'renown' => $this->buildRenownHonor($periodStart, $periodEnd, $previousYear),
+            'treasureHunter' => $this->buildTreasureCollectorHonor($periodStart, $periodEnd),
+            'raffleLuck' => $this->buildRaffleLuckHonor($periodStart, $periodEnd),
             'kingOfGames' => $this->buildKingOfGamesHonor($periodStart, $periodEnd),
         ];
     }
@@ -392,6 +394,89 @@ class AtlasArchiveController
                 return $this->mediaUrl($badgeRow['SmallImgPath'] ?? null);
             }, $badgeRows))),
             'previousYear' => $previousYear,
+        ];
+    }
+
+    private function buildTreasureCollectorHonor(string $periodStart, string $periodEnd) : ?array
+    {
+        $row = $this->fetchOne(
+            'SELECT thc.account_id,
+                    COUNT(*) AS treasures_collected,
+                    COUNT(DISTINCT CONCAT(tho.ref_event_ctime, "-", tho.ref_event_crand)) AS events_count
+             FROM treasure_hunt_collections thc
+             INNER JOIN treasure_hunt_objects tho ON thc.ref_object_ctime = tho.ctime AND thc.ref_object_crand = tho.crand
+             INNER JOIN treasure_hunt_event the ON tho.ref_event_ctime = the.ctime AND tho.ref_event_crand = the.crand
+             WHERE the.start_date >= ? AND the.start_date < ?
+             GROUP BY thc.account_id
+             ORDER BY treasures_collected DESC, events_count DESC
+             LIMIT 1',
+            [$periodStart, $periodEnd]
+        );
+
+        if (empty($row['account_id'])) {
+            return null;
+        }
+
+        $profile = $this->fetchAccount((int)$row['account_id']);
+        if (!$profile instanceof vAccount) {
+            return null;
+        }
+
+        return [
+            'profile' => $this->formatAccountProfile($profile),
+            'treasuresCollected' => (int)$row['treasures_collected'],
+            'eventsCount' => isset($row['events_count']) ? (int)$row['events_count'] : null,
+        ];
+    }
+
+    private function buildRaffleLuckHonor(string $periodStart, string $periodEnd) : ?array
+    {
+        $row = $this->fetchOne(
+            'WITH winning_raffles AS (
+                 SELECT r.Id AS raffle_id,
+                        q.end_date AS raffle_end_date,
+                        l.account_id AS account_id
+                 FROM raffle r
+                 INNER JOIN raffle_submissions rs ON rs.Id = r.winner_submission_id
+                 INNER JOIN loot l ON l.Id = rs.loot_id
+                 LEFT JOIN quest q ON q.raffle_id = r.Id
+                 WHERE r.winner_submission_id IS NOT NULL
+                   AND q.end_date IS NOT NULL
+                   AND q.end_date >= ?
+                   AND q.end_date < ?
+             ),
+             tickets AS (
+                 SELECT rs.raffle_id,
+                        l.account_id,
+                        COUNT(*) AS tickets_used
+                 FROM raffle_submissions rs
+                 INNER JOIN loot l ON l.Id = rs.loot_id
+                 GROUP BY rs.raffle_id, l.account_id
+             )
+             SELECT w.account_id,
+                    COUNT(*) AS raffles_won,
+                    SUM(COALESCE(t.tickets_used, 0)) AS tickets_used
+             FROM winning_raffles w
+             LEFT JOIN tickets t ON t.raffle_id = w.raffle_id AND t.account_id = w.account_id
+             GROUP BY w.account_id
+             ORDER BY raffles_won DESC, tickets_used ASC
+             LIMIT 1',
+            [$periodStart, $periodEnd]
+        );
+
+        if (empty($row['account_id'])) {
+            return null;
+        }
+
+        $profile = $this->fetchAccount((int)$row['account_id']);
+        if (!$profile instanceof vAccount) {
+            return null;
+        }
+
+        return [
+            'profile' => $this->formatAccountProfile($profile),
+            'rafflesWon' => (int)$row['raffles_won'],
+            'ticketsUsed' => isset($row['tickets_used']) ? (int)$row['tickets_used'] : null,
         ];
     }
 
