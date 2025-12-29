@@ -7,522 +7,23 @@ $pageImage = "https://kickback-kingdom.com/assets/media/context/loading.gif";
 $pageDesc = "Yearly recap for Kickback Kingdom adventurers in {$atlasYear}.";
 require_once(($_SERVER["DOCUMENT_ROOT"] ?: __DIR__) . "/Kickback/init.php");
 
-use Kickback\Services\Database;
-use Kickback\Backend\Controllers\AccountController;
-use Kickback\Backend\Views\vRecordId;
+use Kickback\Backend\Controllers\AtlasArchiveController;
 
 $session = require(\Kickback\SCRIPT_ROOT . "/api/v1/engine/session/verifySession.php");
 require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-info.php");
-
-$atlasYearStart = sprintf('%04d-01-01', $atlasYear);
-$atlasYearEnd = sprintf('%04d-01-01', $atlasYear + 1);
-$previousYearStart = sprintf('%04d-01-01', $atlasYear - 1);
-$twoYearsBackStart = sprintf('%04d-01-01', $atlasYear - 2);
-$accountCountEndOfDataYear = atlas_fetch_scalar('SELECT COUNT(*) FROM account WHERE DateCreated < ?', [$atlasYearStart]);
-$accountCountEndOfPriorYear = atlas_fetch_scalar('SELECT COUNT(*) FROM account WHERE DateCreated < ?', [$previousYearStart]);
-$questsHostedPreviousYear = atlas_fetch_scalar(
-    'SELECT COUNT(*) FROM quest WHERE published = 1 and finished = 1 and end_date >= ? AND end_date < ?',
-    [$previousYearStart, $atlasYearStart]
-);
-$questsHostedBeforeYear = atlas_fetch_scalar(
-    'SELECT COUNT(*) FROM quest WHERE published = 1 and finished = 1 and end_date < ?',
-    [$atlasYearStart]
-);
-$rankedMatchesPreviousYear = atlas_fetch_scalar(
-    'SELECT COUNT(*) FROM game_match WHERE `set` IN (0,1) AND Date >= ? AND Date < ?',
-    [$previousYearStart, $atlasYearStart]
-);
-$rankedMatchesBeforeYear = atlas_fetch_scalar(
-    'SELECT COUNT(*) FROM game_match WHERE `set` IN (0,1) AND Date < ?',
-    [$atlasYearStart]
-);
-$newAccountsPreviousYear = null;
-if ($accountCountEndOfDataYear !== null && $accountCountEndOfPriorYear !== null) {
-    $newAccountsPreviousYear = $accountCountEndOfDataYear - $accountCountEndOfPriorYear;
-}
-
-/**
- * Safely fetch a single scalar from the database.
- *
- * @param string $query
- * @param array<int|string, mixed> $params
- * @param string|null $cast
- */
-function atlas_fetch_scalar(string $query, array $params = [], ?string $cast = 'int') : mixed
-{
-    try {
-        $result = Database::executeSqlQuery($query, $params);
-
-        if ($result instanceof \mysqli_result) {
-            $row = $result->fetch_row();
-            if ($row !== null && array_key_exists(0, $row)) {
-                $value = $row[0];
-                if ($value === null) {
-                    return null;
-                }
-
-                return match ($cast) {
-                    'float' => (float)$value,
-                    'string' => (string)$value,
-                    default => (int)$value,
-                };
-            }
-        }
-    } catch (\Throwable $e) {
-        // If something fails (ex: local dev without DB), we degrade gracefully to null.
-    }
-
-    return null;
-}
-
-/**
- * Fetch a single associative row.
- *
- * @param string $query
- * @param array<int|string, mixed> $params
- */
-function atlas_fetch_one(string $query, array $params = []) : ?array
-{
-    try {
-        $result = Database::executeSqlQuery($query, $params);
-        if ($result instanceof \mysqli_result) {
-            $row = $result->fetch_assoc();
-            return $row !== null ? $row : null;
-        }
-    } catch (\Throwable $e) {
-        // Gracefully degrade to null.
-    }
-
-    return null;
-}
-
-/**
- * Fetch all rows as associative arrays.
- *
- * @param string $query
- * @param array<int|string, mixed> $params
- * @return array<int, array<string, mixed>>
- */
-function atlas_fetch_all(string $query, array $params = []) : array
-{
-    try {
-        $result = Database::executeSqlQuery($query, $params);
-        if ($result instanceof \mysqli_result) {
-            $rows = [];
-            while ($row = $result->fetch_assoc()) {
-                $rows[] = $row;
-            }
-            return $rows;
-        }
-    } catch (\Throwable $e) {
-        // Gracefully degrade to an empty set.
-    }
-
-    return [];
-}
-
-function atlas_starts_with(string $haystack, string $needle) : bool
-{
-    return strncmp($haystack, $needle, strlen($needle)) === 0;
-}
-
-function atlas_media_url(?string $path) : ?string
-{
-    if ($path === null || $path === '') {
-        return null;
-    }
-
-    if (preg_match('/^https?:\\/\\//i', $path)) {
-        return $path;
-    }
-
-    $normalized = ltrim($path, '/');
-
-    if (atlas_starts_with($normalized, 'assets/media/')) {
-        return '/' . $normalized;
-    }
-
-    return '/assets/media/' . $normalized;
-}
-
-/**
- * Count quests hosted by an account.
- */
-function atlas_count_hosted_quests(int $accountId) : ?int
-{
-    return atlas_fetch_scalar(
-        'SELECT COUNT(*) FROM quest WHERE host_id = ? OR host_id_2 = ?',
-        [$accountId, $accountId]
-    );
-}
-
-/**
- * Fetch a lightweight account profile with avatar and level.
- */
-function atlas_fetch_account_profile(int $accountId) : ?array
-{
-    try {
-        $resp = AccountController::getAccountById(new vRecordId('', $accountId));
-        if ($resp->success && $resp->data) {
-            $account = $resp->data;
-            return [
-                'id' => (int)$account->crand,
-                'username' => (string)$account->username,
-                'avatar' => $account->profilePictureURL(),
-                'level' => isset($account->level) ? (int)$account->level : null,
-                'prestige' => isset($account->prestige) ? (int)$account->prestige : null,
-                'badges' => isset($account->badges) ? (int)$account->badges : null,
-            ];
-        }
-    } catch (\Throwable $e) {
-        // Gracefully degrade to a lightweight fallback query.
-    }
-
-    $row = atlas_fetch_one(
-        'SELECT Id, Username, avatar_media, level, prestige, badges FROM v_account_info WHERE Id = ? LIMIT 1',
-        [$accountId]
-    );
-
-    if (!$row) {
-        return null;
-    }
-
-    return [
-        'id' => isset($row['Id']) ? (int)$row['Id'] : $accountId,
-        'username' => (string)$row['Username'],
-        'avatar' => $row['avatar_media'] ?? null,
-        'level' => isset($row['level']) ? (int)$row['level'] : null,
-        'prestige' => isset($row['prestige']) ? (int)$row['prestige'] : null,
-        'badges' => isset($row['badges']) ? (int)$row['badges'] : null,
-    ];
-}
-
-$worldStats = [
-    'accounts' => $accountCountEndOfDataYear,
-    'guildsmen' => $accountCountEndOfDataYear,
-    'games' => atlas_fetch_scalar('SELECT COUNT(*) FROM game'),
-    'matches' => atlas_fetch_scalar('SELECT COUNT(*) FROM game_match'),
-    'rankedMatches' => atlas_fetch_scalar('SELECT COUNT(*) FROM game_match WHERE `set` IN (0,1)'),
-    'records' => atlas_fetch_scalar('SELECT COUNT(*) FROM game_record'),
-    'questsPublished' => atlas_fetch_scalar('SELECT COUNT(*) FROM quest WHERE published = 1'),
-    'questsRanPriorYear' => atlas_fetch_scalar(
-        'SELECT COUNT(*) FROM quest WHERE finished = 1 AND end_date >= ? AND end_date < ?',
-        [$previousYearStart, $atlasYearStart]
-    ),
-    'questsHostedPreviousYear' => $questsHostedPreviousYear,
-    'questsHostedBeforeYear' => $questsHostedBeforeYear,
-    'rankedMatchesPreviousYear' => $rankedMatchesPreviousYear,
-    'rankedMatchesBeforeYear' => $rankedMatchesBeforeYear,
-    'accountsCreatedPreviousYear' => $newAccountsPreviousYear,
-    'questLines' => atlas_fetch_scalar('SELECT COUNT(*) FROM quest_line'),
-    'questApplicants' => atlas_fetch_scalar('SELECT COUNT(*) FROM quest_applicants'),
-    'questParticipants' => atlas_fetch_scalar('SELECT COUNT(*) FROM quest_applicants WHERE participated = 1'),
-    'lootMinted' => atlas_fetch_scalar('SELECT COUNT(*) FROM loot'),
-    'items' => atlas_fetch_scalar('SELECT COUNT(*) FROM item'),
-    'trades' => atlas_fetch_scalar('SELECT COUNT(*) FROM trade'),
-    'transactions' => atlas_fetch_scalar('SELECT COUNT(*) FROM `transaction`'),
-    'shareholders' => atlas_fetch_scalar('SELECT COUNT(DISTINCT AccountId) FROM share_purchase'),
-    'sharesSold' => atlas_fetch_scalar('SELECT COALESCE(SUM(SharesPurchased),0) FROM share_purchase', [], 'float'),
-    'ticketsOpened' => atlas_fetch_scalar('SELECT COUNT(*) FROM ticket'),
-    'ticketsClosed' => atlas_fetch_scalar('SELECT COUNT(*) FROM ticket WHERE resolved_at IS NOT NULL OR closed_at IS NOT NULL'),
-    'analyticsEvents' => atlas_fetch_scalar('SELECT COUNT(*) FROM analytic')
-];
-
-$yearProgress = [
-    'accounts' => [
-        'label' => 'Adventurers Registered',
-        'start' => $accountCountEndOfPriorYear,
-        'end' => $accountCountEndOfDataYear,
-    ],
-    'quests' => [
-        'label' => 'Published Quests',
-        'start' => atlas_fetch_scalar(
-            'SELECT COUNT(*) FROM quest WHERE published = 1 AND end_date >= ? AND end_date < ?',
-            [$twoYearsBackStart, $previousYearStart]
-        ),
-        'end' => atlas_fetch_scalar(
-            'SELECT COUNT(*) FROM quest WHERE published = 1 AND end_date >= ? AND end_date < ?',
-            [$previousYearStart, $atlasYearStart]
-        ),
-    ],
-    'matches' => [
-        'label' => 'Matches Logged',
-        'start' => atlas_fetch_scalar(
-            'SELECT COUNT(*) FROM game_match WHERE Date >= ? AND Date < ?',
-            [$twoYearsBackStart, $previousYearStart]
-        ),
-        'end' => atlas_fetch_scalar(
-            'SELECT COUNT(*) FROM game_match WHERE Date >= ? AND Date < ?',
-            [$previousYearStart, $atlasYearStart]
-        ),
-    ],
-    'transactions' => [
-        'label' => 'Store Transactions',
-        'start' => atlas_fetch_scalar(
-            'SELECT COUNT(*) FROM `transaction` WHERE ctime >= ? AND ctime < ?',
-            [$twoYearsBackStart, $previousYearStart]
-        ),
-        'end' => atlas_fetch_scalar(
-            'SELECT COUNT(*) FROM `transaction` WHERE ctime >= ? AND ctime < ?',
-            [$previousYearStart, $atlasYearStart]
-        ),
-    ],
-];
-
-$honors = [
-    'tournaments' => null,
-    'prestige' => null,
-    'quester' => null,
-    'host' => null,
-    'renown' => null,
-    'kingOfGames' => null,
-];
-
-$honorsPeriodStart = $previousYearStart;
-$honorsPeriodEnd = $atlasYearStart;
-
-$tournamentRow = atlas_fetch_one(
-    'SELECT vtr.account_id AS account_id,
-            COUNT(DISTINCT vtr.tournament_id) AS tournaments_won,
-            COUNT(DISTINCT t.game_id) AS games_played
-     FROM v_tournament_results vtr
-     INNER JOIN tournament t ON vtr.tournament_id = t.Id
-     WHERE vtr.win = 1 AND vtr.account_id IS NOT NULL AND t.Date >= ? AND t.Date < ?
-     GROUP BY vtr.account_id
-     ORDER BY tournaments_won DESC, games_played DESC
-     LIMIT 1',
-    [$honorsPeriodStart, $honorsPeriodEnd]
-);
-if (!empty($tournamentRow['account_id'])) {
-    $profile = atlas_fetch_account_profile((int)$tournamentRow['account_id']);
-    if ($profile) {
-        $honors['tournaments'] = [
-            'profile' => $profile,
-            'tournamentsWon' => (int)$tournamentRow['tournaments_won'],
-            'gamesCount' => (int)$tournamentRow['games_played'],
-        ];
-    }
-}
-
-$prestigeRow = atlas_fetch_one(
-    'SELECT account_id_to AS account_id,
-            SUM(CASE WHEN commend = 1 THEN 1 ELSE -1 END) AS net_prestige,
-            COUNT(DISTINCT account_id_from) AS unique_givers
-     FROM prestige
-     WHERE date >= ? AND date < ?
-     GROUP BY account_id_to
-     ORDER BY net_prestige DESC, unique_givers DESC
-     LIMIT 1',
-    [$honorsPeriodStart, $honorsPeriodEnd]
-);
-if (!empty($prestigeRow['account_id'])) {
-    $profile = atlas_fetch_account_profile((int)$prestigeRow['account_id']);
-    if ($profile) {
-        $honors['prestige'] = [
-            'profile' => $profile,
-            'netPrestige' => (int)$prestigeRow['net_prestige'],
-            'uniqueGivers' => (int)$prestigeRow['unique_givers'],
-        ];
-    }
-}
-
-$questerRow = atlas_fetch_one(
-    'SELECT qa.account_id AS account_id, COUNT(*) AS quests_participated
-     FROM quest_applicants qa
-     INNER JOIN quest q ON qa.quest_id = q.Id
-     WHERE qa.participated = 1 AND q.end_date >= ? AND q.end_date < ?
-     GROUP BY qa.account_id
-     ORDER BY quests_participated DESC
-     LIMIT 1',
-    [$honorsPeriodStart, $honorsPeriodEnd]
-);
-if (!empty($questerRow['account_id'])) {
-    $profile = atlas_fetch_account_profile((int)$questerRow['account_id']);
-    if ($profile) {
-        $honors['quester'] = [
-            'profile' => $profile,
-            'questsParticipated' => (int)$questerRow['quests_participated'],
-        ];
-    }
-}
-
-$bestHostStart = $previousYearStart;
-$bestHostEnd = $atlasYearStart;
-$hostRow = atlas_fetch_one(
-    'SELECT host_account_id AS account_id,
-            COUNT(DISTINCT quest_id) AS quests_hosted,
-            AVG(host_rating) AS hosting_score
-     FROM (
-         SELECT q.Id AS quest_id, q.host_id AS host_account_id, qa.host_rating
-         FROM quest q
-         LEFT JOIN quest_applicants qa ON qa.quest_id = q.Id
-         WHERE q.end_date >= ? AND q.end_date < ? AND q.published = 1 AND q.finished = 1
-         UNION ALL
-         SELECT q.Id AS quest_id, q.host_id_2 AS host_account_id, qa.host_rating
-         FROM quest q
-         LEFT JOIN quest_applicants qa ON qa.quest_id = q.Id
-         WHERE q.host_id_2 IS NOT NULL AND q.end_date >= ? AND q.end_date < ? AND q.published = 1 AND q.finished = 1
-     ) hosted
-     WHERE host_account_id IS NOT NULL
-     GROUP BY host_account_id
-     ORDER BY (hosting_score IS NULL), hosting_score DESC, quests_hosted DESC
-     LIMIT 1',
-    [$bestHostStart, $bestHostEnd, $bestHostStart, $bestHostEnd]
-);
-if (!empty($hostRow['account_id'])) {
-    $profile = atlas_fetch_account_profile((int)$hostRow['account_id']);
-    if ($profile) {
-        $honors['host'] = [
-            'profile' => $profile,
-            'questsHosted' => (int)$hostRow['quests_hosted'],
-            'hostingScore' => isset($hostRow['hosting_score']) ? (float)$hostRow['hosting_score'] : null,
-        ];
-    }
-}
-
-$renownRow = atlas_fetch_one(
-    'SELECT account_id, COUNT(*) AS badge_count
-     FROM v_account_badge_info
-     WHERE dateObtained >= ? AND dateObtained < ?
-     GROUP BY account_id
-     ORDER BY badge_count DESC
-     LIMIT 1',
-    [$honorsPeriodStart, $honorsPeriodEnd]
-);
-if (!empty($renownRow['account_id'])) {
-    $profile = atlas_fetch_account_profile((int)$renownRow['account_id']);
-    if ($profile) {
-        $badgeRows = atlas_fetch_all(
-            'SELECT SmallImgPath
-             FROM v_account_badge_info
-             WHERE account_id = ? AND dateObtained >= ? AND dateObtained < ?
-             ORDER BY dateObtained DESC
-             LIMIT 12',
-            [$renownRow['account_id'], $honorsPeriodStart, $honorsPeriodEnd]
-        );
-        $honors['renown'] = [
-            'profile' => $profile,
-            'badgesEarned' => (int)$renownRow['badge_count'],
-            'badgeIcons' => array_values(array_filter(array_map(
-                fn($row) => atlas_media_url($row['SmallImgPath'] ?? null),
-                $badgeRows
-            ))),
-        ];
-    }
-}
-
-$kingRow = atlas_fetch_one(
-    'WITH active_accounts AS (
-         SELECT DISTINCT gr.account_id
-         FROM game_record gr
-         INNER JOIN game_match gm ON gm.Id = gr.game_match_id
-         WHERE gm.Date >= ? AND gm.Date < ?
-     ),
-     top_ranks AS (
-         SELECT v.account_id, v.game_id, v.elo_rating
-         FROM v_game_elo_rank_info v
-         WHERE v.rank = 1 AND v.is_ranked = 1
-     )
-     SELECT tr.account_id, COUNT(DISTINCT tr.game_id) AS gold_cards, SUM(tr.elo_rating) AS elo_sum
-     FROM top_ranks tr
-     INNER JOIN active_accounts aa ON aa.account_id = tr.account_id
-     GROUP BY tr.account_id
-     ORDER BY gold_cards DESC, elo_sum DESC
-     LIMIT 1',
-    [$honorsPeriodStart, $honorsPeriodEnd]
-);
-if (!empty($kingRow['account_id'])) {
-    $profile = atlas_fetch_account_profile((int)$kingRow['account_id']);
-    if ($profile) {
-        $honors['kingOfGames'] = [
-            'profile' => $profile,
-            'goldCards' => (int)$kingRow['gold_cards'],
-            'eloSum' => isset($kingRow['elo_sum']) ? (float)$kingRow['elo_sum'] : null,
-        ];
-    }
-}
-
-$accountPayload = null;
-$atlasAccount = null;
 
 $requestedAccountId = filter_input(INPUT_GET, 'accountId', FILTER_VALIDATE_INT);
 $requestedUsername = filter_input(INPUT_GET, 'accountUsername', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 $initialTab = filter_input(INPUT_GET, 'tab', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 
-if ($requestedAccountId !== null && $requestedAccountId !== false) {
-    $resp = AccountController::getAccountById(new vRecordId('', (int)$requestedAccountId));
-    if ($resp->success) {
-        $atlasAccount = $resp->data;
-    }
-}
+$atlasPayload = AtlasArchiveController::buildPayload(
+    $atlasYear,
+    $activeAccountInfo->account ?? null,
+    $requestedAccountId !== false ? $requestedAccountId : null,
+    $requestedUsername ?: null
+);
 
-if (is_null($atlasAccount) && !empty($requestedUsername)) {
-    $resp = AccountController::getAccountByUsername($requestedUsername);
-    if ($resp->success) {
-        $atlasAccount = $resp->data;
-    }
-}
-
-if (is_null($atlasAccount) && !empty($activeAccountInfo->account)) {
-    $atlasAccount = $activeAccountInfo->account;
-}
-
-if (!is_null($atlasAccount)) {
-    $accountId = $atlasAccount->crand;
-
-    $accountStats = [
-        'matches' => atlas_fetch_scalar('SELECT COUNT(*) FROM game_record WHERE account_id = ?', [$accountId]),
-        'wins' => atlas_fetch_scalar('SELECT COUNT(*) FROM game_record WHERE account_id = ? AND win = 1', [$accountId]),
-        'questsHosted' => atlas_count_hosted_quests($accountId),
-        'questsJoined' => atlas_fetch_scalar('SELECT COUNT(*) FROM quest_applicants WHERE account_id = ? AND participated = 1', [$accountId]),
-        'applications' => atlas_fetch_scalar('SELECT COUNT(*) FROM quest_applicants WHERE account_id = ?', [$accountId]),
-        'badges' => atlas_fetch_scalar('SELECT COUNT(*) FROM v_account_badge_info WHERE account_id = ?', [$accountId]),
-        'loot' => atlas_fetch_scalar('SELECT COUNT(*) FROM loot WHERE account_id = ?', [$accountId]),
-        'containers' => atlas_fetch_scalar('SELECT COUNT(*) FROM loot l INNER JOIN item i ON l.item_id = i.Id WHERE l.account_id = ? AND i.is_container = 1', [$accountId]),
-        'trades' => atlas_fetch_scalar('SELECT COUNT(*) FROM trade WHERE from_account_id = ? OR to_account_id = ?', [$accountId, $accountId]),
-        'sharePurchases' => atlas_fetch_scalar('SELECT COALESCE(SUM(SharesPurchased),0) FROM share_purchase WHERE AccountId = ?', [$accountId], 'float'),
-        'ticketsFiled' => atlas_fetch_scalar('SELECT COUNT(*) FROM ticket WHERE created_by_crand = ?', [$accountId]),
-        'ticketsResolved' => atlas_fetch_scalar('SELECT COUNT(*) FROM ticket WHERE created_by_crand = ? AND resolved_at IS NOT NULL', [$accountId]),
-    ];
-
-    $winRate = null;
-    if (!empty($accountStats['matches'])) {
-        $winRate = ($accountStats['wins'] ?? 0) / max($accountStats['matches'], 1);
-    }
-
-    $accountPayload = [
-        'profile' => [
-            'username' => $atlasAccount->username,
-            'title' => $atlasAccount->getAccountTitle(),
-            'level' => $atlasAccount->level,
-            'prestige' => $atlasAccount->prestige,
-            'exp' => $atlasAccount->exp,
-            'roles' => [
-                'admin' => $atlasAccount->isAdmin,
-                'merchant' => $atlasAccount->isMerchant,
-                'adventurer' => $atlasAccount->isAdventurer,
-                'questGiver' => $atlasAccount->isQuestGiver,
-                'steward' => $atlasAccount->isSteward,
-                'craftsmen' => $atlasAccount->isCraftsmen,
-                'artist' => $atlasAccount->isArtist,
-            ],
-            'links' => [
-                'discord' => $atlasAccount->isDiscordLinked(),
-                'steam' => $atlasAccount->isSteamLinked(),
-            ],
-        ],
-        'stats' => $accountStats,
-        'winRate' => $winRate,
-    ];
-}
-
-$atlasPayload = [
-    'year' => $atlasYear,
-    'world' => $worldStats,
-    'yearProgress' => $yearProgress,
-    'honors' => $honors,
-    'account' => $accountPayload,
-];
+$atlasYear = $atlasPayload['year'] ?? $atlasYear;
 ?>
 <!doctype html>
 <html lang="en">
@@ -1071,6 +572,33 @@ $atlasPayload = [
       object-fit: cover;
       background: rgba(255,255,255,0.05);
     }
+    .game-icon-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 8px;
+    }
+    .game-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.05);
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+    .game-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .game-icon-fallback {
+      color: var(--muted);
+      font-weight: 700;
+    }
     .sequence-item { opacity: 1; }
     .control-bar {
       background: rgba(12,18,28,0.6);
@@ -1145,6 +673,17 @@ $atlasPayload = [
     const account = atlasData.account;
     const honors = atlasData?.honors || {};
 
+    const escapeHtml = (value) => {
+      if (value === null || value === undefined) return "";
+      return value
+        .toString()
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    };
+
     const slugifySegment = (value, fallback) => {
       const cleaned = (value ?? "")
         .toString()
@@ -1188,6 +727,19 @@ $atlasPayload = [
       if (url.startsWith("http")) return url;
       return url.startsWith("/") ? url : `/${url}`;
     };
+    const renderGameIconRow = (games) => {
+      if (!games || games.length === 0) return "";
+      const items = games.map((game) => {
+        const icon = safeAvatar(game.icon);
+        const name = escapeHtml(game.name ?? "Unknown game");
+        const fallback = escapeHtml((game.name ?? "?").slice(0, 1) || "?");
+        const visual = icon
+          ? `<img src="${icon}" alt="${name} icon" title="${name}">`
+          : `<span class="game-icon-fallback" title="${name}">${fallback}</span>`;
+        return `<div class="game-icon" title="${name}">${visual}</div>`;
+      }).join("");
+      return `<div class="game-icon-row" aria-label="Games spanned">${items}</div>`;
+    };
     const renderHonorProfile = (entry, subtitle) => {
       const profile = entry?.profile;
       if (!profile) {
@@ -1218,12 +770,13 @@ $atlasPayload = [
         </div>
       `;
     };
-    const renderStatPill = (label, value, detail) => {
+    const renderStatPill = (label, value, detail, extra) => {
       return `
         <div class="stat-pill">
           <div class="label">${label}</div>
           <div class="value">${fmt(value)}</div>
           ${detail ? `<div class="muted">${detail}</div>` : ""}
+          ${extra ?? ""}
         </div>
       `;
     };
@@ -1399,7 +952,7 @@ $atlasPayload = [
               ${entry ? `
                 <div class="honor-stats">
                   ${renderStatPill("Tournaments Won", entry.tournamentsWon, `Finished first in ${previousYear}`)}
-                  ${renderStatPill("Games Spanned", entry.gamesCount, "Different titles conquered")}
+                  ${renderStatPill("Games Spanned", entry.gamesCount, "Different titles conquered", renderGameIconRow(entry.games))}
                 </div>
               ` : `<div class="muted">No tournament victories recorded for ${previousYear}.</div>`}
             </div>
