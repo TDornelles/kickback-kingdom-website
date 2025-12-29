@@ -126,6 +126,23 @@ function atlas_fetch_all(string $query, array $params = []) : array
  */
 function atlas_fetch_account_profile(int $accountId) : ?array
 {
+    try {
+        $resp = AccountController::getAccountById(new vRecordId('', $accountId));
+        if ($resp->success && $resp->data) {
+            $account = $resp->data;
+            return [
+                'id' => (int)$account->crand,
+                'username' => (string)$account->username,
+                'avatar' => $account->profilePictureURL(),
+                'level' => isset($account->level) ? (int)$account->level : null,
+                'prestige' => isset($account->prestige) ? (int)$account->prestige : null,
+                'badges' => isset($account->badges) ? (int)$account->badges : null,
+            ];
+        }
+    } catch (\Throwable $e) {
+        // Gracefully degrade to a lightweight fallback query.
+    }
+
     $row = atlas_fetch_one(
         'SELECT Id, Username, avatar_media, level, prestige, badges FROM v_account_info WHERE Id = ? LIMIT 1',
         [$accountId]
@@ -136,7 +153,7 @@ function atlas_fetch_account_profile(int $accountId) : ?array
     }
 
     return [
-        'id' => (int)$row['Id'],
+        'id' => isset($row['Id']) ? (int)$row['Id'] : $accountId,
         'username' => (string)$row['Username'],
         'avatar' => $row['avatar_media'] ?? null,
         'level' => isset($row['level']) ? (int)$row['level'] : null,
@@ -1332,16 +1349,16 @@ $atlasPayload = [
           return `
             <div class="slide-hero">
               <div class="mega">Most Tournaments Won</div>
-              <div class="lead">Champion with the most trophies in ${year}. Distinct games played are counted for cross-discipline glory.</div>
+              <div class="lead">Champion with the most trophies in ${previousYear}. Distinct games played are counted for cross-discipline glory.</div>
             </div>
             <div class="honor-card">
-              ${renderHonorProfile(entry, `Led the bracket in ${year}`)}
+              ${renderHonorProfile(entry, `Led the bracket in ${previousYear}`)}
               ${entry ? `
                 <div class="honor-stats">
-                  ${renderStatPill("Tournaments Won", entry.tournamentsWon, `Finished first in ${year}`)}
+                  ${renderStatPill("Tournaments Won", entry.tournamentsWon, `Finished first in ${previousYear}`)}
                   ${renderStatPill("Games Spanned", entry.gamesCount, "Different titles conquered")}
                 </div>
-              ` : `<div class="muted">No tournament victories recorded for ${year}.</div>`}
+              ` : `<div class="muted">No tournament victories recorded for ${previousYear}.</div>`}
             </div>
           `;
         },
@@ -1355,16 +1372,16 @@ $atlasPayload = [
           return `
             <div class="slide-hero">
               <div class="mega">Most Prestigious</div>
-              <div class="lead">Highest net prestige earned from unique commendations during ${year}.</div>
+              <div class="lead">Highest net prestige earned from unique commendations during ${previousYear}.</div>
             </div>
             <div class="honor-card">
-              ${renderHonorProfile(entry, `Commended the most in ${year}`)}
+              ${renderHonorProfile(entry, `Commended the most in ${previousYear}`)}
               ${entry ? `
                 <div class="honor-stats">
                   ${renderStatPill("Net Prestige", entry.netPrestige, "Commends minus denouncements")}
                   ${renderStatPill("Unique Givers", entry.uniqueGivers, "Different accounts who granted prestige")}
                 </div>
-              ` : `<div class="muted">No prestige activity recorded for ${year}.</div>`}
+              ` : `<div class="muted">No prestige activity recorded for ${previousYear}.</div>`}
             </div>
           `;
         },
@@ -1378,15 +1395,15 @@ $atlasPayload = [
           return `
             <div class="slide-hero">
               <div class="mega">Biggest Quester</div>
-              <div class="lead">Most quest participations for ${year}, using finished quests within the calendar window.</div>
+              <div class="lead">Most quest participations for ${previousYear}, using finished quests within the calendar window.</div>
             </div>
             <div class="honor-card">
-              ${renderHonorProfile(entry, `Participated the most in ${year}`)}
+              ${renderHonorProfile(entry, `Participated the most in ${previousYear}`)}
               ${entry ? `
                 <div class="honor-stats">
                   ${renderStatPill("Quests Participated", entry.questsParticipated, "Finished quests joined")}
                 </div>
-              ` : `<div class="muted">No quest participation detected for ${year}.</div>`}
+              ` : `<div class="muted">No quest participation detected for ${previousYear}.</div>`}
             </div>
           `;
         },
@@ -1400,16 +1417,16 @@ $atlasPayload = [
           return `
             <div class="slide-hero">
               <div class="mega">Best Host</div>
-              <div class="lead">Highest hosting score from participant feedback on published, finished quests in ${year}.</div>
+              <div class="lead">Highest hosting score from participant feedback on published, finished quests in ${previousYear}.</div>
             </div>
             <div class="honor-card">
-              ${renderHonorProfile(entry, `Host excellence in ${year}`)}
+              ${renderHonorProfile(entry, `Host excellence in ${previousYear}`)}
               ${entry ? `
                 <div class="honor-stats">
                   ${renderStatPill("Hosting Score", entry.hostingScore?.toFixed ? Number(entry.hostingScore).toFixed(2) : entry.hostingScore, "Average host rating")}
                   ${renderStatPill("Quests Hosted", entry.questsHosted, "Published & finished in-year")}
                 </div>
-              ` : `<div class="muted">No hosted quests with feedback in ${year}.</div>`}
+              ` : `<div class="muted">No hosted quests with feedback in ${previousYear}.</div>`}
             </div>
           `;
         },
@@ -1423,16 +1440,16 @@ $atlasPayload = [
           return `
             <div class="slide-hero">
               <div class="mega">Most Renown</div>
-              <div class="lead">Most badges earned during ${year}, showcasing their iconic art.</div>
+              <div class="lead">Most badges earned during ${previousYear}, showcasing their iconic art.</div>
             </div>
             <div class="honor-card">
-              ${renderHonorProfile(entry, `Badge haul in ${year}`)}
+              ${renderHonorProfile(entry, `Badge haul in ${previousYear}`)}
               ${entry ? `
                 <div class="honor-stats">
-                  ${renderStatPill("Badges Earned", entry.badgesEarned, `${year} only`)}
+                  ${renderStatPill("Badges Earned", entry.badgesEarned, `${previousYear} only`)}
                 </div>
                 ${renderBadgeRow(entry.badgeIcons)}
-              ` : `<div class="muted">No badge awards recorded for ${year}.</div>`}
+              ` : `<div class="muted">No badge awards recorded for ${previousYear}.</div>`}
             </div>
           `;
         },
@@ -1446,17 +1463,17 @@ $atlasPayload = [
           return `
             <div class="slide-hero">
               <div class="mega">King of Games</div>
-              <div class="lead">Most gold cards (#1 Elo per game) among accounts active in ${year}; tie-breaks by Elo sum and profile level.</div>
+              <div class="lead">Most gold cards (#1 Elo per game) among accounts active in ${previousYear}; tie-breaks by Elo sum and profile level.</div>
             </div>
             <div class="honor-card">
-              ${renderHonorProfile(entry, `Top of the ladders in ${year}`)}
+              ${renderHonorProfile(entry, `Top of the ladders in ${previousYear}`)}
               ${entry ? `
                 <div class="honor-stats">
                   ${renderStatPill("Gold Cards Held", entry.goldCards, "Games where they are rank #1")}
                   ${renderStatPill("Elo Sum", entry.eloSum, "Tie-break metric")}
                   ${entry.profile?.level !== undefined ? renderStatPill("Profile Level", entry.profile.level, "Secondary tie-breaker") : ""}
                 </div>
-              ` : `<div class="muted">No ranked ladders with gold card holders recorded for ${year}.</div>`}
+              ` : `<div class="muted">No ranked ladders with gold card holders recorded for ${previousYear}.</div>`}
             </div>
           `;
         },
