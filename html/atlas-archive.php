@@ -121,6 +121,30 @@ function atlas_fetch_all(string $query, array $params = []) : array
     return [];
 }
 
+function atlas_starts_with(string $haystack, string $needle) : bool
+{
+    return strncmp($haystack, $needle, strlen($needle)) === 0;
+}
+
+function atlas_media_url(?string $path) : ?string
+{
+    if ($path === null || $path === '') {
+        return null;
+    }
+
+    if (preg_match('/^https?:\\/\\//i', $path)) {
+        return $path;
+    }
+
+    $normalized = ltrim($path, '/');
+
+    if (atlas_starts_with($normalized, 'assets/media/')) {
+        return '/' . $normalized;
+    }
+
+    return '/assets/media/' . $normalized;
+}
+
 /**
  * Fetch a lightweight account profile with avatar and level.
  */
@@ -363,27 +387,30 @@ if (!empty($renownRow['account_id'])) {
         $honors['renown'] = [
             'profile' => $profile,
             'badgesEarned' => (int)$renownRow['badge_count'],
-            'badgeIcons' => array_values(array_filter(array_map(fn($row) => $row['SmallImgPath'] ?? null, $badgeRows))),
+            'badgeIcons' => array_values(array_filter(array_map(
+                fn($row) => atlas_media_url($row['SmallImgPath'] ?? null),
+                $badgeRows
+            ))),
         ];
     }
 }
 
 $kingRow = atlas_fetch_one(
-    'WITH yearly_players AS (
-         SELECT DISTINCT gr.account_id, gr.game_id
+    'WITH active_accounts AS (
+         SELECT DISTINCT gr.account_id
          FROM game_record gr
          INNER JOIN game_match gm ON gm.Id = gr.game_match_id
          WHERE gm.Date >= ? AND gm.Date < ?
      ),
      top_ranks AS (
-         SELECT v.account_id, v.game_id, v.elo_rating, v.rank
+         SELECT v.account_id, v.game_id, v.elo_rating
          FROM v_game_elo_rank_info v
-         INNER JOIN yearly_players yp ON yp.account_id = v.account_id AND yp.game_id = v.game_id
-         WHERE v.rank = 1
+         WHERE v.rank = 1 AND v.is_ranked = 1
      )
-     SELECT account_id, COUNT(*) AS gold_cards, SUM(elo_rating) AS elo_sum
-     FROM top_ranks
-     GROUP BY account_id
+     SELECT tr.account_id, COUNT(DISTINCT tr.game_id) AS gold_cards, SUM(tr.elo_rating) AS elo_sum
+     FROM top_ranks tr
+     INNER JOIN active_accounts aa ON aa.account_id = tr.account_id
+     GROUP BY tr.account_id
      ORDER BY gold_cards DESC, elo_sum DESC
      LIMIT 1',
     [$honorsPeriodStart, $honorsPeriodEnd]
