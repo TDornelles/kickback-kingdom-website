@@ -272,18 +272,13 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
     .slides-stage .slide:focus-visible {
       outline: none;
     }
-    .slide-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-bottom: 12px;
-    }
     .slide-body {
       flex: 1;
       overflow: visible;
       padding-right: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
     }
     .slide-title {
       display: flex;
@@ -319,6 +314,12 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.08em;
+    }
+    .slide-share {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 4;
     }
     .stat-grid {
       display: grid;
@@ -544,6 +545,34 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       display: grid;
       gap: 2px;
     }
+    .honor-name-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .profile-open-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.05);
+      color: var(--text);
+      transition: transform 140ms ease, background 140ms ease, border-color 140ms ease;
+    }
+    .profile-open-link:hover {
+      transform: translateY(-2px);
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(255,255,255,0.18);
+      color: var(--accent-2);
+    }
+    .profile-open-link:focus-visible {
+      outline: 2px solid var(--accent-2);
+      outline-offset: 2px;
+    }
     .honor-stats {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -595,6 +624,22 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       object-fit: cover;
       display: block;
     }
+    .slide-icon {
+      transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
+      cursor: pointer;
+    }
+    .slide-icon:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.28);
+      background: rgba(255,255,255,0.07);
+      border-color: rgba(255,255,255,0.18);
+    }
+    .slide-icon-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
     .game-icon-fallback {
       color: var(--muted);
       font-weight: 700;
@@ -632,8 +677,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       .slides-stage { padding: 78px 14px 18px; height: 76vh; }
       .slides-stage .slide { inset: 12px; padding: 18px; }
       .hud.floating { inset: 12px 12px auto 12px; flex-wrap: wrap; gap: 8px; }
-      .slide-header { flex-direction: column; align-items: flex-start; }
-      .copy-link { width: 100%; justify-content: center; text-align: center; }
+      .copy-link { width: auto; }
       .control-bar { width: 100%; }
       .control-bar button { flex: 1 1 120px; }
     }
@@ -734,11 +778,11 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         const name = escapeHtml(game.name ?? "Unknown game");
         const fallback = escapeHtml((game.name ?? "?").slice(0, 1) || "?");
         const visual = icon
-          ? `<img src="${icon}" alt="${name} icon" title="${name}">`
-          : `<span class="game-icon-fallback" title="${name}">${fallback}</span>`;
-        return `<div class="game-icon" title="${name}">${visual}</div>`;
+          ? `<img src="${icon}" alt="${name} icon">`
+          : `<span class="game-icon-fallback">${fallback}</span>`;
+        return `<div class="game-icon slide-icon" title="${name}" data-bs-toggle="tooltip" data-bs-placement="top">${visual}</div>`;
       }).join("");
-      return `<div class="game-icon-row" aria-label="Games spanned">${items}</div>`;
+      return `<div class="game-icon-row slide-icon-group" aria-label="Games spanned">${items}</div>`;
     };
     const renderHonorProfile = (entry, subtitle) => {
       const profile = entry?.profile;
@@ -761,11 +805,13 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
             ${avatar ? `<img src="${avatar}" alt="${profile.username} avatar">` : `<span class="muted">No avatar</span>`}
           </div>
           <div class="honor-meta">
-            <div class="mega" style="font-size:32px;">${profile.username}</div>
-            <div class="muted">${subtitle || ""}</div>
-            <div class="actions">
-              <a class="cta-primary" href="${profileUrl}" target="_blank" rel="noopener">Open Profile</a>
+            <div class="honor-name-row">
+              <div class="mega" style="font-size:32px;">${profile.username}</div>
+              <a class="profile-open-link" href="${profileUrl}" target="_blank" rel="noopener" aria-label="Open ${profile.username}'s profile" title="Open profile in new tab">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+              </a>
             </div>
+            <div class="muted">${subtitle || ""}</div>
           </div>
         </div>
       `;
@@ -784,7 +830,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       if (!icons || icons.length === 0) {
         return `<div class="muted">No badge art recorded for this year.</div>`;
       }
-      return `<div class="badge-row">${icons.map((src) => `<img src="${safeAvatar(src) ?? ""}" alt="Badge icon">`).join("")}</div>`;
+      return `<div class="badge-row">${icons.map((src, idx) => `<img src="${safeAvatar(src) ?? ""}" alt="Badge icon ${idx + 1}" class="slide-icon" data-bs-toggle="tooltip" data-bs-placement="top" title="Badge ${idx + 1}">`).join("")}</div>`;
     };
     const slides = [
       {
@@ -1333,8 +1379,8 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         duration: 750,
       },
       defaultElements: [
-        { selector: ".slide-header", enter: "animate__fadeInDown", exit: "animate__fadeOutUp", delay: 0 },
         { selector: ".slide-body > *", enter: "animate__fadeInUp", exit: "animate__fadeOutDown", stagger: true },
+        { selector: ".slide-share", enter: "animate__fadeInDown", exit: "animate__fadeOutUp", delay: 0 },
       ],
       slides: {
         title: {
@@ -1403,15 +1449,15 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       section.id = slide.id;
       section.tabIndex = -1;
       section.dataset.index = index;
-      const heading = slide.hideHeaderTitle ? "" : `<h2>${slide.title}</h2>`;
+      const heading = slide.hideHeaderTitle ? "" : `<div class="slide-title"><h2>${slide.title}</h2></div>`;
       section.innerHTML = `
-        <div class="slide-header">
-          <div class="slide-title">
-            ${heading}
-          </div>
-          <button class="copy-link" data-slide="${slide.id}">Share Slide</button>
+        <button class="copy-link slide-share" data-slide="${slide.id}" aria-label="Share slide ${slide.title}">
+          <i class="fa-solid fa-link"></i>
+        </button>
+        <div class="slide-body">
+          ${heading}
+          ${slide.render(atlasData)}
         </div>
-        <div class="slide-body">${slide.render(atlasData)}</div>
       `;
       slidesContainer.appendChild(section);
       sectionRefs.push(section);
@@ -1532,6 +1578,14 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
+      });
+    }
+    function enableTooltips() {
+      if (!window.bootstrap || !bootstrap.Tooltip) return;
+      document.querySelectorAll('[data-bs-toggle=\"tooltip\"]').forEach((triggerEl) => {
+        const existing = bootstrap.Tooltip.getInstance(triggerEl);
+        if (existing) existing.dispose();
+        new bootstrap.Tooltip(triggerEl);
       });
     }
     function animateNumbers(section) {
@@ -1731,6 +1785,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
     });
 
     window.addEventListener("load", () => {
+      enableTooltips();
       if (typeof StartFireworks === "function") {
         StartFireworks();
       }

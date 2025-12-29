@@ -245,14 +245,28 @@ class AtlasArchiveController
     private function buildPrestigeHonor(string $periodStart, string $periodEnd) : ?array
     {
         $row = $this->fetchOne(
-            'SELECT account_id_to AS account_id,
+            "WITH agg AS (
+                SELECT
+                    account_id_to AS account_id,
                     SUM(CASE WHEN commend = 1 THEN 1 ELSE -1 END) AS net_prestige,
-                    COUNT(DISTINCT account_id_from) AS unique_givers
-             FROM prestige
-             WHERE date >= ? AND date < ?
-             GROUP BY account_id_to
-             ORDER BY net_prestige DESC, unique_givers DESC
-             LIMIT 1',
+                    COUNT(DISTINCT account_id_from) AS unique_givers,
+                    SUM(CASE WHEN commend = 1 THEN 1 ELSE 0 END) AS pos,
+                    SUM(CASE WHEN commend = 1 THEN 0 ELSE 1 END) AS neg
+                FROM prestige
+                WHERE date >= ? AND date < ?
+                GROUP BY account_id_to
+            )
+            SELECT
+                account_id,
+                net_prestige,
+                unique_givers,
+                pos,
+                neg,
+                ((pos + 1.0) / (pos + neg + 2.0)) * SQRT(unique_givers) * net_prestige AS score
+            FROM agg
+            WHERE net_prestige > 0
+            ORDER BY score DESC, net_prestige DESC, unique_givers DESC
+            LIMIT 1",
             [$periodStart, $periodEnd]
         );
 
