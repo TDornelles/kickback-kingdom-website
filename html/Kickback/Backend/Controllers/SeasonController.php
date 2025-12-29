@@ -286,7 +286,7 @@ class SeasonController
                 return '/assets/media/seasonal/valentines-bg.png';
 
             case self::SEASON_NEW_YEAR:
-                return '/assets/media/seasonal/newyear-bg.png';
+                return '/assets/images/kk-ny.jpg';
 
             case self::SEASON_THANKSGIVING:
                 return '/assets/media/seasonal/thanksgiving-bg.png';

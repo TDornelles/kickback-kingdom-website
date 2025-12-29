@@ -319,24 +319,63 @@ class AtlasArchiveController
     private function buildHostHonor(string $periodStart, string $periodEnd) : ?array
     {
         $row = $this->fetchOne(
-            'SELECT host_account_id AS account_id,
-                    COUNT(DISTINCT quest_id) AS quests_hosted,
-                    AVG(host_rating) AS hosting_score
-             FROM (
-                 SELECT q.Id AS quest_id, q.host_id AS host_account_id, qa.host_rating
-                 FROM quest q
-                 LEFT JOIN quest_applicants qa ON qa.quest_id = q.Id
-                 WHERE q.end_date >= ? AND q.end_date < ? AND q.published = 1 AND q.finished = 1
-                 UNION ALL
-                 SELECT q.Id AS quest_id, q.host_id_2 AS host_account_id, qa.host_rating
-                 FROM quest q
-                 LEFT JOIN quest_applicants qa ON qa.quest_id = q.Id
-                 WHERE q.end_date >= ? AND q.end_date < ? AND q.published = 1 AND q.finished = 1 AND q.host_id_2 IS NOT NULL
-             ) AS host_data
-             WHERE host_account_id IS NOT NULL
-             GROUP BY host_account_id
-             HAVING quests_hosted > 0
-             ORDER BY hosting_score DESC
+            'WITH hostings AS (
+    SELECT q.Id AS quest_id,
+           q.host_id AS host_account_id,
+           COUNT(DISTINCT qa.account_id) AS participants,
+           SUM(CASE WHEN qa.host_rating IS NOT NULL THEN 1 ELSE 0 END) AS rating_count,
+           SUM(COALESCE(qa.host_rating, 0)) AS rating_sum
+    FROM quest q
+    LEFT JOIN quest_applicants qa ON qa.quest_id = q.Id
+    WHERE q.end_date >= ? AND q.end_date < ?
+      AND q.published = 1 AND q.finished = 1
+      AND q.host_id IS NOT NULL AND q.host_id > 0  and q.host_id <> 46 and qa.rewards_collected = 1 and qa.participated = 1
+    GROUP BY q.Id, q.host_id
+    HAVING COUNT(DISTINCT qa.account_id) > 0
+
+    UNION ALL
+
+    SELECT q.Id AS quest_id,
+           q.host_id_2 AS host_account_id,
+           COUNT(DISTINCT qa.account_id) AS participants,
+           SUM(CASE WHEN qa.host_rating IS NOT NULL THEN 1 ELSE 0 END) AS rating_count,
+           SUM(COALESCE(qa.host_rating, 0)) AS rating_sum
+    FROM quest q
+    LEFT JOIN quest_applicants qa ON qa.quest_id = q.Id
+    WHERE q.end_date >= ? AND q.end_date < ?
+      AND q.published = 1 AND q.finished = 1
+      AND q.host_id_2 IS NOT NULL AND q.host_id_2 > 0  and q.host_id_2 <> 46 and qa.rewards_collected = 1 and qa.participated = 1
+    GROUP BY q.Id, q.host_id_2
+    HAVING COUNT(DISTINCT qa.account_id) > 0
+),
+agg AS (
+    SELECT host_account_id AS account_id,
+           COUNT(DISTINCT quest_id) AS quests_hosted,
+           SUM(participants) AS participants_total,
+           SUM(rating_sum) AS rating_sum,
+           SUM(rating_count) AS rating_count
+    FROM hostings
+    WHERE host_account_id > 0
+    GROUP BY host_account_id
+),
+scored AS (
+    SELECT account_id,
+           quests_hosted,
+           participants_total,
+           ((rating_sum + 20 * 4.5) / NULLIF(rating_count + 20, 0)) AS bayes_avg,
+           ((rating_sum + 20 * 4.5) / NULLIF(rating_count + 20, 0))
+             * LOG(1 + quests_hosted)
+             * SQRT(participants_total) AS score
+    FROM agg
+    WHERE participants_total > 0
+)
+SELECT account_id,
+       quests_hosted,
+       participants_total,
+       bayes_avg AS hosting_score,
+       score as score
+FROM scored
+ORDER BY score DESC, bayes_avg DESC, participants_total DESC
              LIMIT 1',
             [$periodStart, $periodEnd, $periodStart, $periodEnd]
         );
