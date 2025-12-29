@@ -645,25 +645,12 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       font-weight: 700;
     }
     .sequence-item { opacity: 1; }
-    .control-bar {
-      background: rgba(12,18,28,0.6);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      backdrop-filter: blur(8px);
-      box-shadow: var(--shadow);
-      padding: 10px 14px;
-    }
-    .control-bar button {
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,0.05);
-      color: var(--text);
-      font-weight: 700;
-      padding: 8px 14px;
-    }
-    .control-bar button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
+    .slide-progress {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 18px;
+      gap: 10px;
+      flex-wrap: wrap;
     }
     @keyframes sparkFly {
       0% { transform: translate(0, 0) scale(1); opacity: 1; }
@@ -671,15 +658,12 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
     }
     @media (max-width: 960px) {
       .page { grid-template-columns: 1fr; }
-      .control-bar { position: sticky; top: 0; }
     }
     @media (max-width: 768px) {
       .slides-stage { padding: 78px 14px 18px; height: 76vh; }
       .slides-stage .slide { inset: 12px; padding: 18px; }
       .hud.floating { inset: 12px 12px auto 12px; flex-wrap: wrap; gap: 8px; }
       .copy-link { width: auto; }
-      .control-bar { width: 100%; }
-      .control-bar button { flex: 1 1 120px; }
     }
   </style>
   <div class="page-shell scanlines">
@@ -693,16 +677,9 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
                 <span class="pill">Atlas</span>
                 <span class="pill"><?php echo htmlspecialchars((string)$atlasYear, ENT_QUOTES, 'UTF-8'); ?></span>
               </div>
-              <div class="hud-dots d-inline-flex gap-2" id="dot-nav" aria-label="Slide navigation"></div>
+            <div class="hud-dots d-inline-flex gap-2" id="dot-nav" aria-label="Slide navigation"></div>
             </div>
             <div id="slides" class="w-100"></div>
-          </div>
-        </div>
-        <div class="col-12">
-          <div class="control-bar d-flex align-items-center justify-content-center gap-2 flex-wrap mt-2" aria-label="Slide controls">
-            <button id="prev-btn" class="btn btn-outline-light btn-sm">◀</button>
-            <span id="counter" class="muted" aria-live="polite">Slide 1/1</span>
-            <button id="next-btn" class="btn btn-outline-light btn-sm">▶</button>
           </div>
         </div>
       </main>
@@ -841,6 +818,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         title: "Atlas Archive",
         accent: "accent-bg-cyan",
         hideHeaderTitle: true,
+        nextCtaLabel: "Begin",
         render: () => `
           <div class="slide-hero">
             <div class="title-logo shadow-sm">
@@ -861,6 +839,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         title: "Community Spotlight",
         accent: "accent-bg-gold",
         hideHeaderTitle: true,
+        nextCtaLabel: "Continue",
         render: () => {
           const w = atlasData.world || {};
           const prog = atlasData.yearProgress || {};
@@ -975,6 +954,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         title: "Kingdom Highlights",
         accent: "accent-bg-violet",
         hideHeaderTitle: true,
+        nextCtaLabel: "Begin Highlights",
         render: () => `
           <div class="slide-hero">
             <div class="mega">Honorable Stats & Achievements</div>
@@ -989,6 +969,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         id: "honor-tournaments",
         title: "Most Tournaments Won",
         accent: "accent-bg-gold",
+        nextCtaLabel: "Next Highlight",
         render: () => {
           const entry = honors?.tournaments;
           return `
@@ -1012,6 +993,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         id: "honor-prestige",
         title: "Most Prestigious",
         accent: "accent-bg-pink",
+        nextCtaLabel: "Next Highlight",
         render: () => {
           const entry = honors?.prestige;
           return `
@@ -1035,6 +1017,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         id: "honor-quester",
         title: "Biggest Quester",
         accent: "accent-bg-cyan",
+        nextCtaLabel: "Next Highlight",
         render: () => {
           const entry = honors?.quester;
           return `
@@ -1057,6 +1040,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         id: "honor-host",
         title: "Best Host",
         accent: "accent-bg-gold",
+        nextCtaLabel: "Next Highlight",
         render: () => {
           const entry = honors?.host;
           return `
@@ -1080,6 +1064,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         id: "honor-renown",
         title: "Most Renown",
         accent: "accent-bg-violet",
+        nextCtaLabel: "Next Highlight",
         render: () => {
           const entry = honors?.renown;
           return `
@@ -1103,6 +1088,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         id: "honor-treasure",
         title: "Most Treasure Collected",
         accent: "accent-bg-gold",
+        nextCtaLabel: "Next Highlight",
         render: () => {
           const entry = honors?.treasureHunter;
           return `
@@ -1126,6 +1112,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         id: "honor-raffle",
         title: "Luckiest Person",
         accent: "accent-bg-pink",
+        nextCtaLabel: "Next Highlight",
         render: () => {
           const entry = honors?.raffleLuck;
           return `
@@ -1149,6 +1136,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         id: "honor-king-games",
         title: "King of Games",
         accent: "accent-bg-cyan",
+        nextCtaLabel: "Next Highlight",
         render: () => {
           const entry = honors?.kingOfGames;
           return `
@@ -1173,6 +1161,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         id: "account-hero",
         title: "Your Atlas Spotlight",
         accent: "accent-bg-gold",
+        nextCtaLabel: "Personal Stats",
         render: () => {
           if (!account) {
             return `
@@ -1215,6 +1204,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         id: "account-quests",
         title: "Your Quest Journey",
         accent: "accent-bg-cyan",
+        nextCtaLabel: "Quest Details",
         render: () => {
           if (!account) {
             return `
@@ -1259,6 +1249,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         id: "account-play",
         title: "Your Match History",
         accent: "accent-bg-violet",
+        nextCtaLabel: "Battle Stats",
         render: () => {
           if (!account) {
             return `
@@ -1304,6 +1295,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         id: "account-inventory",
         title: "Your Collection & Trade",
         accent: "accent-bg-gold",
+        nextCtaLabel: "Inventory",
         render: () => {
           if (!account) {
             return `
@@ -1348,6 +1340,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         id: "account-support",
         title: "Your Support & Safety",
         accent: "accent-bg-cyan",
+        nextCtaLabel: "Support Log",
         render: () => {
           if (!account) {
             return `
@@ -1392,6 +1385,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         id: "farewell",
         title: "Farewell",
         accent: "accent-bg-pink",
+        nextCtaLabel: "Finish",
         render: () => `
           <div class="slide-hero">
             <div class="mega">Thank you for building ${year}</div>
@@ -1410,9 +1404,6 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
 
     const slidesContainer = document.getElementById("slides");
     const dotNav = document.getElementById("dot-nav");
-    const prevBtn = document.getElementById("prev-btn");
-    const nextBtn = document.getElementById("next-btn");
-    const counter = document.getElementById("counter");
     const slideStage = document.querySelector(".slides-stage");
     const animationConfig = {
       duration: 900,
@@ -1506,6 +1497,16 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           ${slide.render(atlasData)}
         </div>
       `;
+      const slideBody = section.querySelector(".slide-body");
+      const navRow = document.createElement("div");
+      navRow.className = "slide-progress actions";
+      const nextButton = document.createElement("button");
+      nextButton.className = "cta-primary";
+      nextButton.dataset.action = "slide-next";
+      nextButton.dataset.defaultLabel = slide.nextCtaLabel || "Continue";
+      nextButton.textContent = slide.nextCtaLabel || "Continue";
+      navRow.appendChild(nextButton);
+      slideBody.appendChild(navRow);
       slidesContainer.appendChild(section);
       sectionRefs.push(section);
       tagSequenceItems(section);
@@ -1679,10 +1680,17 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
     function waitMs(ms) {
       return new Promise((resolve) => setTimeout(resolve, ms));
     }
+    function updateProgressButtons(activeIdx) {
+      sectionRefs.forEach((section, idx) => {
+        const btn = section.querySelector("[data-action='slide-next']");
+        if (!btn) return;
+        const isActive = idx === activeIdx;
+        btn.toggleAttribute("disabled", isActive && activeIdx === slides.length - 1);
+        btn.textContent = btn.dataset.defaultLabel || "Continue";
+      });
+    }
     function setNavState(idx) {
-      counter.textContent = `Slide ${idx + 1} / ${slides.length}`;
-      prevBtn.disabled = idx === 0;
-      nextBtn.disabled = idx === slides.length - 1;
+      updateProgressButtons(idx);
       dotRefs.forEach((dot, dotIdx) => {
         dot.classList.toggle("active", dotIdx === idx);
       });
@@ -1750,9 +1758,6 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
     applyCtaBranding();
     setActiveSlide(0, { scroll: false, updateHash: false });
 
-    prevBtn.addEventListener("click", () => setActiveSlide(activeIndex - 1, { scroll: true }));
-    nextBtn.addEventListener("click", () => setActiveSlide(activeIndex + 1, { scroll: true }));
-
     document.addEventListener("keydown", (e) => {
       if (e.key === "ArrowLeft") {
         setActiveSlide(activeIndex - 1, { scroll: true });
@@ -1816,6 +1821,9 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         triggerCelebration();
       }
       if (target.matches(".cta-primary[data-action='next']")) {
+        setActiveSlide(activeIndex + 1, { scroll: true });
+      }
+      if (target.matches("[data-action='slide-next']")) {
         setActiveSlide(activeIndex + 1, { scroll: true });
       }
       if (target.matches(".cta-primary[data-action='fullscreen']")) {
