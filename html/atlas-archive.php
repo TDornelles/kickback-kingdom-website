@@ -89,22 +89,22 @@ $yearProgress = [
     'quests' => [
         'label' => 'Published Quests',
         'start' => atlas_fetch_scalar(
-            'SELECT COUNT(*) FROM quest WHERE published = 1 AND ctime >= ? AND ctime < ?',
+            'SELECT COUNT(*) FROM quest WHERE published = 1 AND end_date >= ? AND end_date < ?',
             [$twoYearsBackStart, $previousYearStart]
         ),
         'end' => atlas_fetch_scalar(
-            'SELECT COUNT(*) FROM quest WHERE published = 1 AND ctime >= ? AND ctime < ?',
+            'SELECT COUNT(*) FROM quest WHERE published = 1 AND end_date >= ? AND end_date < ?',
             [$previousYearStart, $atlasYearStart]
         ),
     ],
     'matches' => [
         'label' => 'Matches Logged',
         'start' => atlas_fetch_scalar(
-            'SELECT COUNT(*) FROM game_match WHERE ctime >= ? AND ctime < ?',
+            'SELECT COUNT(*) FROM game_match WHERE Date >= ? AND Date < ?',
             [$twoYearsBackStart, $previousYearStart]
         ),
         'end' => atlas_fetch_scalar(
-            'SELECT COUNT(*) FROM game_match WHERE ctime >= ? AND ctime < ?',
+            'SELECT COUNT(*) FROM game_match WHERE Date >= ? AND Date < ?',
             [$previousYearStart, $atlasYearStart]
         ),
     ],
