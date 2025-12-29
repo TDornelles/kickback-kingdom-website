@@ -282,11 +282,13 @@ $honorsPeriodStart = $previousYearStart;
 $honorsPeriodEnd = $atlasYearStart;
 
 $tournamentRow = atlas_fetch_one(
-    'SELECT tr.team_captain AS account_id, COUNT(*) AS tournaments_won, COUNT(DISTINCT t.game_id) AS games_played
-     FROM tournament_record tr
-     INNER JOIN tournament t ON tr.tournament_id = t.Id
-     WHERE tr.win = 1 AND tr.team_captain IS NOT NULL AND t.Date >= ? AND t.Date < ?
-     GROUP BY tr.team_captain
+    'SELECT vtr.account_id AS account_id,
+            COUNT(DISTINCT vtr.tournament_id) AS tournaments_won,
+            COUNT(DISTINCT t.game_id) AS games_played
+     FROM v_tournament_results vtr
+     INNER JOIN tournament t ON vtr.tournament_id = t.Id
+     WHERE vtr.win = 1 AND vtr.account_id IS NOT NULL AND t.Date >= ? AND t.Date < ?
+     GROUP BY vtr.account_id
      ORDER BY tournaments_won DESC, games_played DESC
      LIMIT 1',
     [$honorsPeriodStart, $honorsPeriodEnd]
