@@ -15,10 +15,10 @@ $session = require(\Kickback\SCRIPT_ROOT . "/api/v1/engine/session/verifySession
 require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-info.php");
 
 $atlasYearStart = sprintf('%04d-01-01', $atlasYear);
-$nextYearStart = sprintf('%04d-01-01', $atlasYear + 1);
 $previousYearStart = sprintf('%04d-01-01', $atlasYear - 1);
-$accountCountTotal = atlas_fetch_scalar('SELECT COUNT(*) FROM account WHERE DateCreated < ?', [$nextYearStart]);
-$accountCountAtYearStart = atlas_fetch_scalar('SELECT COUNT(*) FROM account WHERE DateCreated < ?', [$atlasYearStart]);
+$twoYearsBackStart = sprintf('%04d-01-01', $atlasYear - 2);
+$accountCountEndOfDataYear = atlas_fetch_scalar('SELECT COUNT(*) FROM account WHERE DateCreated < ?', [$atlasYearStart]);
+$accountCountEndOfPriorYear = atlas_fetch_scalar('SELECT COUNT(*) FROM account WHERE DateCreated < ?', [$previousYearStart]);
 
 /**
  * Safely fetch a single scalar from the database.
@@ -55,8 +55,8 @@ function atlas_fetch_scalar(string $query, array $params = [], ?string $cast = '
 }
 
 $worldStats = [
-    'accounts' => $accountCountTotal,
-    'guildsmen' => $accountCountTotal,
+    'accounts' => $accountCountEndOfDataYear,
+    'guildsmen' => $accountCountEndOfDataYear,
     'games' => atlas_fetch_scalar('SELECT COUNT(*) FROM game'),
     'matches' => atlas_fetch_scalar('SELECT COUNT(*) FROM game_match'),
     'rankedMatches' => atlas_fetch_scalar('SELECT COUNT(*) FROM game_match WHERE `set` IN (0,1)'),
@@ -83,23 +83,41 @@ $worldStats = [
 $yearProgress = [
     'accounts' => [
         'label' => 'Adventurers Registered',
-        'start' => $accountCountAtYearStart,
-        'end' => $worldStats['accounts'],
+        'start' => $accountCountEndOfPriorYear,
+        'end' => $accountCountEndOfDataYear,
     ],
     'quests' => [
         'label' => 'Published Quests',
-        'start' => atlas_fetch_scalar('SELECT COUNT(*) FROM quest WHERE published = 1 AND ctime < ?', [$atlasYearStart]),
-        'end' => $worldStats['questsPublished'],
+        'start' => atlas_fetch_scalar(
+            'SELECT COUNT(*) FROM quest WHERE published = 1 AND ctime >= ? AND ctime < ?',
+            [$twoYearsBackStart, $previousYearStart]
+        ),
+        'end' => atlas_fetch_scalar(
+            'SELECT COUNT(*) FROM quest WHERE published = 1 AND ctime >= ? AND ctime < ?',
+            [$previousYearStart, $atlasYearStart]
+        ),
     ],
     'matches' => [
         'label' => 'Matches Logged',
-        'start' => atlas_fetch_scalar('SELECT COUNT(*) FROM game_match WHERE ctime < ?', [$atlasYearStart]),
-        'end' => $worldStats['matches'],
+        'start' => atlas_fetch_scalar(
+            'SELECT COUNT(*) FROM game_match WHERE ctime >= ? AND ctime < ?',
+            [$twoYearsBackStart, $previousYearStart]
+        ),
+        'end' => atlas_fetch_scalar(
+            'SELECT COUNT(*) FROM game_match WHERE ctime >= ? AND ctime < ?',
+            [$previousYearStart, $atlasYearStart]
+        ),
     ],
     'transactions' => [
         'label' => 'Store Transactions',
-        'start' => atlas_fetch_scalar('SELECT COUNT(*) FROM `transaction` WHERE ctime < ?', [$atlasYearStart]),
-        'end' => $worldStats['transactions'],
+        'start' => atlas_fetch_scalar(
+            'SELECT COUNT(*) FROM `transaction` WHERE ctime >= ? AND ctime < ?',
+            [$twoYearsBackStart, $previousYearStart]
+        ),
+        'end' => atlas_fetch_scalar(
+            'SELECT COUNT(*) FROM `transaction` WHERE ctime >= ? AND ctime < ?',
+            [$previousYearStart, $atlasYearStart]
+        ),
     ],
 ];
 
