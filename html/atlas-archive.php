@@ -1100,6 +1100,52 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         },
       },
       {
+        id: "honor-treasure",
+        title: "Most Treasure Collected",
+        accent: "accent-bg-gold",
+        render: () => {
+          const entry = honors?.treasureHunter;
+          return `
+            <div class="slide-hero">
+              <div class="mega">Most Treasure Collected</div>
+              <div class="lead">The adventurer who uncovered the most hidden treasure across all hunts in ${previousYear}.</div>
+            </div>
+            <div class="honor-card">
+              ${renderHonorProfile(entry, `Treasure champion of ${previousYear}`)}
+              ${entry ? `
+                <div class="honor-stats">
+                  ${renderStatPill("Treasure Found", entry.treasuresCollected, "Hidden objects collected")}
+                  ${renderStatPill("Treasure Events", entry.eventsCount, "Events explored")}
+                </div>
+              ` : `<div class="muted">No treasure hunts recorded for ${previousYear}.</div>`}
+            </div>
+          `;
+        },
+      },
+      {
+        id: "honor-raffle",
+        title: "Luckiest Person",
+        accent: "accent-bg-pink",
+        render: () => {
+          const entry = honors?.raffleLuck;
+          return `
+            <div class="slide-hero">
+              <div class="mega">Luckiest Person</div>
+              <div class="lead">Most raffles won in ${previousYear}, with the tie-breaker going to the fewest tickets spent.</div>
+            </div>
+            <div class="honor-card">
+              ${renderHonorProfile(entry, `Raffle luck legend in ${previousYear}`)}
+              ${entry ? `
+                <div class="honor-stats">
+                  ${renderStatPill("Raffles Won", entry.rafflesWon, null)}
+                  ${renderStatPill("Tickets Spent", entry.ticketsUsed, "Tie-breaker: lower is luckier")}
+                </div>
+              ` : `<div class="muted">No raffle winners recorded for ${previousYear}.</div>`}
+            </div>
+          `;
+        },
+      },
+      {
         id: "honor-king-games",
         title: "King of Games",
         accent: "accent-bg-cyan",
