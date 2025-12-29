@@ -35,6 +35,10 @@ $rankedMatchesBeforeYear = atlas_fetch_scalar(
     'SELECT COUNT(*) FROM game_match WHERE `set` IN (0,1) AND Date < ?',
     [$atlasYearStart]
 );
+$newAccountsPreviousYear = null;
+if ($accountCountEndOfDataYear !== null && $accountCountEndOfPriorYear !== null) {
+    $newAccountsPreviousYear = $accountCountEndOfDataYear - $accountCountEndOfPriorYear;
+}
 
 /**
  * Safely fetch a single scalar from the database.
@@ -86,6 +90,7 @@ $worldStats = [
     'questsHostedBeforeYear' => $questsHostedBeforeYear,
     'rankedMatchesPreviousYear' => $rankedMatchesPreviousYear,
     'rankedMatchesBeforeYear' => $rankedMatchesBeforeYear,
+    'accountsCreatedPreviousYear' => $newAccountsPreviousYear,
     'questLines' => atlas_fetch_scalar('SELECT COUNT(*) FROM quest_line'),
     'questApplicants' => atlas_fetch_scalar('SELECT COUNT(*) FROM quest_applicants'),
     'questParticipants' => atlas_fetch_scalar('SELECT COUNT(*) FROM quest_applicants WHERE participated = 1'),
@@ -850,9 +855,12 @@ $atlasPayload = [
             {
               key: "accounts",
               label: "Guildsmen",
-              sub: "Adventurers across the realm",
+              sub: `New guildsmen in ${previousYear}`,
               fallbackEnd: w.guildsmen,
-              entryKey: "accounts",
+              primary: "direct",
+              mainValue: w.accountsCreatedPreviousYear,
+              secondaryValue: w.guildsmen,
+              secondaryLabel: "Total on Jan 1",
             },
             {
               key: "questsHosted",
