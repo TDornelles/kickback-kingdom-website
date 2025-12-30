@@ -1552,7 +1552,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
                   <div class="list-card sequence-item" data-delay="${idx * 120}">
                     <div class="title-row">
                       <span class="pill">#${idx + 1}</span>
-                      <span class="pill-muted">Quest Buddy</span>
+                      <span class="pill-muted">Best Friend/span>
                     </div>
                     ${renderProfileChip(friend.profile, "Teammate")}
                     <div class="stat-hero" style="margin-top:10px;">

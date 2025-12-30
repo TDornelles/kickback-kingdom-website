@@ -783,16 +783,13 @@ ORDER BY score DESC, bayes_avg DESC, participants_total DESC
     private function buildFavoriteRankedGame(int $accountId, string $yearStart, string $yearEnd) : ?array
     {
         $row = $this->fetchOne(
-            'SELECT gr.game_id, COUNT(*) AS matches, SUM(CASE WHEN gr.win = 1 THEN 1 ELSE 0 END) AS wins
-             FROM game_record gr
-             INNER JOIN game_match gm ON gm.Id = gr.game_match_id
-             WHERE gr.account_id = ?
-               AND gm.`set` IN (0,1)
-               AND gm.Date >= ?
-               AND gm.Date < ?
-             GROUP BY gr.game_id
-             ORDER BY matches DESC, wins DESC
-             LIMIT 1',
+            'select game_id, count(*) as matches, sum(win) as wins from v_game_record_match 
+            where account_id = ? 
+            and Date >= ? 
+            and Date < ? 
+            group by game_id 
+            order by matches desc, wins desc 
+            LIMIT 1',
             [$accountId, $yearStart, $yearEnd]
         );
 
