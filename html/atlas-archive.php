@@ -683,6 +683,78 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       color: #3b2a00 !important;
       text-shadow: 0 1px 0 rgba(255,255,255,0.3);
     }
+    .raffle-rewards {
+      display: grid;
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .raffle-reward-card {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 12px 10px;
+      background: rgba(255,255,255,0.02);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02), 0 10px 28px rgba(0,0,0,0.25);
+    }
+    .raffle-reward-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    .raffle-reward-title {
+      font-weight: 800;
+      letter-spacing: 0.01em;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .raffle-reward-meta {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .raffle-reward-items {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: stretch;
+    }
+    .reward-item {
+      min-width: 94px;
+      max-width: 120px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 8px;
+      background: rgba(255,255,255,0.02);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+      text-align: center;
+    }
+    .reward-icon {
+      width: 62px;
+      height: 62px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.05);
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+    .reward-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .reward-name {
+      font-weight: 700;
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.2;
+    }
     .slide-icon {
       transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
       cursor: pointer;
@@ -916,6 +988,54 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       }).join("");
 
       return `<div class="badge-row">${items}</div>`;
+    };
+
+    const renderRewardItems = (rewards) => {
+      if (!rewards || rewards.length === 0) {
+        return `<div class="muted">No reward items recorded.</div>`;
+      }
+
+      const items = rewards.map((reward) => {
+        const name = escapeHtml(reward?.name ?? "Mystery Reward");
+        const category = reward?.category ? escapeHtml(reward.category) : null;
+        const icon = safeAvatar(reward?.icon);
+        const fallback = escapeHtml((reward?.name ?? "?").slice(0, 1) || "?");
+        const visual = icon
+          ? `<img src="${icon}" alt="${name} icon">`
+          : `<span class="game-icon-fallback">${fallback}</span>`;
+        return `
+          <div class="reward-item slide-icon" title="${name}" data-bs-toggle="tooltip" data-bs-placement="top">
+            <div class="reward-icon">${visual}</div>
+            <div class="reward-name">${name}</div>
+            ${category ? `<div class="raffle-reward-meta">${category}</div>` : ""}
+          </div>
+        `;
+      }).join("");
+
+      return `<div class="raffle-reward-items">${items}</div>`;
+    };
+
+    const renderRaffleRewards = (raffleRewards) => {
+      if (!raffleRewards || raffleRewards.length === 0) {
+        return `<div class="muted">No raffle reward details recorded for this year.</div>`;
+      }
+
+      return `<div class="raffle-rewards">${raffleRewards.map((raffle) => {
+        const questName = escapeHtml(raffle.questName ?? "Unknown Quest");
+        const dateLabel = raffle.endDate ? new Date(raffle.endDate).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "Date unknown";
+        return `
+          <div class="raffle-reward-card">
+            <div class="raffle-reward-header">
+              <div class="raffle-reward-title">
+                <span class="pill">Raffle</span>
+                <span>${questName}</span>
+              </div>
+              <div class="raffle-reward-meta">${dateLabel}</div>
+            </div>
+            ${renderRewardItems(raffle.rewards)}
+          </div>
+        `;
+      }).join("")}</div>`;
     };
     const slides = [
       {
@@ -1230,6 +1350,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
                   ${renderStatPill("Raffles Won", entry.rafflesWon)}
                   ${renderStatPill("Tickets Wagered", entry.ticketsUsed)}
                 </div>
+                ${renderRaffleRewards(entry.raffleRewards)}
               ` : `<div class="muted">No raffle winners recorded for ${previousYear}.</div>`}
             </div>
           `;

@@ -520,10 +520,61 @@ ORDER BY score DESC, bayes_avg DESC, participants_total DESC
             return null;
         }
 
+        $raffleRewardRows = $this->fetchAll(
+            'SELECT r.Id AS raffle_id,
+                    q.Id AS quest_id,
+                    q.name AS quest_name,
+                    q.end_date AS raffle_end_date,
+                    vqr.Id AS reward_item_id,
+                    vqr.name AS reward_item_name,
+                    vqr.category AS reward_category,
+                    COALESCE(vqr.SmallImgPath, vqr.BigImgPath) AS reward_icon_path
+             FROM raffle r
+             INNER JOIN raffle_submissions rs ON rs.Id = r.winner_submission_id
+             INNER JOIN loot l ON l.Id = rs.loot_id
+             LEFT JOIN quest q ON q.raffle_id = r.Id
+             LEFT JOIN v_quest_reward_info vqr ON vqr.quest_id = q.Id
+             WHERE r.winner_submission_id IS NOT NULL
+               AND q.end_date IS NOT NULL
+               AND q.end_date >= ?
+               AND q.end_date < ?
+               AND l.account_id = ?
+             ORDER BY q.end_date DESC, r.Id DESC, vqr.name ASC',
+            [$periodStart, $periodEnd, $row['account_id']]
+        );
+
+        $raffleRewards = [];
+        foreach ($raffleRewardRows as $rewardRow) {
+            if (!isset($rewardRow['raffle_id'])) {
+                continue;
+            }
+
+            $raffleId = (int)$rewardRow['raffle_id'];
+            if (!isset($raffleRewards[$raffleId])) {
+                $raffleRewards[$raffleId] = [
+                    'raffleId' => $raffleId,
+                    'questId' => isset($rewardRow['quest_id']) ? (int)$rewardRow['quest_id'] : null,
+                    'questName' => $rewardRow['quest_name'] ?? null,
+                    'endDate' => $rewardRow['raffle_end_date'] ?? null,
+                    'rewards' => [],
+                ];
+            }
+
+            if (!empty($rewardRow['reward_item_id'])) {
+                $raffleRewards[$raffleId]['rewards'][] = [
+                    'itemId' => (int)$rewardRow['reward_item_id'],
+                    'name' => $rewardRow['reward_item_name'] ?? null,
+                    'category' => $rewardRow['reward_category'] ?? null,
+                    'icon' => $this->mediaUrl($rewardRow['reward_icon_path'] ?? null),
+                ];
+            }
+        }
+
         return [
             'profile' => $this->formatAccountProfile($profile),
             'rafflesWon' => (int)$row['raffles_won'],
             'ticketsUsed' => isset($row['tickets_used']) ? (int)$row['tickets_used'] : null,
+            'raffleRewards' => array_values($raffleRewards),
         ];
     }
 
