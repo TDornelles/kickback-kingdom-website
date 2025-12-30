@@ -624,6 +624,51 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       object-fit: cover;
       display: block;
     }
+    .king-games-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .king-game-card {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 209, 102, 0.6);
+      box-shadow: 0 10px 26px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.04);
+      background-blend-mode: screen;
+      color: #3b2a00 !important;
+    }
+    .king-game-card .king-game-icon {
+      width: 54px;
+      height: 54px;
+      border-radius: 12px;
+      border: 2px solid rgba(255, 255, 255, 0.35);
+      background: rgba(0,0,0,0.14);
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 8px 18px rgba(0,0,0,0.32);
+    }
+    .king-game-card .game-icon-fallback {
+      color: #3b2a00;
+      font-weight: 800;
+    }
+    .king-game-card .king-game-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .king-game-name {
+      font-weight: 800;
+      letter-spacing: 0.01em;
+      color: #3b2a00 !important;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.3);
+    }
     .slide-icon {
       transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
       cursor: pointer;
@@ -760,6 +805,27 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         return `<div class="game-icon slide-icon" title="${name}" data-bs-toggle="tooltip" data-bs-placement="top">${visual}</div>`;
       }).join("");
       return `<div class="game-icon-row slide-icon-group" aria-label="Games spanned">${items}</div>`;
+    };
+    const renderKingGameCard = (game) => {
+      const icon = safeAvatar(game?.icon);
+      const name = escapeHtml(game?.name ?? "Unknown game");
+      const fallback = escapeHtml((game?.name ?? "?").slice(0, 1) || "?");
+      const visual = icon
+        ? `<img src="${icon}" alt="${name} icon">`
+        : `<span class="game-icon-fallback">${fallback}</span>`;
+      return `
+        <div class="king-game-card bg-ranked-1 slide-icon" title="${name}" data-bs-toggle="tooltip" data-bs-placement="top">
+          <div class="king-game-icon">${visual}</div>
+          <div class="king-game-name">${name}</div>
+        </div>
+      `;
+    };
+    const renderKingGames = (games, yearLabel) => {
+      if (!games || games.length === 0) {
+        const label = escapeHtml(yearLabel ?? "this year");
+        return `<div class="muted">No ranked ladders with gold card holders recorded for ${label}.</div>`;
+      }
+      return `<div class="king-games-grid">${games.map(renderKingGameCard).join("")}</div>`;
     };
     const renderHonorProfile = (entry, subtitle) => {
       const profile = entry?.profile;
@@ -1144,13 +1210,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
             </div>
             <div class="honor-card">
               ${renderHonorProfile(entry, `The King of Games in ${previousYear}`)}
-              ${entry ? `
-                <div class="honor-stats">
-                  ${renderStatPill("Gold Cards Held", entry.goldCards)}
-                  ${renderStatPill("Elo Sum", entry.eloSum)}
-                  ${entry.profile?.level !== undefined ? renderStatPill("Profile Level", entry.profile.level) : ""}
-                </div>
-              ` : `<div class="muted">No ranked ladders with gold card holders recorded for ${previousYear}.</div>`}
+              ${entry ? renderKingGames(entry.games, previousYear) : `<div class="muted">No ranked ladders with gold card holders recorded for ${previousYear}.</div>`}
             </div>
           `;
         },
