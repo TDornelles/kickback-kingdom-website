@@ -765,6 +765,89 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       gap: 8px;
       align-items: center;
     }
+    .profile-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.03);
+      font-weight: 700;
+    }
+    .profile-chip .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      display: grid;
+      place-items: center;
+    }
+    .profile-chip .avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .list-card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      background: rgba(255,255,255,0.03);
+      box-shadow: var(--shadow);
+    }
+    .list-card .title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+    .pill-muted {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.02em;
+    }
+    .bar-chart {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .bar-chart .bar {
+      display: grid;
+      gap: 6px;
+    }
+    .bar-track {
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ffd166, #7cb7ff);
+      border-radius: 999px;
+    }
+    .muted-note {
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 8px;
+    }
     .game-icon-fallback {
       color: var(--muted);
       font-weight: 700;
@@ -899,6 +982,41 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           <div class="king-game-name">${name}</div>
         </div>
       `;
+    };
+    const fmtPct = (value) => {
+      if (value === null || value === undefined || Number.isNaN(value)) return "—";
+      return `${Math.round(value * 100)}%`;
+    };
+    const renderProfileChip = (profile, fallback = "Unknown adventurer") => {
+      const label = profile?.username ? escapeHtml(profile.username) : escapeHtml(fallback);
+      const avatar = profile?.avatar ? safeAvatar(profile.avatar) : null;
+      return `
+        <div class="profile-chip">
+          <div class="avatar">
+            ${avatar ? `<img src="${avatar}" alt="${label} avatar">` : `<span class="muted">${label.slice(0, 1).toUpperCase()}</span>`}
+          </div>
+          <span>${label}</span>
+        </div>
+      `;
+    };
+    const renderGameBadge = (game, suffix = "") => {
+      if (!game) return `<span class="pill">${escapeHtml(suffix || "Game")}</span>`;
+      const icon = safeAvatar(game.icon);
+      const name = escapeHtml(game.name || game.shortName || `Game ${game.id || ""}`);
+      const visual = icon ? `<img src="${icon}" alt="${name} icon" style="width:20px;height:20px;object-fit:cover;border-radius:6px;">` : `<span class="game-icon-fallback">${escapeHtml((name || "?").slice(0,1))}</span>`;
+      return `<span class="pill" style="display:inline-flex;align-items:center;gap:8px;">${visual}<span>${name}${suffix ? ` ${escapeHtml(suffix)}` : ""}</span></span>`;
+    };
+    const formatMonthLabel = (month) => {
+      if (!month) return "";
+      const date = new Date(month);
+      if (Number.isNaN(date.getTime())) return month;
+      return date.toLocaleDateString(undefined, { month: "short" });
+    };
+    const formatDateLabel = (dateStr) => {
+      if (!dateStr) return "";
+      const date = new Date(dateStr);
+      if (Number.isNaN(date.getTime())) return escapeHtml(dateStr);
+      return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
     };
     const renderKingGames = (games, yearLabel) => {
       if (!games || games.length === 0) {
@@ -1406,226 +1524,288 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         },
       },
       {
-        id: "account-hero",
-        title: "Your Atlas Spotlight",
+        id: "best-friends",
+        title: "Best Friends",
         accent: "accent-bg-gold",
-        nextCtaLabel: "Personal Stats",
+        nextCtaLabel: "Favorite Ranked Game",
         render: () => {
           if (!account) {
             return `
               <div class="slide-hero">
-                <div class="mega">Log in to see your story</div>
-                <div class="lead">We&apos;ll pull your AccountController profile, loot, quests, trades, and tickets automatically.</div>
+                <div class="mega">Log in to see your allies</div>
+                <div class="lead">Connect to reveal your most quested-with teammates.</div>
                 <div class="actions" style="justify-content:center;">
                   <a class="cta-primary" href="/login.php">Login</a>
                 </div>
               </div>
             `;
           }
-          const profile = account.profile;
+          const friends = account.bestFriends || [];
           return `
             <div class="slide-hero">
-              <div class="mega">${profile.username}</div>
-              <div class="lead">${profile.title} · Level ${fmt(profile.level)} · Prestige ${fmt(profile.prestige)}</div>
+              <div class="mega">Best Friends</div>
+              <div class="lead">Top 3 adventurers you quested with the most.</div>
             </div>
-            <div class="stat-hero">
-              <div class="card">
-                <div class="pill">EXP</div>
-                ${renderKpi(profile.exp)}
-                <p class="sub">Progress this year</p>
+            ${friends.length === 0 ? `<div class="muted">No shared matches found for this year.</div>` : `
+              <div class="card-grid">
+                ${friends.map((friend, idx) => `
+                  <div class="list-card sequence-item" data-delay="${idx * 120}">
+                    <div class="title-row">
+                      <span class="pill">#${idx + 1}</span>
+                      <span class="pill-muted">Quest Buddy</span>
+                    </div>
+                    ${renderProfileChip(friend.profile, "Teammate")}
+                    <div class="stat-hero" style="margin-top:10px;">
+                      <div class="card">
+                        <div class="pill">Quests Together</div>
+                        ${renderKpi(friend.quests)}
+                        <p class="sub">Co-adventured</p>
+                      </div>
+                    </div>
+                  </div>
+                `).join("")}
               </div>
-              <div class="card">
-                <div class="pill">Roles</div>
-                <div class="kpi" style="font-size:22px;">${Object.entries(profile.roles || {}).filter(([,v]) => v).map(([k]) => k).join(" • ") || "—"}</div>
-                <p class="sub">Flags from Session & AccountController</p>
-              </div>
-              <div class="card">
-                <div class="pill">Links</div>
-                <div class="kpi">${profile.links.discord ? "Discord linked" : "Discord pending"}</div>
-                <p class="sub">${profile.links.steam ? "Steam linked" : "Steam pending"}</p>
-              </div>
-            </div>
+            `}
           `;
         },
       },
       {
-        id: "account-quests",
-        title: "Your Quest Journey",
+        id: "favorite-ranked-game",
+        title: "Favorite Ranked Game",
         accent: "accent-bg-cyan",
-        nextCtaLabel: "Quest Details",
+        nextCtaLabel: "Matchmaker Streaks",
         render: () => {
           if (!account) {
             return `
               <div class="slide-hero">
-                <div class="mega">Quest stats await</div>
-                <div class="lead">Host, apply, and participate to populate this page.</div>
+                <div class="mega">Ranked legend pending</div>
+                <div class="lead">Play ranked matches to reveal your favorite battleground.</div>
               </div>
             `;
           }
-          const stats = account.stats || {};
+          const entry = account.favoriteRankedGame;
+          if (!entry) {
+            return `
+              <div class="slide-hero">
+                <div class="mega">No ranked matches yet</div>
+                <div class="lead">Queue up in ranked to discover your signature game.</div>
+              </div>
+            `;
+          }
           return `
             <div class="slide-hero">
-              <div class="mega">Questing</div>
-              <div class="lead">Pulled from quest, quest_applicants, and QuestLineController helpers.</div>
+              <div class="mega">Favorite Ranked Game</div>
+              <div class="lead">The game you played the most ranked matches in.</div>
             </div>
-            <div class="stat-hero">
-              <div class="card">
-                <div class="pill">Hosted</div>
-                ${renderKpi(stats.questsHosted)}
-                <p class="sub">Quest hosts</p>
+            <div class="list-card">
+              <div class="title-row">
+                ${renderGameBadge(entry.game)}
+                <span class="pill-muted">${fmtPct(entry.winRate)} win rate</span>
               </div>
-              <div class="card">
-                <div class="pill">Applications</div>
-                ${renderKpi(stats.applications)}
-                <p class="sub">Total submitted</p>
-              </div>
-              <div class="card">
-                <div class="pill">Participated</div>
-                ${renderKpi(stats.questsJoined)}
-                <p class="sub">Accepted and played</p>
-              </div>
-              <div class="card">
-                <div class="pill">Badges</div>
-                ${renderKpi(stats.badges)}
-                <p class="sub">Earned via LootController</p>
+              <div class="stat-hero">
+                <div class="card">
+                  <div class="pill">Ranked Matches</div>
+                  ${renderKpi(entry.matches)}
+                  <p class="sub">game_record × ranked set</p>
+                </div>
+                <div class="card">
+                  <div class="pill">Wins</div>
+                  ${renderKpi(entry.wins)}
+                  <p class="sub">Hard-fought victories</p>
+                </div>
               </div>
             </div>
           `;
         },
       },
       {
-        id: "account-play",
-        title: "Your Match History",
+        id: "matchmaker-streaks",
+        title: "Matchmaker Streaks",
         accent: "accent-bg-violet",
-        nextCtaLabel: "Battle Stats",
+        nextCtaLabel: "Momentum Shifts",
         render: () => {
           if (!account) {
             return `
               <div class="slide-hero">
-                <div class="mega">Play a match</div>
-                <div class="lead">Once you log battles, Elo & win rate will auto-populate.</div>
+                <div class="mega">Your streaks await</div>
+                <div class="lead">Log in and play matches to see your yearly volume.</div>
               </div>
             `;
           }
-          const stats = account.stats || {};
-          const winRate = account.winRate !== null && account.winRate !== undefined ? pct(stats.wins, stats.matches) : "—";
+          const summary = account.matchmaker || {};
+          const monthly = summary.monthly || [];
+          const maxMatches = Math.max(...monthly.map((m) => m.matches || 0), 0);
           return `
             <div class="slide-hero">
-              <div class="mega">Battle Ledger</div>
-              <div class="lead">game_record rows for your account.</div>
+              <div class="mega">Matchmaker Streaks</div>
+              <div class="lead">Total matches played, wins, win rate, plus month-by-month volume.</div>
             </div>
             <div class="stat-hero">
               <div class="card">
                 <div class="pill">Matches</div>
-                ${renderKpi(stats.matches)}
-                <p class="sub">game_record rows</p>
+                ${renderKpi(summary.matches)}
+                <p class="sub">Across ${previousYear}</p>
               </div>
               <div class="card">
                 <div class="pill">Wins</div>
-                ${renderKpi(stats.wins)}
-                <p class="sub">Victory count</p>
+                ${renderKpi(summary.wins)}
+                <p class="sub">Clutch closers</p>
               </div>
               <div class="card">
                 <div class="pill">Win Rate</div>
-                <div class="kpi">${winRate}</div>
-                <p class="sub">Calculated on the fly</p>
-              </div>
-              <div class="card">
-                <div class="pill">Hosted Quests</div>
-                ${renderKpi(stats.questsHosted)}
-                <p class="sub">Leadership on the board</p>
+                <div class="kpi">${fmtPct(summary.winRate)}</div>
+                <p class="sub">Victory ratio</p>
               </div>
             </div>
+            ${monthly.length === 0 ? `<div class="muted-note">No matches recorded in this window.</div>` : `
+              <div class="bar-chart">
+                ${monthly.map((row) => {
+                  const pctWidth = maxMatches > 0 ? Math.round((row.matches / maxMatches) * 100) : 0;
+                  return `
+                    <div class="bar sequence-item" data-delay="120">
+                      <div class="title-row">
+                        <span class="pill">${formatMonthLabel(row.month)}</span>
+                        <span class="pill-muted">${fmt(row.matches)} matches</span>
+                      </div>
+                      <div class="bar-track"><div class="bar-fill" style="width:${pctWidth}%"></div></div>
+                    </div>
+                  `;
+                }).join("")}
+              </div>
+            `}
           `;
         },
       },
       {
-        id: "account-inventory",
-        title: "Your Collection & Trade",
+        id: "momentum-shifts",
+        title: "Momentum Shifts",
+        accent: "accent-bg-pink",
+        nextCtaLabel: "Duo of Destiny",
+        render: () => {
+          if (!account) {
+            return `
+              <div class="slide-hero">
+                <div class="mega">Play to track swings</div>
+                <div class="lead">Elo swings light up once you log matches.</div>
+              </div>
+            `;
+          }
+          const swings = account.momentumShifts || [];
+          return `
+            <div class="slide-hero">
+              <div class="mega">Momentum Shifts</div>
+              <div class="lead">Biggest Elo swings from single matches, spotlighting comebacks and lessons.</div>
+            </div>
+            ${swings.length === 0 ? `<div class="muted">No Elo swings found for this year.</div>` : `
+              <div class="card-grid">
+                ${swings.map((swing, idx) => `
+                  <div class="list-card sequence-item" data-delay="${idx * 120}">
+                    <div class="title-row">
+                      ${renderGameBadge(swing.game)}
+                      <span class="pill" style="background:${swing.eloChange >= 0 ? 'rgba(108,240,194,0.16)' : 'rgba(255,209,102,0.16)'};border-color:${swing.eloChange >=0 ? 'rgba(108,240,194,0.4)' : 'rgba(255,209,102,0.35)'};">${swing.eloChange >=0 ? '+' : ''}${fmt(swing.eloChange)}</span>
+                    </div>
+                    <div class="pill-muted">${swing.win ? "Win" : "Loss"} • ${formatDateLabel(swing.date)}</div>
+                  </div>
+                `).join("")}
+              </div>
+            `}
+          `;
+        },
+      },
+      {
+        id: "duo-of-destiny",
+        title: "Duo of Destiny",
         accent: "accent-bg-gold",
-        nextCtaLabel: "Inventory",
+        nextCtaLabel: "Nemesis",
         render: () => {
           if (!account) {
             return `
               <div class="slide-hero">
-                <div class="mega">Claim loot to unlock</div>
-                <div class="lead">Containers, loot, trades, and merchant shares will render after login.</div>
+                <div class="mega">Find your duo</div>
+                <div class="lead">Squad up and log matches to reveal your most reliable teammate.</div>
               </div>
             `;
           }
-          const stats = account.stats || {};
+          const duo = account.duoOfDestiny;
+          if (!duo) {
+            return `
+              <div class="slide-hero">
+                <div class="mega">No duo yet</div>
+                <div class="lead">Play ranked as a team to forge your Duo of Destiny.</div>
+              </div>
+            `;
+          }
           return `
             <div class="slide-hero">
-              <div class="mega">Loot & Commerce</div>
-              <div class="lead">LootController, Trade records, and MerchantGuild purchases tied to your account.</div>
+              <div class="mega">Duo of Destiny</div>
+              <div class="lead">Your most frequent ranked teammate based on shared teams, the duo’s combined win rate, and the games you climbed together.</div>
             </div>
-            <div class="stat-hero">
-              <div class="card">
-                <div class="pill">Loot</div>
-                ${renderKpi(stats.loot)}
-                <p class="sub">Items owned</p>
+            <div class="list-card">
+              <div class="title-row">
+                ${renderProfileChip(duo.profile, "Teammate")}
+                <span class="pill-muted">Win Rate ${fmtPct(duo.winRate)}</span>
               </div>
-              <div class="card">
-                <div class="pill">Containers</div>
-                ${renderKpi(stats.containers)}
-                <p class="sub">Ready for storage</p>
+              <div class="stat-hero">
+                <div class="card">
+                  <div class="pill">Matches Together</div>
+                  ${renderKpi(duo.matches)}
+                  <p class="sub">Shared rosters</p>
+                </div>
+                <div class="card">
+                  <div class="pill">Wins</div>
+                  ${renderKpi(duo.wins)}
+                  <p class="sub">Victories side-by-side</p>
+                </div>
               </div>
-              <div class="card">
-                <div class="pill">Trades</div>
-                ${renderKpi(stats.trades)}
-                <p class="sub">From trade table</p>
-              </div>
-              <div class="card">
-                <div class="pill">Shares Purchased</div>
-                ${renderKpi(stats.sharePurchases)}
-                <p class="sub">Merchant Guild stake</p>
-              </div>
+              ${duo.games && duo.games.length ? `
+                <div class="card-grid">
+                  ${duo.games.map((entry, idx) => `
+                    <div class="list-card sequence-item" data-delay="${idx * 120}">
+                      <div class="title-row">
+                        ${renderGameBadge(entry.game)}
+                        <span class="pill-muted">${fmt(entry.matches)} ranked matches together</span>
+                      </div>
+                    </div>
+                  `).join("")}
+                </div>
+              ` : ``}
             </div>
           `;
         },
       },
       {
-        id: "account-support",
-        title: "Your Support & Safety",
+        id: "nemeses",
+        title: "Nemesis",
         accent: "accent-bg-cyan",
-        nextCtaLabel: "Support Log",
+        nextCtaLabel: "Finish",
         render: () => {
           if (!account) {
             return `
               <div class="slide-hero">
-                <div class="mega">Support footprint</div>
-                <div class="lead">Open tickets, resolve them, and your record will appear.</div>
+                <div class="mega">No rivals logged</div>
+                <div class="lead">Play ranked to uncover who toppled you most.</div>
               </div>
             `;
           }
-          const stats = account.stats || {};
+          const nemeses = account.nemeses || [];
           return `
             <div class="slide-hero">
-              <div class="mega">Signals & Care</div>
-              <div class="lead">Pulled from ticket table and linked profiles.</div>
+              <div class="mega">Nemesis</div>
+              <div class="lead">Three opponents who beat you the most in ranked matches — and the games they did it in.</div>
             </div>
-            <div class="stat-hero">
-              <div class="card">
-                <div class="pill">Tickets Filed</div>
-                ${renderKpi(stats.ticketsFiled)}
-                <p class="sub">Support requests</p>
+            ${nemeses.length === 0 ? `<div class="muted">No rivalries detected this year.</div>` : `
+              <div class="card-grid">
+                ${nemeses.map((entry, idx) => `
+                  <div class="list-card sequence-item" data-delay="${idx * 120}">
+                    <div class="title-row">
+                      ${renderProfileChip(entry.profile, "Opponent")}
+                      <span class="pill">Defeated you ${fmt(entry.defeats)} times</span>
+                    </div>
+                    <div class="pill-muted">Game: ${renderGameBadge(entry.game, "")}</div>
+                  </div>
+                `).join("")}
               </div>
-              <div class="card">
-                <div class="pill">Tickets Resolved</div>
-                ${renderKpi(stats.ticketsResolved)}
-                <p class="sub">Completed for you</p>
-              </div>
-              <div class="card">
-                <div class="pill">Discord</div>
-                <div class="kpi">${account.profile.links.discord ? "Linked" : "Not linked"}</div>
-                <p class="sub">Session + AccountController</p>
-              </div>
-              <div class="card">
-                <div class="pill">Steam</div>
-                <div class="kpi">${account.profile.links.steam ? "Linked" : "Not linked"}</div>
-                <p class="sub">Third-party presence</p>
-              </div>
-            </div>
+            `}
           `;
         },
       },
@@ -1711,11 +1891,29 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         events: {
           elements: [{ selector: ".timeline .card", enter: "animate__fadeInLeft", stagger: true }],
         },
-        "account-spotlight": {
-          elements: [{ selector: ".stat-hero .card", enter: "animate__fadeInUp", stagger: true }],
+        "best-friends": {
+          elements: [{ selector: ".list-card", enter: "animate__fadeInUp", stagger: true }],
         },
-        "best-friend": {
-          elements: [{ selector: ".stat-hero .card", enter: "animate__fadeInUp", stagger: true }],
+        "favorite-ranked-game": {
+          elements: [{ selector: ".list-card", enter: "animate__fadeInUp", stagger: true }],
+        },
+        "matchmaker-streaks": {
+          elements: [
+            { selector: ".stat-hero .card", enter: "animate__fadeInUp", stagger: true },
+            { selector: ".bar-chart .bar", enter: "animate__fadeInUp", stagger: true },
+          ],
+        },
+        "momentum-shifts": {
+          elements: [{ selector: ".list-card", enter: "animate__fadeInUp", stagger: true }],
+        },
+        "duo-of-destiny": {
+          elements: [
+            { selector: ".list-card", enter: "animate__fadeInUp", stagger: true },
+            { selector: ".stat-hero .card", enter: "animate__fadeInUp", stagger: true },
+          ],
+        },
+        nemeses: {
+          elements: [{ selector: ".list-card", enter: "animate__fadeInUp", stagger: true }],
         },
         games: {
           elements: [{ selector: ".stat-hero .card", enter: "animate__fadeInUp", stagger: true }],
