@@ -1,0 +1,12 @@
+{
+  "default": {
+    "title": "Most Memorable Moment",
+    "description": "Relive the clip that had the whole guild talking.",
+    "videoUrl": "https://www.youtube.com/watch?v=WDxw9w_npsk",
+    "accountIds": []
+  },
+  "2025": {
+    "description": "Example: Swap this text and account IDs to spotlight your own unforgettable play.",
+    "accountIds": [1, 2, 3]
+  }
+}

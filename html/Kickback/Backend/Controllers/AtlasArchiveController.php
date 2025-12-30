@@ -14,6 +14,48 @@ use Kickback\Services\Database;
 class AtlasArchiveController
 {
     /**
+     * Paths checked (in order) for overriding the "Most Memorable Moment" content.
+     *
+     * Each JSON file may contain either:
+     * - a root-level object with `title`, `description`, `videoUrl`, and `accountIds`, or
+     * - a map of years to objects with the same shape and an optional `default` entry.
+     *
+     * Example structure:
+     * {
+     *   "default": {
+     *     "title": "Most Memorable Moment",
+     *     "description": "Relive the clip that had the whole guild talking.",
+     *     "videoUrl": "https://www.youtube.com/watch?v=WDxw9w_npsk",
+     *     "accountIds": [1, 2, 3]
+     *   },
+     *   "2025": {
+     *     "description": "Your custom copy for 2025",
+     *     "accountIds": [4, 5]
+     *   }
+     * }
+     *
+     * The first readable file wins.
+     *
+     * @var array<int, string>
+     */
+    private const MEMORABLE_MOMENT_CONFIG_PATHS = [
+        '/srv/kickback-kingdom/atlas-memorable-moments.json',
+        '/etc/kickback-kingdom/atlas-memorable-moments.json',
+    ];
+
+    /**
+     * Fallback copy for the "Most Memorable Moment" slide.
+     *
+     * @var array<string, mixed>
+     */
+    private const MEMORABLE_MOMENT_DEFAULT = [
+        'title' => 'Most Memorable Moment',
+        'description' => 'Relive the clip that had the whole guild talking.',
+        'videoUrl' => 'https://www.youtube.com/watch?v=WDxw9w_npsk',
+        'accountIds' => [],
+    ];
+
+    /**
      * Build the Atlas Archive payload for the requested year.
      *
      * @param int $atlasYear
@@ -171,6 +213,7 @@ class AtlasArchiveController
             'treasureHunter' => $this->buildTreasureCollectorHonor($periodStart, $periodEnd),
             'raffleLuck' => $this->buildRaffleLuckHonor($periodStart, $periodEnd),
             'kingOfGames' => $this->buildKingOfGamesHonor($periodStart, $periodEnd),
+            'memorableMoment' => $this->buildMemorableMoment($previousYear),
         ];
     }
 
@@ -671,6 +714,61 @@ ORDER BY score DESC, bayes_avg DESC, participants_total DESC
             'goldCards' => (int)$row['gold_cards'],
             'eloSum' => isset($row['elo_sum']) ? (float)$row['elo_sum'] : null,
             'games' => $games,
+        ];
+    }
+
+    /**
+     * Build the "Most Memorable Moment" payload.
+     *
+     * @param int $previousYear
+     * @return array<string, mixed>
+     */
+    private function buildMemorableMoment(int $previousYear) : array
+    {
+        $config = $this->loadMemorableMomentConfig();
+        $definition = [];
+
+        if (isset($config[$previousYear]) && is_array($config[$previousYear])) {
+            $definition = $config[$previousYear];
+        } elseif (isset($config['default']) && is_array($config['default'])) {
+            $definition = $config['default'];
+        } elseif (!empty($config) && array_keys($config) !== range(0, count($config) - 1)) {
+            // Treat a single root-level object as the definition when no year keys exist.
+            $definition = $config;
+        }
+
+        if (!is_array($definition)) {
+            $definition = [];
+        }
+
+        $merged = array_merge(self::MEMORABLE_MOMENT_DEFAULT, $definition);
+        $title = (string)($merged['title'] ?? self::MEMORABLE_MOMENT_DEFAULT['title']);
+        $description = array_key_exists('description', $definition)
+            ? (string)$definition['description']
+            : sprintf("Relive %d's most unforgettable play.", $previousYear);
+        if ($description === '') {
+            $description = sprintf("Relive %d's most unforgettable play.", $previousYear);
+        }
+        $videoUrl = $this->normalizeVideoUrl(isset($merged['videoUrl']) ? (string)$merged['videoUrl'] : null);
+
+        $accountIds = [];
+        if (isset($merged['accountIds']) && is_array($merged['accountIds'])) {
+            $accountIds = array_values(array_unique(array_filter(array_map('intval', $merged['accountIds']))));
+        }
+
+        $profiles = $this->loadAccountProfiles($accountIds);
+        $taggedAccounts = [];
+        foreach ($accountIds as $accountId) {
+            if (isset($profiles[$accountId])) {
+                $taggedAccounts[] = $profiles[$accountId];
+            }
+        }
+
+        return [
+            'title' => $title,
+            'description' => $description,
+            'videoUrl' => $videoUrl,
+            'accounts' => $taggedAccounts,
         ];
     }
 
@@ -1190,6 +1288,71 @@ ORDER BY score DESC, bayes_avg DESC, participants_total DESC
         }
 
         return $games;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function loadMemorableMomentConfig() : array
+    {
+        $paths = self::MEMORABLE_MOMENT_CONFIG_PATHS;
+        $projectRoot = realpath(\Kickback\SCRIPT_ROOT . '/..');
+        if ($projectRoot !== false) {
+            $paths[] = $projectRoot . '/meta/config/atlas-memorable-moments.json';
+            $paths[] = $projectRoot . '/meta/config-examples/atlas-memorable-moments.json';
+        }
+
+        foreach ($paths as $path) {
+            if ($path === '' || $path === null || !is_readable($path)) {
+                continue;
+            }
+
+            $contents = @file_get_contents($path);
+            if ($contents === false) {
+                continue;
+            }
+
+            $decoded = json_decode($contents, true);
+            if (is_array($decoded)) {
+                return $decoded;
+            }
+        }
+
+        return [];
+    }
+
+    private function normalizeVideoUrl(?string $url) : ?string
+    {
+        if ($url === null) {
+            return null;
+        }
+
+        $trimmed = trim($url);
+        if ($trimmed === '') {
+            return null;
+        }
+
+        if (preg_match('/youtu\\.be\\/([A-Za-z0-9_-]+)/i', $trimmed, $matches) === 1) {
+            return 'https://www.youtube.com/embed/' . $matches[1];
+        }
+
+        $parsed = parse_url($trimmed);
+        if ($parsed !== false && isset($parsed['host']) && stripos((string)$parsed['host'], 'youtube.com') !== false) {
+            if (isset($parsed['path']) && str_starts_with((string)$parsed['path'], '/embed/')) {
+                return $trimmed;
+            }
+
+            $query = [];
+            if (isset($parsed['query'])) {
+                parse_str((string)$parsed['query'], $query);
+            }
+
+            if (!empty($query['v'])) {
+                return 'https://www.youtube.com/embed/' . $query['v'];
+            }
+        }
+
+        return $trimmed;
     }
 
     private function resolveAccount(?int $requestedAccountId, ?string $requestedUsername, ?vAccount $activeAccount) : ?vAccount

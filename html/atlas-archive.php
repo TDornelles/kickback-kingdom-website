@@ -818,6 +818,45 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       height: 100%;
       object-fit: cover;
     }
+    .moment-card {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1.1fr);
+      gap: 16px;
+      margin-top: 12px;
+      align-items: start;
+    }
+    .moment-video {
+      width: 100%;
+    }
+    .video-frame {
+      position: relative;
+      padding-top: 56.25%;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      box-shadow: var(--shadow);
+    }
+    .video-frame iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+    .moment-meta {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      background: rgba(255,255,255,0.03);
+      box-shadow: var(--shadow);
+    }
+    .tagged-accounts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
     .card-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -961,6 +1000,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
     }
     @media (max-width: 960px) {
       .page { grid-template-columns: 1fr; }
+      .moment-card { grid-template-columns: 1fr; }
     }
     @media (max-width: 768px) {
       .slides-stage { padding: 78px 14px 18px; height: 76vh; }
@@ -1103,6 +1143,30 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         ? `<img src="${icon}" class="game-badge-icon" alt="${name} icon">`
         : `<span class="game-icon-fallback game-badge-icon">${escapeHtml((name || "?").slice(0,1))}</span>`;
       return `<span class="pill game-badge">${visual}<span class="game-badge-name">${name}${suffix ? ` ${escapeHtml(suffix)}` : ""}</span></span>`;
+    };
+    const renderVideoEmbed = (url, title) => {
+      const safeUrl = url ? escapeHtml(url) : null;
+      if (!safeUrl) {
+        return `<div class="muted">No video provided.</div>`;
+      }
+      const safeTitle = escapeHtml(title || "Featured moment");
+      return `
+        <div class="video-frame">
+          <iframe
+            src="${safeUrl}"
+            title="${safeTitle}"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowfullscreen
+            loading="lazy"
+          ></iframe>
+        </div>
+      `;
+    };
+    const renderTaggedAccounts = (accounts) => {
+      if (!accounts || accounts.length === 0) {
+        return `<div class="muted">No adventurers tagged yet.</div>`;
+      }
+      return `<div class="tagged-accounts">${accounts.map((profile) => renderProfileChip(profile, "Adventurer")).join("")}</div>`;
     };
     const formatMonthLabel = (month) => {
       if (!month) return "";
@@ -1591,6 +1655,34 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
             <div class="honor-card">
               ${renderHonorProfile(entry, `The King of Games — Holder of the most Gold Cards in ${previousYear}`)}
               ${entry ? renderKingGames(entry.games, previousYear) : `<div class="muted">No ranked ladders with gold card holders recorded for ${previousYear}.</div>`}
+            </div>
+          `;
+        },
+      },
+      {
+        id: "memorable-moment",
+        title: honors?.memorableMoment?.title || "Most Memorable Moment",
+        accent: "accent-bg-pink",
+        nextCtaLabel: "Your Atlas Archive",
+        render: () => {
+          const moment = honors?.memorableMoment || {};
+          const title = escapeHtml(moment.title || "Most Memorable Moment");
+          const description = escapeHtml(moment.description || `Relive ${previousYear}'s most unforgettable play.`).replace(/\n/g, "<br>");
+          const videoEmbed = renderVideoEmbed(moment.videoUrl, moment.title || "Most Memorable Moment");
+          const tagged = renderTaggedAccounts(moment.accounts);
+          return `
+            <div class="slide-hero">
+              <div class="mega">${title}</div>
+              <div class="lead">${description}</div>
+            </div>
+            <div class="moment-card">
+              <div class="moment-video">
+                ${videoEmbed}
+              </div>
+              <div class="moment-meta">
+                <div class="pill-muted">Tagged Adventurers</div>
+                ${tagged}
+              </div>
             </div>
           `;
         },
