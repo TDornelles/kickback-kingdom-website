@@ -714,73 +714,41 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
     }
     .raffle-item-grid {
       display: flex;
-      gap: 10px;
+      gap: 6px;
       flex-wrap: wrap;
       align-items: center;
+      padding-top: 4px;
     }
     .raffle-item {
-      position: relative;
-      width: 68px;
-      height: 68px;
-      border-radius: 12px;
+      width: 46px;
+      height: 46px;
+      border-radius: 10px;
       border: 1px solid var(--border);
-      background: rgba(255,255,255,0.04);
+      background: rgba(255,255,255,0.05);
       display: grid;
       place-items: center;
       overflow: hidden;
       box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03);
     }
-    .raffle-item-icon {
-      width: 100%;
-      height: 100%;
-      display: grid;
-      place-items: center;
-    }
-    .raffle-item-icon img {
+    .raffle-item img {
       width: 100%;
       height: 100%;
       object-fit: cover;
       display: block;
     }
-    .raffle-item:hover {
-      transform: translateY(-4px) scale(1.02);
-      box-shadow: 0 10px 22px rgba(0,0,0,0.30);
-      border-color: rgba(255,255,255,0.18);
-    }
-    .raffle-item-popout {
-      position: absolute;
-      inset: auto auto -10px 50%;
-      transform: translate(-50%, 14px);
-      background: rgba(6,9,16,0.96);
+    .raffle-item-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 46px;
+      height: 46px;
+      padding: 0 12px;
+      border-radius: 10px;
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 8px 10px;
-      box-shadow: 0 14px 30px rgba(0,0,0,0.36);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 140ms ease, transform 140ms ease;
-      min-width: 180px;
-      text-align: center;
-      z-index: 5;
-    }
-    .raffle-item:hover .raffle-item-popout,
-    .raffle-item:focus-visible .raffle-item-popout {
-      opacity: 1;
-      transform: translate(-50%, 4px);
-    }
-    .raffle-item:focus-visible {
-      outline: 2px solid var(--accent-2);
-      outline-offset: 2px;
-    }
-    .raffle-item-name {
-      font-weight: 800;
+      background: rgba(255,255,255,0.05);
+      font-weight: 700;
       letter-spacing: 0.01em;
-    }
-    .raffle-item-meta {
-      color: var(--muted);
-      font-size: 12px;
-      margin-top: 4px;
-      line-height: 1.3;
+      text-align: center;
     }
     .slide-icon {
       transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
@@ -1018,30 +986,39 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
     };
 
     const renderRewardItems = (rewards) => {
-      if (!rewards || rewards.length === 0) {
+      const normalized = (rewards ?? [])
+        .map((reward) => {
+          if (typeof reward === "string") {
+            return { icon: reward, name: null, category: null };
+          }
+          if (reward && typeof reward === "object") {
+            return {
+              icon: reward.icon ?? reward.url ?? reward.src ?? null,
+              name: reward.name ?? reward.title ?? reward.label ?? null,
+              category: reward.category ?? null,
+            };
+          }
+          return null;
+        })
+        .filter((reward) => reward && (reward.icon || reward.name));
+
+      if (!normalized || normalized.length === 0) {
         return `<div class="muted">No reward items recorded.</div>`;
       }
 
-      const items = rewards.map((reward) => {
-        const name = escapeHtml(reward?.name ?? "Mystery Reward");
-        const category = reward?.category ? escapeHtml(reward.category) : null;
-        const icon = safeAvatar(reward?.icon);
-        const fallback = escapeHtml((reward?.name ?? "?").slice(0, 1) || "?");
-        const visual = icon
-          ? `<img src="${icon}" alt="${name} icon">`
-          : `<span class="game-icon-fallback">${fallback}</span>`;
-        return `
-          <div class="raffle-item slide-icon" tabindex="0" aria-label="${name}">
-            <div class="raffle-item-icon">${visual}</div>
-            <div class="raffle-item-popout">
-              <div class="raffle-item-name">${name}</div>
-              ${category ? `<div class="raffle-item-meta">${category}</div>` : ""}
-            </div>
-          </div>
-        `;
+      const items = normalized.map((reward, idx) => {
+        const icon = safeAvatar(reward.icon);
+        const name = escapeHtml(reward.name ?? `Reward ${idx + 1}`);
+        const category = reward.category ? escapeHtml(reward.category) : null;
+        const tooltipTitle = category ? `${name} • ${category}` : name;
+        const tooltipAttrs = `class="raffle-item slide-icon" data-bs-toggle="tooltip" data-bs-placement="top" title="${tooltipTitle}" aria-label="${name}"`;
+        if (icon) {
+          return `<img src="${icon}" alt="${name}" ${tooltipAttrs}>`;
+        }
+        return `<span ${tooltipAttrs}><span class="raffle-item-pill">${name}</span></span>`;
       }).join("");
 
-      return `<div class="raffle-item-grid slide-icon-group" aria-label="Raffle rewards">${items}</div>`;
+      return `<div class="raffle-item-grid" aria-label="Raffle rewards">${items}</div>`;
     };
 
     const renderRaffleRewards = (raffleRewards) => {
