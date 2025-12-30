@@ -585,20 +585,26 @@ ORDER BY score DESC, bayes_avg DESC, participants_total DESC
                  SELECT DISTINCT gr.account_id
                  FROM game_record gr
                  INNER JOIN game_match gm ON gm.Id = gr.game_match_id
-                 WHERE gm.Date >= ? AND gm.Date < ?
+                 WHERE gm.Date >= ? AND gm.Date < ? AND gm.`set` IN (0,1)
              ),
-             top_ranks AS (
-                 SELECT v.account_id, v.game_id, v.elo_rating
+             ranked_gold_cards AS (
+                 SELECT DISTINCT v.account_id, v.game_id, v.elo_rating
                  FROM v_game_elo_rank_info v
-                 WHERE v.rank = 1 AND v.is_ranked = 1
+                 INNER JOIN game_record gr ON gr.account_id = v.account_id
+                 INNER JOIN game_match gm ON gm.Id = gr.game_match_id
+                 WHERE v.rank = 1
+                   AND v.is_ranked = 1
+                   AND gm.Date >= ?
+                   AND gm.Date < ?
+                   AND gm.`set` IN (0,1)
              )
-             SELECT tr.account_id, COUNT(DISTINCT tr.game_id) AS gold_cards, SUM(tr.elo_rating) AS elo_sum
-             FROM top_ranks tr
-             INNER JOIN active_accounts aa ON aa.account_id = tr.account_id
-             GROUP BY tr.account_id
+             SELECT rgc.account_id, COUNT(DISTINCT rgc.game_id) AS gold_cards, SUM(rgc.elo_rating) AS elo_sum
+             FROM ranked_gold_cards rgc
+             INNER JOIN active_accounts aa ON aa.account_id = rgc.account_id
+             GROUP BY rgc.account_id
              ORDER BY gold_cards DESC, elo_sum DESC
              LIMIT 1',
-            [$periodStart, $periodEnd]
+            [$periodStart, $periodEnd, $periodStart, $periodEnd]
         );
 
         if (empty($row['account_id'])) {
@@ -619,10 +625,22 @@ ORDER BY score DESC, bayes_avg DESC, participants_total DESC
                     vg.locator AS game_locator
              FROM v_game_elo_rank_info v
              LEFT JOIN v_game_info vg ON v.game_id = vg.Id
-             WHERE v.rank = 1 AND v.is_ranked = 1 AND v.account_id = ?
+             WHERE v.rank = 1
+               AND v.is_ranked = 1
+               AND v.account_id = ?
+               AND EXISTS (
+                 SELECT 1
+                 FROM game_record gr
+                 INNER JOIN game_match gm ON gm.Id = gr.game_match_id
+                 WHERE gr.account_id = v.account_id
+                   AND gm.game_id = v.game_id
+                   AND gm.Date >= ?
+                   AND gm.Date < ?
+                   AND gm.`set` IN (0,1)
+               )
              GROUP BY vg.Id, vg.Name, vg.ShortName, vg.media_icon_id, vg.icon_path, vg.locator
              ORDER BY vg.Name',
-            [$row['account_id']]
+            [$row['account_id'], $periodStart, $periodEnd]
         );
 
         $games = array_values(array_filter(array_map(function (array $gameRow) {
