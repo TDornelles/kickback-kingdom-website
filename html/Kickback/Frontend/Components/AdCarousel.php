@@ -82,12 +82,12 @@ class AdCarousel
             $atlasArchiveUrl = Version::urlBetaPrefix() . "/" . $atlasArchivePath;
             $atlasArchiveLoginUrl = Version::urlBetaPrefix() . "/login.php?redirect=" . urlencode($atlasArchivePath);
             $atlasArchiveCta = Session::isLoggedIn() ? $atlasArchiveUrl : $atlasArchiveLoginUrl;
-            $atlasArchiveCtaLabel = Session::isLoggedIn() ? "View Atlas Archive" : "Log In to View";
+            $atlasArchiveCtaLabel = "View Atlas Archive";
             array_push($this->ads, new CarouselAd(
                 "/assets/media/context/Kickback_Banners_New_Year_1920-500.png",
                 "/assets/media/context/Kickback_Banners_New_Year_1080-500.png",
                 "Atlas Archive {$atlasYear}",
-                "Step into your personal chronicle for {$atlasYear} and relive every win, run, and memory.",
+                "Step into your personal chronicle and relive every win, run, and memory from the previous year.",
                 $atlasArchiveCta,
                 null,
                 null,
