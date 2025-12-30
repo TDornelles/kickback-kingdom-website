@@ -1060,6 +1060,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       }).join("");
       return `<div class="game-icon-row slide-icon-group" aria-label="Games spanned">${items}</div>`;
     };
+    const renderGameIcons = (games) => renderGameIconRow(games);
     const renderKingGameCard = (game) => {
       const icon = safeAvatar(game?.icon);
       const name = escapeHtml(game?.name ?? "Unknown game");
