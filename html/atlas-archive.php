@@ -849,6 +849,23 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       display: grid;
       gap: 8px;
     }
+    .momentum-rows {
+      display: grid;
+      gap: 10px;
+    }
+    .momentum-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .momentum-meta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
     .nemesis-list {
       display: grid;
       grid-template-columns: 1fr;
@@ -857,6 +874,17 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
     .nemesis-card {
       display: grid;
       gap: 10px;
+    }
+    .nemesis-games {
+      display: grid;
+      gap: 8px;
+    }
+    .nemesis-game-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
     }
     .pill-muted {
       display: inline-flex;
@@ -1698,16 +1726,11 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
             `;
           }
           const summary = account.matchmaker || {};
-          const monthly = [...(summary.monthly || [])].sort((a, b) => {
-            const aDate = new Date(a.month);
-            const bDate = new Date(b.month);
-            if (Number.isNaN(aDate.getTime()) || Number.isNaN(bDate.getTime())) return 0;
-            return aDate.getTime() - bDate.getTime();
-          });
+          const rankedGames = summary.games || [];
           return `
             <div class="slide-hero">
               <div class="mega">Matchmaker Streaks</div>
-              <div class="lead">Total matches played, wins, win rate, plus month-by-month win/loss ratios.</div>
+              <div class="lead">Total ranked matches, wins, win rate, plus every ladder you queued in.</div>
             </div>
             <div class="stat-hero">
               <div class="card">
@@ -1726,26 +1749,13 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
                 <p class="sub">Victory ratio</p>
               </div>
             </div>
-            ${monthly.length === 0 ? `<div class="muted-note">No matches recorded in this window.</div>` : `
-              <div class="bar-chart">
-                ${monthly.map((row) => {
-                  const total = (row.wins || 0) + (row.losses || 0) || row.matches || 0;
-                  const winPct = total > 0 ? Math.round(((row.wins || 0) / total) * 100) : 0;
-                  const lossPct = total > 0 ? 100 - winPct : 0;
-                  return `
-                    <div class="bar sequence-item" data-delay="120">
-                      <div class="title-row">
-                        <span class="pill">${formatMonthLabel(row.month)}</span>
-                        <span class="pill-muted">${fmt(row.wins)}W / ${fmt(row.losses)}L</span>
-                      </div>
-                      <div class="bar-track segmented">
-                        <div class="bar-fill win" style="width:${winPct}%"></div>
-                        <div class="bar-fill loss" style="width:${lossPct}%"></div>
-                      </div>
-                      <div class="pill-muted">Win rate ${fmtPct(row.winRate ?? (total > 0 ? (row.wins || 0) / total : null))}</div>
-                    </div>
-                  `;
-                }).join("")}
+            ${rankedGames.length === 0 ? `<div class="muted-note">No ranked matches recorded in this window.</div>` : `
+              <div class="list-card">
+                <div class="title-row">
+                  <span class="pill">Ranked Games</span>
+                  <span class="pill-muted">${rankedGames.length === 1 ? '1 game' : `${fmt(rankedGames.length)} games`}</span>
+                </div>
+                ${renderGameIcons(rankedGames)}
               </div>
             `}
           `;
@@ -1761,27 +1771,53 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
             return `
               <div class="slide-hero">
                 <div class="mega">Play to track swings</div>
-                <div class="lead">Elo swings light up once you log matches.</div>
+              <div class="lead">Elo swings light up once you log matches.</div>
               </div>
             `;
           }
           const swings = account.momentumShifts || [];
+          const gains = Array.isArray(swings) ? swings.filter((entry) => (entry.eloChange ?? 0) > 0) : (swings.gains || []);
+          const losses = Array.isArray(swings) ? swings.filter((entry) => (entry.eloChange ?? 0) < 0) : (swings.losses || []);
+          const renderMomentumItems = (items, positive) => {
+            if (!items || items.length === 0) {
+              return `<div class="muted-note">No Elo ${positive ? "gains" : "drops"} recorded.</div>`;
+            }
+            return `
+              <div class="momentum-rows">
+                ${items.map((swing, idx) => `
+                  <div class="momentum-row sequence-item" data-delay="${idx * 120}">
+                    ${renderGameBadge(swing.game)}
+                    <div class="momentum-meta">
+                      <span class="pill" style="background:${swing.eloChange >= 0 ? 'rgba(108,240,194,0.16)' : 'rgba(255,155,125,0.16)'};border-color:${swing.eloChange >=0 ? 'rgba(108,240,194,0.4)' : 'rgba(255,155,125,0.35)'};">${swing.eloChange >=0 ? '+' : ''}${fmt(swing.eloChange)}</span>
+                      <span class="pill-muted">${swing.win ? "Win" : "Loss"} • ${formatDateLabel(swing.date)}</span>
+                    </div>
+                  </div>
+                `).join("")}
+              </div>
+            `;
+          };
+          const hasAny = (gains?.length || 0) + (losses?.length || 0) > 0;
           return `
             <div class="slide-hero">
               <div class="mega">Momentum Shifts</div>
-              <div class="lead">Biggest Elo swings from single matches, spotlighting comebacks and lessons.</div>
+              <div class="lead">Biggest Elo gains and drops from single matches, spotlighting comebacks and lessons.</div>
             </div>
-            ${swings.length === 0 ? `<div class="muted">No Elo swings found for this year.</div>` : `
+            ${!hasAny ? `<div class="muted">No Elo swings found for this year.</div>` : `
               <div class="card-grid momentum-grid">
-                ${swings.map((swing, idx) => `
-                  <div class="list-card momentum-card sequence-item" data-delay="${idx * 120}">
-                    <div class="title-row">
-                      ${renderGameBadge(swing.game)}
-                      <span class="pill" style="background:${swing.eloChange >= 0 ? 'rgba(108,240,194,0.16)' : 'rgba(255,209,102,0.16)'};border-color:${swing.eloChange >=0 ? 'rgba(108,240,194,0.4)' : 'rgba(255,209,102,0.35)'};">${swing.eloChange >=0 ? '+' : ''}${fmt(swing.eloChange)}</span>
-                    </div>
-                    <div class="pill-muted">${swing.win ? "Win" : "Loss"} • ${formatDateLabel(swing.date)}</div>
+                <div class="list-card momentum-card">
+                  <div class="title-row">
+                    <span class="pill">Top Gainers</span>
+                    <span class="pill-muted">Biggest Elo jumps</span>
                   </div>
-                `).join("")}
+                  ${renderMomentumItems(gains, true)}
+                </div>
+                <div class="list-card momentum-card">
+                  <div class="title-row">
+                    <span class="pill">Top Losers</span>
+                    <span class="pill-muted">Toughest Elo drops</span>
+                  </div>
+                  ${renderMomentumItems(losses, false)}
+                </div>
               </div>
             `}
           `;
@@ -1863,10 +1899,25 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
             `;
           }
           const nemeses = account.nemeses || [];
+          const renderNemesisGames = (games) => {
+            if (!games || games.length === 0) {
+              return `<div class="muted-note">No defeats recorded by game.</div>`;
+            }
+            return `
+              <div class="nemesis-games">
+                ${games.map((entry) => `
+                  <div class="nemesis-game-row">
+                    ${renderGameBadge(entry.game)}
+                    <span class="pill-muted">${fmt(entry.defeats)} defeats</span>
+                  </div>
+                `).join("")}
+              </div>
+            `;
+          };
           return `
             <div class="slide-hero">
               <div class="mega">Nemesis</div>
-              <div class="lead">Three opponents who beat you the most in ranked matches — and the games they did it in.</div>
+              <div class="lead">Opponents who beat you the most across all games — including where they claimed those wins.</div>
             </div>
             ${nemeses.length === 0 ? `<div class="muted">No rivalries detected this year.</div>` : `
               <div class="nemesis-list">
@@ -1876,8 +1927,8 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
                       ${renderProfileChip(entry.profile, "Opponent")}
                       <span class="nemesis-defeats">${fmt(entry.defeats)} defeats</span>
                     </div>
-                    <div class="pill-muted">Top game</div>
-                    ${renderGameBadge(entry.game, "")}
+                    <div class="pill-muted">Defeats by game</div>
+                    ${renderNemesisGames(entry.games || (entry.game ? [{ game: entry.game, defeats: entry.defeats }] : []))}
                   </div>
                 `).join("")}
               </div>
@@ -1976,11 +2027,15 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         "matchmaker-streaks": {
           elements: [
             { selector: ".stat-hero .card", enter: "animate__fadeInUp", stagger: true },
-            { selector: ".bar-chart .bar", enter: "animate__fadeInUp", stagger: true },
+            { selector: ".list-card", enter: "animate__fadeInUp", stagger: true },
+            { selector: ".list-card .slide-icon", enter: "animate__zoomIn", stagger: true },
           ],
         },
         "momentum-shifts": {
-          elements: [{ selector: ".list-card", enter: "animate__fadeInUp", stagger: true }],
+          elements: [
+            { selector: ".list-card", enter: "animate__fadeInUp", stagger: true },
+            { selector: ".momentum-rows .momentum-row", enter: "animate__fadeInUp", stagger: true },
+          ],
         },
         "duo-of-destiny": {
           elements: [
