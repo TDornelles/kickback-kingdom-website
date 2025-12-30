@@ -1010,7 +1010,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         const icon = safeAvatar(reward.icon);
         const name = escapeHtml(reward.name ?? `Reward ${idx + 1}`);
         const category = reward.category ? escapeHtml(reward.category) : null;
-        const tooltipTitle = category ? `${name} • ${category}` : name;
+        const tooltipTitle = category ? `${name}` : name;
         const tooltipAttrs = `class="raffle-item slide-icon" data-bs-toggle="tooltip" data-bs-placement="top" title="${tooltipTitle}" aria-label="${name}"`;
         if (icon) {
           return `<img src="${icon}" alt="${name}" ${tooltipAttrs}>`;
