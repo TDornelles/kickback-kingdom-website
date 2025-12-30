@@ -623,8 +623,8 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       margin-top: 8px;
     }
     .game-icon {
-      width: 36px;
-      height: 36px;
+      width: 46px;
+      height: 46px;
       border-radius: 10px;
       border: 1px solid var(--border);
       background: rgba(255,255,255,0.05);
@@ -690,7 +690,6 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
     .slide-icon:hover {
       transform: translateY(-4px);
       box-shadow: 0 8px 18px rgba(0,0,0,0.28);
-      background: rgba(255,255,255,0.07);
       border-color: rgba(255,255,255,0.18);
     }
     .slide-icon-group {
