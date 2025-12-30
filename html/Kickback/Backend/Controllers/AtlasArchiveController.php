@@ -839,6 +839,17 @@ ORDER BY score DESC, bayes_avg DESC, participants_total DESC
             [$accountId, $yearStart, $yearEnd]
         );
 
+        $gamesRows = $this->fetchAll(
+            'SELECT grm.game_id, COUNT(*) AS matches
+             FROM v_game_record_match grm
+             WHERE grm.account_id = ?
+               AND grm.Date >= ?
+               AND grm.Date < ?
+             GROUP BY grm.game_id
+             ORDER BY matches DESC',
+            [$accountId, $yearStart, $yearEnd]
+        );
+
         $monthly = array_map(function ($row) {
             return [
                 'month' => (string)($row['month'] ?? ''),
@@ -851,31 +862,57 @@ ORDER BY score DESC, bayes_avg DESC, participants_total DESC
             ];
         }, $monthlyRows);
 
+        $gameIds = array_map(fn ($row) => (int)($row['game_id'] ?? 0), $gamesRows);
+        $games = $this->loadGamesByIds($gameIds);
+
+        $rankedGames = array_values(array_map(function ($row) use ($games) {
+            $gameId = (int)($row['game_id'] ?? 0);
+            return $games[$gameId] ?? ['id' => $gameId];
+        }, $gamesRows));
+
         return [
             'matches' => $matches,
             'wins' => $wins,
             'winRate' => $matches > 0 ? $wins / max($matches, 1) : null,
             'monthly' => $monthly,
+            'games' => $rankedGames,
         ];
     }
 
     private function buildMomentumShifts(int $accountId, string $yearStart, string $yearEnd) : array
     {
-        $rows = $this->fetchAll(
+        $gainers = $this->fetchAll(
             'SELECT gr.game_id, gr.elo_change, gr.win, gm.Date AS match_date
              FROM game_record gr
              INNER JOIN game_match gm ON gm.Id = gr.game_match_id
              WHERE gr.account_id = ?
                AND gm.Date >= ?
                AND gm.Date < ?
-             ORDER BY ABS(gr.elo_change) DESC, gm.Date DESC
+               AND gr.elo_change > 0
+             ORDER BY gr.elo_change DESC, gm.Date DESC
              LIMIT 5',
             [$accountId, $yearStart, $yearEnd]
         );
 
-        $games = $this->loadGamesByIds(array_map(fn ($row) => (int)($row['game_id'] ?? 0), $rows));
+        $losers = $this->fetchAll(
+            'SELECT gr.game_id, gr.elo_change, gr.win, gm.Date AS match_date
+             FROM game_record gr
+             INNER JOIN game_match gm ON gm.Id = gr.game_match_id
+             WHERE gr.account_id = ?
+               AND gm.Date >= ?
+               AND gm.Date < ?
+               AND gr.elo_change < 0
+             ORDER BY gr.elo_change ASC, gm.Date DESC
+             LIMIT 5',
+            [$accountId, $yearStart, $yearEnd]
+        );
 
-        return array_values(array_map(function ($row) use ($games) {
+        $games = $this->loadGamesByIds(array_merge(
+            array_map(fn ($row) => (int)($row['game_id'] ?? 0), $gainers),
+            array_map(fn ($row) => (int)($row['game_id'] ?? 0), $losers)
+        ));
+
+        $formatRow = function (array $row) use ($games) : array {
             $gameId = (int)($row['game_id'] ?? 0);
             return [
                 'game' => $games[$gameId] ?? ['id' => $gameId],
@@ -883,7 +920,12 @@ ORDER BY score DESC, bayes_avg DESC, participants_total DESC
                 'win' => isset($row['win']) ? ((int)$row['win'] === 1) : false,
                 'date' => (string)($row['match_date'] ?? ''),
             ];
-        }, $rows));
+        };
+
+        return [
+            'gains' => array_values(array_map($formatRow, $gainers)),
+            'losses' => array_values(array_map($formatRow, $losers)),
+        ];
     }
 
     private function buildDuoOfDestiny(int $accountId, string $yearStart, string $yearEnd) : ?array
@@ -971,8 +1013,7 @@ ORDER BY score DESC, bayes_avg DESC, participants_total DESC
                AND opp.win = 1
                AND me.win = 0
              GROUP BY opp.account_id, opp.game_id
-             ORDER BY defeats DESC, opp.account_id
-             LIMIT 12',
+             ORDER BY defeats DESC, opp.account_id',
             [$accountId, $yearStart, $yearEnd]
         );
 
@@ -989,14 +1030,16 @@ ORDER BY score DESC, bayes_avg DESC, participants_total DESC
             if (!isset($opponentTotals[$opponentId])) {
                 $opponentTotals[$opponentId] = [
                     'defeats' => 0,
-                    'topGame' => ['game_id' => $gameId, 'defeats' => $defeats],
+                    'games' => [],
                 ];
             }
 
             $opponentTotals[$opponentId]['defeats'] += $defeats;
-            if ($defeats >= ($opponentTotals[$opponentId]['topGame']['defeats'] ?? 0)) {
-                $opponentTotals[$opponentId]['topGame'] = ['game_id' => $gameId, 'defeats' => $defeats];
+
+            if (!isset($opponentTotals[$opponentId]['games'][$gameId])) {
+                $opponentTotals[$opponentId]['games'][$gameId] = 0;
             }
+            $opponentTotals[$opponentId]['games'][$gameId] += $defeats;
         }
 
         uasort($opponentTotals, function ($a, $b) {
@@ -1006,16 +1049,32 @@ ORDER BY score DESC, bayes_avg DESC, participants_total DESC
         $topOpponents = array_slice($opponentTotals, 0, 3, true);
         $opponentIds = array_keys($topOpponents);
         $profiles = $this->loadAccountProfiles($opponentIds);
-        $gameIds = array_map(fn ($entry) => (int)($entry['topGame']['game_id'] ?? 0), $topOpponents);
+        $gameIds = [];
+        foreach ($topOpponents as $entry) {
+            foreach (array_keys($entry['games'] ?? []) as $gameId) {
+                $gameIds[] = (int)$gameId;
+            }
+        }
         $games = $this->loadGamesByIds($gameIds);
 
         $result = [];
         foreach ($topOpponents as $opponentId => $data) {
-            $gameId = (int)($data['topGame']['game_id'] ?? 0);
+            $gameDetails = [];
+            foreach ($data['games'] as $gameId => $defeatCount) {
+                $gameDetails[] = [
+                    'game' => $games[$gameId] ?? ['id' => $gameId],
+                    'defeats' => (int)$defeatCount,
+                ];
+            }
+
+            usort($gameDetails, function ($a, $b) {
+                return ($b['defeats'] ?? 0) <=> ($a['defeats'] ?? 0);
+            });
+
             $result[] = [
                 'profile' => $profiles[$opponentId] ?? null,
                 'defeats' => (int)($data['defeats'] ?? 0),
-                'game' => $games[$gameId] ?? ['id' => $gameId],
+                'games' => $gameDetails,
             ];
         }
 
