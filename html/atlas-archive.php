@@ -1870,18 +1870,14 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
                 </div>
               </div>
               ${duo.games && duo.games.length ? `
-              <div class="card-grid">
-                ${duo.games.map((entry, idx) => `
-                  <div class="list-card sequence-item" data-delay="${idx * 120}">
-                    <div class="title-row">
-                  <span class="pill">Ranked Games</span>
-                  <span class="pill-muted">${duo.games.length} games</span>
-                </div>
-              ${renderGameIconRow((duo.games || []).map((entry) => entry.game))}
+                <div class="list-card">
+                  <div class="title-row">
+                    <span class="pill">Ranked Games</span>
+                    <span class="pill-muted">${duo.games.length === 1 ? '1 game' : `${fmt(duo.games.length)} games`}</span>
                   </div>
-                `).join("")}
-              </div>
-            ` : ``}
+                  ${renderGameIcons((duo.games || []).map((entry) => entry.game))}
+                </div>
+              ` : `<div class="muted-note">Play ranked together to see your game breakdown.</div>`}
             </div>
           `;
         },
@@ -2044,6 +2040,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           elements: [
             { selector: ".list-card", enter: "animate__fadeInUp", stagger: true },
             { selector: ".stat-hero .card", enter: "animate__fadeInUp", stagger: true },
+            { selector: ".list-card .slide-icon", enter: "animate__zoomIn", stagger: true },
           ],
         },
         nemeses: {
