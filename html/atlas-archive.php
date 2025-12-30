@@ -1380,6 +1380,32 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         },
       },
       {
+        id: "account-title",
+        title: "Your Atlas Archive",
+        accent: "accent-bg-violet",
+        hideHeaderTitle: true,
+        showNextCta: false,
+        nextCtaLabel: "View Your Story",
+        render: () => {
+          const username = account?.profile?.username;
+          const heroTitle = username ? `${escapeHtml(username)}'s Atlas Archive` : "Your Atlas Archive";
+          const leadCopy = username
+            ? `From realm-wide legends to ${escapeHtml(username)}'s personal saga. Ready to see this account's tale?`
+            : "From realm-wide legends to your personal saga. Ready to see your account's tale?";
+          const ctaLabel = username ? `View ${escapeHtml(username)}'s Story` : "View Your Story";
+
+          return `
+            <div class="slide-hero">
+              <div class="mega">${heroTitle}</div>
+              <div class="lead">${leadCopy}</div>
+              <div class="actions" style="justify-content:center;">
+                <button class="cta-primary" data-action="next">${ctaLabel}</button>
+              </div>
+            </div>
+          `;
+        },
+      },
+      {
         id: "account-hero",
         title: "Your Atlas Spotlight",
         accent: "accent-bg-gold",
