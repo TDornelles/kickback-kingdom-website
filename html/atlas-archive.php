@@ -1022,26 +1022,24 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
     };
 
     const renderRaffleRewards = (raffleRewards) => {
-      if (!raffleRewards || raffleRewards.length === 0) {
-        return `<div class="muted">No raffle reward details recorded for this year.</div>`;
-      }
+      const aggregatedRewards = (raffleRewards ?? [])
+        .flatMap((raffle) => {
+          if (!raffle || !Array.isArray(raffle.rewards)) {
+            return [];
+          }
+          return raffle.rewards;
+        });
 
-      return `<div class="raffle-rewards">${raffleRewards.map((raffle) => {
-        const questName = escapeHtml(raffle.questName ?? "Unknown Quest");
-        const dateLabel = raffle.endDate ? new Date(raffle.endDate).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "Date unknown";
-        return `
-          <div class="raffle-reward-strip">
-            <div class="raffle-reward-strip-header">
-              <div class="raffle-reward-title">
-                <span class="pill">Raffle</span>
-                <span>${questName}</span>
-              </div>
-              <div class="raffle-reward-meta">${dateLabel}</div>
+      return `
+        <div class="stat-pill">
+          <div class="label">
+            Prizes
+            <div class="value">
+              ${renderRewardItems(aggregatedRewards)}
             </div>
-            ${renderRewardItems(raffle.rewards)}
           </div>
-        `;
-      }).join("")}</div>`;
+        </div>
+      `;
     };
     const slides = [
       {
@@ -1355,8 +1353,8 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
                 <div class="honor-stats">
                   ${renderStatPill("Raffles Won", entry.rafflesWon)}
                   ${renderStatPill("Tickets Wagered", entry.ticketsUsed)}
+                  ${renderRaffleRewards(entry.raffleRewards)}
                 </div>
-                ${renderRaffleRewards(entry.raffleRewards)}
               ` : `<div class="muted">No raffle winners recorded for ${previousYear}.</div>`}
             </div>
           `;
