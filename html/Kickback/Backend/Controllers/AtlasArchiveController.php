@@ -813,12 +813,11 @@ ORDER BY score DESC, bayes_avg DESC, participants_total DESC
     private function buildMatchmakerStreaks(int $accountId, string $yearStart, string $yearEnd) : array
     {
         $summary = $this->fetchOne(
-            'SELECT COUNT(*) AS matches, SUM(CASE WHEN gr.win = 1 THEN 1 ELSE 0 END) AS wins
-             FROM game_record gr
-             INNER JOIN game_match gm ON gm.Id = gr.game_match_id
-             WHERE gr.account_id = ?
-               AND gm.Date >= ?
-               AND gm.Date < ?
+            'SELECT COUNT(*) AS matches, SUM(CASE WHEN grm.win = 1 THEN 1 ELSE 0 END) AS wins
+             FROM v_game_record_match grm
+             WHERE grm.account_id = ?
+               AND grm.Date >= ?
+               AND grm.Date < ?
              LIMIT 1',
             [$accountId, $yearStart, $yearEnd]
         ) ?? [];
@@ -827,14 +826,15 @@ ORDER BY score DESC, bayes_avg DESC, participants_total DESC
         $wins = (int)($summary['wins'] ?? 0);
 
         $monthlyRows = $this->fetchAll(
-            'SELECT DATE_FORMAT(gm.Date, "%Y-%m-01") AS month,
-                    COUNT(*) AS matches
-             FROM game_record gr
-             INNER JOIN game_match gm ON gm.Id = gr.game_match_id
-             WHERE gr.account_id = ?
-               AND gm.Date >= ?
-               AND gm.Date < ?
-             GROUP BY DATE_FORMAT(gm.Date, "%Y-%m-01")
+            'SELECT DATE_FORMAT(grm.Date, "%Y-%m-01") AS month,
+                    COUNT(*) AS matches,
+                    SUM(CASE WHEN grm.win = 1 THEN 1 ELSE 0 END) AS wins,
+                    SUM(CASE WHEN grm.win = 0 THEN 1 ELSE 0 END) AS losses
+             FROM v_game_record_match grm
+             WHERE grm.account_id = ?
+               AND grm.Date >= ?
+               AND grm.Date < ?
+             GROUP BY DATE_FORMAT(grm.Date, "%Y-%m-01")
              ORDER BY month ASC',
             [$accountId, $yearStart, $yearEnd]
         );
@@ -843,6 +843,11 @@ ORDER BY score DESC, bayes_avg DESC, participants_total DESC
             return [
                 'month' => (string)($row['month'] ?? ''),
                 'matches' => (int)($row['matches'] ?? 0),
+                'wins' => (int)($row['wins'] ?? 0),
+                'losses' => (int)($row['losses'] ?? 0),
+                'winRate' => isset($row['wins'], $row['matches']) && (int)$row['matches'] > 0
+                    ? ((int)$row['wins']) / max((int)$row['matches'], 1)
+                    : null,
             ];
         }, $monthlyRows);
 
@@ -915,7 +920,7 @@ ORDER BY score DESC, bayes_avg DESC, participants_total DESC
                ON me.game_match_id = teammate.game_match_id
               AND IFNULL(me.team_name, "") = IFNULL(teammate.team_name, "")
               AND me.account_id = ?
-              AND teammate.account_id = ?
+               AND teammate.account_id = ?
              INNER JOIN game_match gm ON gm.Id = me.game_match_id
              WHERE gm.`set` IN (0,1)
                AND gm.Date >= ?

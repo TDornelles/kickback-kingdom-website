@@ -44,6 +44,11 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       --gradient: radial-gradient(circle at 18% 20%, rgba(255, 209, 102, 0.14), transparent 36%), radial-gradient(circle at 82% 18%, rgba(124, 183, 255, 0.18), transparent 34%), radial-gradient(circle at 40% 82%, rgba(108, 240, 194, 0.16), transparent 40%), #060910;
     }
+    .nemesis-defeats {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--accent);
+    }
     * { box-sizing: border-box; }
     body {
       margin: 0;
@@ -623,8 +628,8 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       margin-top: 8px;
     }
     .game-icon {
-      width: 46px;
-      height: 46px;
+      width: 54px;
+      height: 54px;
       border-radius: 10px;
       border: 1px solid var(--border);
       background: rgba(255,255,255,0.05);
@@ -637,6 +642,29 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       height: 100%;
       object-fit: cover;
       display: block;
+    }
+    .game-badge {
+      display: inline-flex !important;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      font-size: 15px;
+      letter-spacing: 0.01em;
+    }
+    .game-badge-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.05);
+      object-fit: cover;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+    }
+    .game-badge-name {
+      font-weight: 800;
     }
     .king-games-grid {
       display: grid;
@@ -796,6 +824,9 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       gap: 12px;
       margin-top: 12px;
     }
+    .momentum-grid {
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    }
     .list-card {
       border: 1px solid var(--border);
       border-radius: 12px;
@@ -810,6 +841,22 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       gap: 10px;
       flex-wrap: wrap;
       margin-bottom: 6px;
+    }
+    .list-card .game-badge-name {
+      font-size: 18px;
+    }
+    .momentum-card {
+      display: grid;
+      gap: 8px;
+    }
+    .nemesis-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    .nemesis-card {
+      display: grid;
+      gap: 10px;
     }
     .pill-muted {
       display: inline-flex;
@@ -833,7 +880,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       gap: 6px;
     }
     .bar-track {
-      height: 10px;
+      height: 12px;
       border-radius: 999px;
       background: rgba(255,255,255,0.08);
       overflow: hidden;
@@ -842,6 +889,22 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       height: 100%;
       background: linear-gradient(90deg, #ffd166, #7cb7ff);
       border-radius: 999px;
+    }
+    .bar-track.segmented {
+      display: flex;
+      background: rgba(255,255,255,0.04);
+      gap: 4px;
+      padding: 2px;
+    }
+    .bar-track.segmented .bar-fill {
+      flex: 0 0 auto;
+      border-radius: 8px;
+    }
+    .bar-fill.win {
+      background: linear-gradient(90deg, #6cf0c2, #7cb7ff);
+    }
+    .bar-fill.loss {
+      background: linear-gradient(90deg, #ff9b7d, #ffd166);
     }
     .muted-note {
       color: var(--muted);
@@ -1000,11 +1063,13 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       `;
     };
     const renderGameBadge = (game, suffix = "") => {
-      if (!game) return `<span class="pill">${escapeHtml(suffix || "Game")}</span>`;
+      if (!game) return `<span class="pill game-badge"><span class="game-badge-name">${escapeHtml(suffix || "Game")}</span></span>`;
       const icon = safeAvatar(game.icon);
       const name = escapeHtml(game.name || game.shortName || `Game ${game.id || ""}`);
-      const visual = icon ? `<img src="${icon}" alt="${name} icon" style="width:20px;height:20px;object-fit:cover;border-radius:6px;">` : `<span class="game-icon-fallback">${escapeHtml((name || "?").slice(0,1))}</span>`;
-      return `<span class="pill" style="display:inline-flex;align-items:center;gap:8px;">${visual}<span>${name}${suffix ? ` ${escapeHtml(suffix)}` : ""}</span></span>`;
+      const visual = icon
+        ? `<img src="${icon}" class="game-badge-icon" alt="${name} icon">`
+        : `<span class="game-icon-fallback game-badge-icon">${escapeHtml((name || "?").slice(0,1))}</span>`;
+      return `<span class="pill game-badge">${visual}<span class="game-badge-name">${name}${suffix ? ` ${escapeHtml(suffix)}` : ""}</span></span>`;
     };
     const formatMonthLabel = (month) => {
       if (!month) return "";
@@ -1552,7 +1617,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
                   <div class="list-card sequence-item" data-delay="${idx * 120}">
                     <div class="title-row">
                       <span class="pill">#${idx + 1}</span>
-                      <span class="pill-muted">Best Friend/span>
+                      <span class="pill-muted">Best Friend</span>
                     </div>
                     ${renderProfileChip(friend.profile, "Teammate")}
                     <div class="stat-hero" style="margin-top:10px;">
@@ -1633,12 +1698,16 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
             `;
           }
           const summary = account.matchmaker || {};
-          const monthly = summary.monthly || [];
-          const maxMatches = Math.max(...monthly.map((m) => m.matches || 0), 0);
+          const monthly = [...(summary.monthly || [])].sort((a, b) => {
+            const aDate = new Date(a.month);
+            const bDate = new Date(b.month);
+            if (Number.isNaN(aDate.getTime()) || Number.isNaN(bDate.getTime())) return 0;
+            return aDate.getTime() - bDate.getTime();
+          });
           return `
             <div class="slide-hero">
               <div class="mega">Matchmaker Streaks</div>
-              <div class="lead">Total matches played, wins, win rate, plus month-by-month volume.</div>
+              <div class="lead">Total matches played, wins, win rate, plus month-by-month win/loss ratios.</div>
             </div>
             <div class="stat-hero">
               <div class="card">
@@ -1660,14 +1729,20 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
             ${monthly.length === 0 ? `<div class="muted-note">No matches recorded in this window.</div>` : `
               <div class="bar-chart">
                 ${monthly.map((row) => {
-                  const pctWidth = maxMatches > 0 ? Math.round((row.matches / maxMatches) * 100) : 0;
+                  const total = (row.wins || 0) + (row.losses || 0) || row.matches || 0;
+                  const winPct = total > 0 ? Math.round(((row.wins || 0) / total) * 100) : 0;
+                  const lossPct = total > 0 ? 100 - winPct : 0;
                   return `
                     <div class="bar sequence-item" data-delay="120">
                       <div class="title-row">
                         <span class="pill">${formatMonthLabel(row.month)}</span>
-                        <span class="pill-muted">${fmt(row.matches)} matches</span>
+                        <span class="pill-muted">${fmt(row.wins)}W / ${fmt(row.losses)}L</span>
                       </div>
-                      <div class="bar-track"><div class="bar-fill" style="width:${pctWidth}%"></div></div>
+                      <div class="bar-track segmented">
+                        <div class="bar-fill win" style="width:${winPct}%"></div>
+                        <div class="bar-fill loss" style="width:${lossPct}%"></div>
+                      </div>
+                      <div class="pill-muted">Win rate ${fmtPct(row.winRate ?? (total > 0 ? (row.wins || 0) / total : null))}</div>
                     </div>
                   `;
                 }).join("")}
@@ -1697,9 +1772,9 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
               <div class="lead">Biggest Elo swings from single matches, spotlighting comebacks and lessons.</div>
             </div>
             ${swings.length === 0 ? `<div class="muted">No Elo swings found for this year.</div>` : `
-              <div class="card-grid">
+              <div class="card-grid momentum-grid">
                 ${swings.map((swing, idx) => `
-                  <div class="list-card sequence-item" data-delay="${idx * 120}">
+                  <div class="list-card momentum-card sequence-item" data-delay="${idx * 120}">
                     <div class="title-row">
                       ${renderGameBadge(swing.game)}
                       <span class="pill" style="background:${swing.eloChange >= 0 ? 'rgba(108,240,194,0.16)' : 'rgba(255,209,102,0.16)'};border-color:${swing.eloChange >=0 ? 'rgba(108,240,194,0.4)' : 'rgba(255,209,102,0.35)'};">${swing.eloChange >=0 ? '+' : ''}${fmt(swing.eloChange)}</span>
@@ -1794,14 +1869,15 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
               <div class="lead">Three opponents who beat you the most in ranked matches — and the games they did it in.</div>
             </div>
             ${nemeses.length === 0 ? `<div class="muted">No rivalries detected this year.</div>` : `
-              <div class="card-grid">
+              <div class="nemesis-list">
                 ${nemeses.map((entry, idx) => `
-                  <div class="list-card sequence-item" data-delay="${idx * 120}">
+                  <div class="list-card nemesis-card sequence-item" data-delay="${idx * 120}">
                     <div class="title-row">
                       ${renderProfileChip(entry.profile, "Opponent")}
-                      <span class="pill">Defeated you ${fmt(entry.defeats)} times</span>
+                      <span class="nemesis-defeats">${fmt(entry.defeats)} defeats</span>
                     </div>
-                    <div class="pill-muted">Game: ${renderGameBadge(entry.game, "")}</div>
+                    <div class="pill-muted">Top game</div>
+                    ${renderGameBadge(entry.game, "")}
                   </div>
                 `).join("")}
               </div>
