@@ -1655,16 +1655,6 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
                         ${renderKpi(friend.totalShared ?? ((friend.quests ?? 0) + (friend.teamMatches ?? 0)))}
                         <p class="sub">Combined quests and team-ups</p>
                       </div>
-                      <div class="card">
-                        <div class="pill">Quests Together</div>
-                        ${renderKpi(friend.quests)}
-                        <p class="sub">Co-adventured</p>
-                      </div>
-                      <div class="card">
-                        <div class="pill">Team Matches</div>
-                        ${renderKpi(friend.teamMatches)}
-                        <p class="sub">Same-side matches</p>
-                      </div>
                     </div>
                   </div>
                 `).join("")}
@@ -1879,20 +1869,6 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
                   <p class="sub">Victories side-by-side</p>
                 </div>
               </div>
-              ${duo.games && duo.games.length ? `
-                <div class="card-grid">
-                  ${duo.games.map((entry, idx) => `
-                    <div class="list-card sequence-item" data-delay="${idx * 120}">
-                      <div class="title-row">
-                        ${renderGameBadge(entry.game)}
-                        <span class="pill-muted">${fmt(entry.matches)} ranked matches together</span>
-                      </div>
-                    </div>
-                  `).join("")}
-                </div>
-                <div class="muted-note">Games climbed together</div>
-                ${renderGameIconRow((duo.games || []).map((entry) => entry.game))}
-              ` : ``}
             </div>
           `;
         },
