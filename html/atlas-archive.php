@@ -1638,7 +1638,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           return `
             <div class="slide-hero">
               <div class="mega">Best Friends</div>
-              <div class="lead">Top 3 adventurers you quested with the most.</div>
+              <div class="lead">Top 3 adventurers you quested or teamed with the most.</div>
             </div>
             ${friends.length === 0 ? `<div class="muted">No shared matches found for this year.</div>` : `
               <div class="card-grid">
@@ -1651,9 +1651,19 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
                     ${renderProfileChip(friend.profile, "Teammate")}
                     <div class="stat-hero" style="margin-top:10px;">
                       <div class="card">
+                        <div class="pill">Shared Runs</div>
+                        ${renderKpi(friend.totalShared ?? ((friend.quests ?? 0) + (friend.teamMatches ?? 0)))}
+                        <p class="sub">Combined quests and team-ups</p>
+                      </div>
+                      <div class="card">
                         <div class="pill">Quests Together</div>
                         ${renderKpi(friend.quests)}
                         <p class="sub">Co-adventured</p>
+                      </div>
+                      <div class="card">
+                        <div class="pill">Team Matches</div>
+                        ${renderKpi(friend.teamMatches)}
+                        <p class="sub">Same-side matches</p>
                       </div>
                     </div>
                   </div>
@@ -1850,7 +1860,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           return `
             <div class="slide-hero">
               <div class="mega">Duo of Destiny</div>
-              <div class="lead">Your most frequent ranked teammate based on shared teams, the duo’s combined win rate, and the games you climbed together.</div>
+              <div class="lead">Your most frequent teammate across every ladder, showing your combined win rate and the games you conquered together.</div>
             </div>
             <div class="list-card">
               <div class="title-row">
@@ -1880,6 +1890,8 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
                     </div>
                   `).join("")}
                 </div>
+                <div class="muted-note">Games climbed together</div>
+                ${renderGameIconRow((duo.games || []).map((entry) => entry.game))}
               ` : ``}
             </div>
           `;
