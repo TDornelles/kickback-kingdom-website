@@ -1869,6 +1869,19 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
                   <p class="sub">Victories side-by-side</p>
                 </div>
               </div>
+              ${duo.games && duo.games.length ? `
+              <div class="card-grid">
+                ${duo.games.map((entry, idx) => `
+                  <div class="list-card sequence-item" data-delay="${idx * 120}">
+                    <div class="title-row">
+                  <span class="pill">Ranked Games</span>
+                  <span class="pill-muted">${duo.games.length} games</span>
+                </div>
+              ${renderGameIconRow((duo.games || []).map((entry) => entry.game))}
+                  </div>
+                `).join("")}
+              </div>
+            ` : ``}
             </div>
           `;
         },
