@@ -9,6 +9,7 @@ use Kickback\Backend\Controllers\TreasureHuntController;
 use Kickback\Backend\Views\vTreasureHuntEvent;
 use Kickback\Backend\Controllers\SeasonController;
 use Kickback\Common\Version;
+use Kickback\Services\Session;
 
 class AdCarousel
 {
@@ -76,12 +77,22 @@ class AdCarousel
         }
 
         if ($this->isJanuaryWindow()) {
+            $atlasYear = (int)(new \DateTimeImmutable('now'))->format('Y');
+            $atlasArchivePath = "atlas-archive.php?year={$atlasYear}";
+            $atlasArchiveUrl = Version::urlBetaPrefix() . "/" . $atlasArchivePath;
+            $atlasArchiveLoginUrl = Version::urlBetaPrefix() . "/login.php?redirect=" . urlencode($atlasArchivePath);
+            $atlasArchiveCta = Session::isLoggedIn() ? $atlasArchiveUrl : $atlasArchiveLoginUrl;
+            $atlasArchiveCtaLabel = Session::isLoggedIn() ? "View Atlas Archive" : "Log In to View";
             array_push($this->ads, new CarouselAd(
                 "/assets/media/context/Kickback_Banners_New_Year_1920-500.png",
                 "/assets/media/context/Kickback_Banners_New_Year_1080-500.png",
-                "New Year Kingdom Kickoff",
-                "Ring in the year with fresh quests, rewards, and celebrations all January long!",
-                "/town-square.php"
+                "Atlas Archive {$atlasYear}",
+                "Step into your personal chronicle for {$atlasYear} and relive every win, run, and memory.",
+                $atlasArchiveCta,
+                null,
+                null,
+                7000,
+                $atlasArchiveCtaLabel
             ));
         }
 
