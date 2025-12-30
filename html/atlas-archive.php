@@ -1248,7 +1248,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
               <div class="lead">In ${previousYear}, songs were sung of one who mastered every contest, crowned by fate as the King of Games — a legend that will echo through the ages.</div>
             </div>
             <div class="honor-card">
-              ${renderHonorProfile(entry, `The King of Games in ${previousYear}`)}
+              ${renderHonorProfile(entry, `The King of Games — Holder of the most Gold Cards in ${previousYear}`)}
               ${entry ? renderKingGames(entry.games, previousYear) : `<div class="muted">No ranked ladders with gold card holders recorded for ${previousYear}.</div>`}
             </div>
           `;
