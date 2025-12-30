@@ -601,6 +601,20 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       object-fit: cover;
       background: rgba(255,255,255,0.05);
     }
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 46px;
+      height: 46px;
+      padding: 0 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.05);
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      text-align: center;
+    }
     .game-icon-row {
       display: flex;
       gap: 8px;
@@ -872,11 +886,37 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         </div>
       `;
     };
-    const renderBadgeRow = (icons) => {
-      if (!icons || icons.length === 0) {
+    const renderBadgeRow = (badges) => {
+      const normalized = (badges ?? [])
+        .map((badge) => {
+          if (typeof badge === "string") {
+            return { icon: badge, name: null };
+          }
+          if (badge && typeof badge === "object") {
+            return {
+              icon: badge.icon ?? badge.url ?? badge.src ?? null,
+              name: badge.name ?? badge.title ?? badge.label ?? null,
+            };
+          }
+          return null;
+        })
+        .filter((badge) => badge && (badge.icon || badge.name));
+
+      if (!normalized || normalized.length === 0) {
         return `<div class="muted">No badge art recorded for this year.</div>`;
       }
-      return `<div class="badge-row">${icons.map((src, idx) => `<img src="${safeAvatar(src) ?? ""}" alt="Badge icon ${idx + 1}" class="slide-icon" data-bs-toggle="tooltip" data-bs-placement="top" title="Badge ${idx + 1}">`).join("")}</div>`;
+
+      const items = normalized.map((badge, idx) => {
+        const icon = safeAvatar(badge.icon);
+        const label = escapeHtml(badge.name ?? `Badge ${idx + 1}`);
+        const tooltipAttrs = `class="slide-icon" data-bs-toggle="tooltip" data-bs-placement="top" title="${label}"`;
+        if (icon) {
+          return `<img src="${icon}" alt="${label}" ${tooltipAttrs}>`;
+        }
+        return `<span ${tooltipAttrs} aria-label="${label}"><span class="badge-pill">${label}</span></span>`;
+      }).join("");
+
+      return `<div class="badge-row">${items}</div>`;
     };
     const slides = [
       {

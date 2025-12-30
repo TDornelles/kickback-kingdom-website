@@ -418,7 +418,7 @@ ORDER BY score DESC, bayes_avg DESC, participants_total DESC
         }
 
         $badgeRows = $this->fetchAll(
-            'SELECT SmallImgPath
+            'SELECT SmallImgPath, name
              FROM v_account_badge_info
              WHERE account_id = ? AND dateObtained >= ? AND dateObtained < ?
              ORDER BY dateObtained DESC
@@ -430,7 +430,15 @@ ORDER BY score DESC, bayes_avg DESC, participants_total DESC
             'profile' => $this->formatAccountProfile($profile),
             'badgesEarned' => (int)$row['badge_count'],
             'badgeIcons' => array_values(array_filter(array_map(function ($badgeRow) {
-                return $this->mediaUrl($badgeRow['SmallImgPath'] ?? null);
+                $icon = $this->mediaUrl($badgeRow['SmallImgPath'] ?? null);
+                $name = isset($badgeRow['name']) ? (string)$badgeRow['name'] : null;
+                if ($icon === null && $name === null) {
+                    return null;
+                }
+                return [
+                    'icon' => $icon,
+                    'name' => $name,
+                ];
             }, $badgeRows))),
             'previousYear' => $previousYear,
         ];
