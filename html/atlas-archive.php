@@ -1954,6 +1954,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         title: "Farewell",
         accent: "accent-bg-pink",
         nextCtaLabel: "Finish",
+        showNextCta: false,
         render: () => `
           <div class="slide-hero">
             <div class="mega">Thank you for building ${year}</div>
