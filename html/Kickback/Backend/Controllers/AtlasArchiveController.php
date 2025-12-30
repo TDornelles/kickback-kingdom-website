@@ -45,7 +45,7 @@ class AtlasArchiveController
         $worldStats = $this->buildWorldStats($atlasYearStart, $atlasYearEnd, $previousYearStart, $twoYearsBackStart);
         $yearProgress = $this->buildYearProgress($previousYearStart, $atlasYearStart, $twoYearsBackStart);
         $honors = $this->buildHonors($previousYearStart, $atlasYearStart, $atlasYear - 1);
-        $accountPayload = $this->buildAccountPayload($requestedAccountId, $requestedUsername, $activeAccount, $atlasYearStart, $atlasYearEnd);
+        $accountPayload = $this->buildAccountPayload($requestedAccountId, $requestedUsername, $activeAccount, $previousYearStart, $atlasYearStart);
 
         return [
             'year' => $atlasYear,
