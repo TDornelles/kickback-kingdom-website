@@ -834,6 +834,10 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       background: rgba(255,255,255,0.03);
       box-shadow: var(--shadow);
     }
+    .ranked-games-card,
+    .ranked-games-note {
+      margin-top: 12px;
+    }
     .list-card .title-row {
       display: flex;
       align-items: center;
@@ -1847,6 +1851,9 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
               </div>
             `;
           }
+          const duoGames = Array.isArray(duo.games)
+            ? duo.games.map((entry) => entry?.game ?? entry).filter(Boolean)
+            : [];
           return `
             <div class="slide-hero">
               <div class="mega">Duo of Destiny</div>
@@ -1869,16 +1876,16 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
                   <p class="sub">Victories side-by-side</p>
                 </div>
               </div>
-              ${duo.games && duo.games.length ? `
-                <div class="list-card">
-                  <div class="title-row">
-                    <span class="pill">Ranked Games</span>
-                    <span class="pill-muted">${duo.games.length === 1 ? '1 game' : `${fmt(duo.games.length)} games`}</span>
-                  </div>
-                  ${renderGameIcons((duo.games || []).map((entry) => entry.game))}
-                </div>
-              ` : `<div class="muted-note">Play ranked together to see your game breakdown.</div>`}
             </div>
+            ${duoGames.length ? `
+              <div class="list-card ranked-games-card">
+                <div class="title-row">
+                  <span class="pill">Ranked Games</span>
+                  <span class="pill-muted">${duoGames.length === 1 ? '1 game' : `${fmt(duoGames.length)} games`}</span>
+                </div>
+                ${renderGameIcons(duoGames)}
+              </div>
+            ` : `<div class="muted-note ranked-games-note">Play ranked together to see your game breakdown.</div>`}
           `;
         },
       },

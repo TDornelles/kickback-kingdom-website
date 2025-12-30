@@ -10,6 +10,7 @@ use Kickback\Backend\Views\vRecordId;
 use Kickback\Backend\Views\vMedia;
 use Kickback\Backend\Views\vRaffle;
 use Kickback\Backend\Views\vGameStats;
+use Kickback\Backend\Views\vAbility;
 use Kickback\Backend\Controllers\DiscordController;
 use Kickback\Backend\Views\vMatchStats;
 
@@ -29,6 +30,9 @@ use Exception;
 
 class AccountController
 {
+    /** @var array<int, string> */
+    private static array $titleOverrideCache = [];
+
     public static function getAccountsByGame(vRecordId $gameId) : Response {
         $conn = Database::getConnection();
 
@@ -591,7 +595,138 @@ class AccountController
         ]);
     }
 
+    /**
+     * @return list<vAbility>
+     */
+    private static function getEquippedAbilitiesForAccount(vAccount $account): array
+    {
+        $conn = Database::getConnection();
+        $equipmentStmt = $conn->prepare(
+            'SELECT avatar_loot_id, player_card_border_loot_id, banner_loot_id, background_loot_id, charm_loot_id, companion_loot_id
+            FROM account_equipment WHERE account_id = ?'
+        );
+
+        if (!$equipmentStmt) {
+            error_log($conn->error);
+            return [];
+        }
+
+        $equipmentStmt->bind_param('i', $account->crand);
+
+        if (!$equipmentStmt->execute()) {
+            error_log($equipmentStmt->error);
+            $equipmentStmt->close();
+            return [];
+        }
+
+        $equipmentRow = $equipmentStmt->get_result()->fetch_assoc();
+        $equipmentStmt->close();
+
+        if (!$equipmentRow) {
+            return [];
+        }
+
+        $lootIds = array_map(
+            'intval',
+            array_filter([
+                $equipmentRow['avatar_loot_id'] ?? null,
+                $equipmentRow['player_card_border_loot_id'] ?? null,
+                $equipmentRow['banner_loot_id'] ?? null,
+                $equipmentRow['background_loot_id'] ?? null,
+                $equipmentRow['charm_loot_id'] ?? null,
+                $equipmentRow['companion_loot_id'] ?? null,
+            ], fn($id) => $id !== null && (int)$id > 0)
+        );
+
+        if (empty($lootIds)) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($lootIds), '?'));
+        $types = str_repeat('i', count($lootIds));
+
+        $lootStmt = $conn->prepare("SELECT Id, item_id FROM loot WHERE Id IN ({$placeholders})");
+        if (!$lootStmt) {
+            error_log($conn->error);
+            return [];
+        }
+
+        $lootStmt->bind_param($types, ...$lootIds);
+
+        if (!$lootStmt->execute()) {
+            error_log($lootStmt->error);
+            $lootStmt->close();
+            return [];
+        }
+
+        $lootResult = $lootStmt->get_result();
+        $lootToItem = [];
+
+        while ($row = $lootResult->fetch_assoc()) {
+            $lootToItem[(int)$row['Id']] = (int)$row['item_id'];
+        }
+
+        $lootStmt->close();
+
+        if (empty($lootToItem)) {
+            return [];
+        }
+
+        $itemIds = array_values(array_unique(array_values($lootToItem)));
+        $abilityResp = ItemController::getItemAbilities($itemIds);
+
+        if (!$abilityResp->success || !is_array($abilityResp->data)) {
+            return [];
+        }
+
+        $abilityMap = $abilityResp->data;
+        $equippedAbilities = [];
+
+        foreach ($lootIds as $lootId) {
+            $itemId = $lootToItem[$lootId] ?? null;
+            $itemAbilities = $itemId !== null && isset($abilityMap[$itemId]) ? $abilityMap[$itemId] : [];
+
+            if (is_array($itemAbilities)) {
+                foreach ($itemAbilities as $ability) {
+                    if ($ability instanceof vAbility) {
+                        $equippedAbilities[] = $ability;
+                    }
+                }
+            }
+        }
+
+        return $equippedAbilities;
+    }
+
+    private static function getEquipmentTitleOverride(vAccount $account): ?string
+    {
+        $accountId = $account->crand;
+
+        if (array_key_exists($accountId, self::$titleOverrideCache)) {
+            $cached = self::$titleOverrideCache[$accountId];
+            return $cached !== '' ? $cached : null;
+        }
+
+        $equippedAbilities = self::getEquippedAbilitiesForAccount($account);
+
+        foreach ($equippedAbilities as $ability) {
+            $titleChange = trim($ability->titleChange ?? '');
+            if ($titleChange !== '') {
+                self::$titleOverrideCache[$accountId] = $titleChange;
+                return $titleChange;
+            }
+        }
+
+        self::$titleOverrideCache[$accountId] = '';
+        return null;
+    }
+
     public static function getAccountTitle(vAccount $account) : string {
+        $abilityTitleOverride = self::getEquipmentTitleOverride($account);
+        if ($abilityTitleOverride !== null) {
+            return $abilityTitleOverride;
+        }
+
         $level = $account->level;
         $prestige = $account->prestige;
         // Define the list of titles for evil and good prestige
