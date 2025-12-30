@@ -45,7 +45,7 @@ class AtlasArchiveController
         $worldStats = $this->buildWorldStats($atlasYearStart, $atlasYearEnd, $previousYearStart, $twoYearsBackStart);
         $yearProgress = $this->buildYearProgress($previousYearStart, $atlasYearStart, $twoYearsBackStart);
         $honors = $this->buildHonors($previousYearStart, $atlasYearStart, $atlasYear - 1);
-        $accountPayload = $this->buildAccountPayload($requestedAccountId, $requestedUsername, $activeAccount);
+        $accountPayload = $this->buildAccountPayload($requestedAccountId, $requestedUsername, $activeAccount, $atlasYearStart, $atlasYearEnd);
 
         return [
             'year' => $atlasYear,
@@ -674,7 +674,7 @@ ORDER BY score DESC, bayes_avg DESC, participants_total DESC
         ];
     }
 
-    private function buildAccountPayload(?int $requestedAccountId, ?string $requestedUsername, ?vAccount $activeAccount) : ?array
+    private function buildAccountPayload(?int $requestedAccountId, ?string $requestedUsername, ?vAccount $activeAccount, string $yearStart, string $yearEnd) : ?array
     {
         $atlasAccount = $this->resolveAccount($requestedAccountId, $requestedUsername, $activeAccount);
 
@@ -704,6 +704,13 @@ ORDER BY score DESC, bayes_avg DESC, participants_total DESC
             $winRate = ($accountStats['wins'] ?? 0) / max($accountStats['matches'], 1);
         }
 
+        $bestFriends = $this->buildBestFriends($accountId, $yearStart, $yearEnd);
+        $favoriteRankedGame = $this->buildFavoriteRankedGame($accountId, $yearStart, $yearEnd);
+        $matchmaker = $this->buildMatchmakerStreaks($accountId, $yearStart, $yearEnd);
+        $momentumShifts = $this->buildMomentumShifts($accountId, $yearStart, $yearEnd);
+        $duoOfDestiny = $bestFriends[0] ?? null;
+        $nemeses = $this->buildNemeses($accountId, $yearStart, $yearEnd);
+
         return [
             'profile' => [
                 'username' => $atlasAccount->username,
@@ -728,7 +735,278 @@ ORDER BY score DESC, bayes_avg DESC, participants_total DESC
             ],
             'stats' => $accountStats,
             'winRate' => $winRate,
+            'yearRange' => [
+                'start' => $yearStart,
+                'end' => $yearEnd,
+            ],
+            'bestFriends' => $bestFriends,
+            'favoriteRankedGame' => $favoriteRankedGame,
+            'matchmaker' => $matchmaker,
+            'momentumShifts' => $momentumShifts,
+            'duoOfDestiny' => $duoOfDestiny,
+            'nemeses' => $nemeses,
         ];
+    }
+
+    private function buildBestFriends(int $accountId, string $yearStart, string $yearEnd) : array
+    {
+        $rows = $this->fetchAll(
+            'SELECT teammate.account_id AS teammate_id,
+                    COUNT(*) AS matches,
+                    SUM(CASE WHEN me.win = 1 THEN 1 ELSE 0 END) AS wins
+             FROM game_record me
+             INNER JOIN game_record teammate
+                ON me.game_match_id = teammate.game_match_id
+               AND IFNULL(me.team_name, "") = IFNULL(teammate.team_name, "")
+               AND me.account_id <> teammate.account_id
+             INNER JOIN game_match gm ON gm.Id = me.game_match_id
+             WHERE me.account_id = ?
+               AND gm.Date >= ?
+               AND gm.Date < ?
+             GROUP BY teammate.account_id
+             ORDER BY matches DESC, teammate.account_id
+             LIMIT 3',
+            [$accountId, $yearStart, $yearEnd]
+        );
+
+        $profiles = $this->loadAccountProfiles(array_map(fn ($row) => (int)($row['teammate_id'] ?? 0), $rows));
+
+        return array_values(array_map(function ($row) use ($profiles) {
+            $matches = (int)($row['matches'] ?? 0);
+            $wins = (int)($row['wins'] ?? 0);
+            return [
+                'profile' => $profiles[(int)($row['teammate_id'] ?? 0)] ?? null,
+                'matches' => $matches,
+                'wins' => $wins,
+                'winRate' => $matches > 0 ? $wins / max($matches, 1) : null,
+            ];
+        }, $rows));
+    }
+
+    private function buildFavoriteRankedGame(int $accountId, string $yearStart, string $yearEnd) : ?array
+    {
+        $row = $this->fetchOne(
+            'SELECT gr.game_id, COUNT(*) AS matches, SUM(CASE WHEN gr.win = 1 THEN 1 ELSE 0 END) AS wins
+             FROM game_record gr
+             INNER JOIN game_match gm ON gm.Id = gr.game_match_id
+             WHERE gr.account_id = ?
+               AND gm.`set` IN (0,1)
+               AND gm.Date >= ?
+               AND gm.Date < ?
+             GROUP BY gr.game_id
+             ORDER BY matches DESC, wins DESC
+             LIMIT 1',
+            [$accountId, $yearStart, $yearEnd]
+        );
+
+        if (empty($row['game_id'])) {
+            return null;
+        }
+
+        $gameId = (int)$row['game_id'];
+        $game = $this->loadGamesByIds([$gameId])[$gameId] ?? ['id' => $gameId];
+        $matches = (int)($row['matches'] ?? 0);
+        $wins = (int)($row['wins'] ?? 0);
+
+        return [
+            'game' => $game,
+            'matches' => $matches,
+            'wins' => $wins,
+            'winRate' => $matches > 0 ? $wins / max($matches, 1) : null,
+        ];
+    }
+
+    private function buildMatchmakerStreaks(int $accountId, string $yearStart, string $yearEnd) : array
+    {
+        $summary = $this->fetchOne(
+            'SELECT COUNT(*) AS matches, SUM(CASE WHEN gr.win = 1 THEN 1 ELSE 0 END) AS wins
+             FROM game_record gr
+             INNER JOIN game_match gm ON gm.Id = gr.game_match_id
+             WHERE gr.account_id = ?
+               AND gm.Date >= ?
+               AND gm.Date < ?
+             LIMIT 1',
+            [$accountId, $yearStart, $yearEnd]
+        ) ?? [];
+
+        $matches = (int)($summary['matches'] ?? 0);
+        $wins = (int)($summary['wins'] ?? 0);
+
+        $monthlyRows = $this->fetchAll(
+            'SELECT DATE_FORMAT(gm.Date, "%Y-%m-01") AS month,
+                    COUNT(*) AS matches
+             FROM game_record gr
+             INNER JOIN game_match gm ON gm.Id = gr.game_match_id
+             WHERE gr.account_id = ?
+               AND gm.Date >= ?
+               AND gm.Date < ?
+             GROUP BY DATE_FORMAT(gm.Date, "%Y-%m-01")
+             ORDER BY month ASC',
+            [$accountId, $yearStart, $yearEnd]
+        );
+
+        $monthly = array_map(function ($row) {
+            return [
+                'month' => (string)($row['month'] ?? ''),
+                'matches' => (int)($row['matches'] ?? 0),
+            ];
+        }, $monthlyRows);
+
+        return [
+            'matches' => $matches,
+            'wins' => $wins,
+            'winRate' => $matches > 0 ? $wins / max($matches, 1) : null,
+            'monthly' => $monthly,
+        ];
+    }
+
+    private function buildMomentumShifts(int $accountId, string $yearStart, string $yearEnd) : array
+    {
+        $rows = $this->fetchAll(
+            'SELECT gr.game_id, gr.elo_change, gr.win, gm.Date AS match_date
+             FROM game_record gr
+             INNER JOIN game_match gm ON gm.Id = gr.game_match_id
+             WHERE gr.account_id = ?
+               AND gm.Date >= ?
+               AND gm.Date < ?
+             ORDER BY ABS(gr.elo_change) DESC, gm.Date DESC
+             LIMIT 5',
+            [$accountId, $yearStart, $yearEnd]
+        );
+
+        $games = $this->loadGamesByIds(array_map(fn ($row) => (int)($row['game_id'] ?? 0), $rows));
+
+        return array_values(array_map(function ($row) use ($games) {
+            $gameId = (int)($row['game_id'] ?? 0);
+            return [
+                'game' => $games[$gameId] ?? ['id' => $gameId],
+                'eloChange' => isset($row['elo_change']) ? (int)$row['elo_change'] : 0,
+                'win' => isset($row['win']) ? ((int)$row['win'] === 1) : false,
+                'date' => (string)($row['match_date'] ?? ''),
+            ];
+        }, $rows));
+    }
+
+    private function buildNemeses(int $accountId, string $yearStart, string $yearEnd) : array
+    {
+        $rows = $this->fetchAll(
+            'SELECT opp.account_id AS opponent_id,
+                    opp.game_id,
+                    COUNT(*) AS defeats
+             FROM game_record me
+             INNER JOIN game_record opp
+               ON me.game_match_id = opp.game_match_id
+              AND me.account_id <> opp.account_id
+              AND IFNULL(opp.team_name, "") <> IFNULL(me.team_name, "")
+             INNER JOIN game_match gm ON gm.Id = me.game_match_id
+             WHERE me.account_id = ?
+               AND gm.`set` IN (0,1)
+               AND gm.Date >= ?
+               AND gm.Date < ?
+               AND opp.win = 1
+               AND me.win = 0
+             GROUP BY opp.account_id, opp.game_id
+             ORDER BY defeats DESC, opp.account_id
+             LIMIT 12',
+            [$accountId, $yearStart, $yearEnd]
+        );
+
+        if (empty($rows)) {
+            return [];
+        }
+
+        $opponentTotals = [];
+        foreach ($rows as $row) {
+            $opponentId = (int)($row['opponent_id'] ?? 0);
+            $defeats = (int)($row['defeats'] ?? 0);
+            $gameId = (int)($row['game_id'] ?? 0);
+
+            if (!isset($opponentTotals[$opponentId])) {
+                $opponentTotals[$opponentId] = [
+                    'defeats' => 0,
+                    'topGame' => ['game_id' => $gameId, 'defeats' => $defeats],
+                ];
+            }
+
+            $opponentTotals[$opponentId]['defeats'] += $defeats;
+            if ($defeats >= ($opponentTotals[$opponentId]['topGame']['defeats'] ?? 0)) {
+                $opponentTotals[$opponentId]['topGame'] = ['game_id' => $gameId, 'defeats' => $defeats];
+            }
+        }
+
+        uasort($opponentTotals, function ($a, $b) {
+            return ($b['defeats'] ?? 0) <=> ($a['defeats'] ?? 0);
+        });
+
+        $topOpponents = array_slice($opponentTotals, 0, 3, true);
+        $opponentIds = array_keys($topOpponents);
+        $profiles = $this->loadAccountProfiles($opponentIds);
+        $gameIds = array_map(fn ($entry) => (int)($entry['topGame']['game_id'] ?? 0), $topOpponents);
+        $games = $this->loadGamesByIds($gameIds);
+
+        $result = [];
+        foreach ($topOpponents as $opponentId => $data) {
+            $gameId = (int)($data['topGame']['game_id'] ?? 0);
+            $result[] = [
+                'profile' => $profiles[$opponentId] ?? null,
+                'defeats' => (int)($data['defeats'] ?? 0),
+                'game' => $games[$gameId] ?? ['id' => $gameId],
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param array<int> $accountIds
+     * @return array<int, array<string, mixed>>
+     */
+    private function loadAccountProfiles(array $accountIds) : array
+    {
+        $profiles = [];
+        foreach (array_unique(array_filter(array_map('intval', $accountIds))) as $accountId) {
+            $profile = $this->fetchAccount($accountId);
+            if ($profile instanceof vAccount) {
+                $profiles[$accountId] = $this->formatAccountProfile($profile);
+            }
+        }
+
+        return $profiles;
+    }
+
+    /**
+     * @param array<int> $gameIds
+     * @return array<int, array<string, mixed>>
+     */
+    private function loadGamesByIds(array $gameIds) : array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $gameIds))));
+        if (empty($ids)) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $rows = $this->fetchAll(
+            "SELECT vg.Id AS game_id, vg.Name AS game_name, vg.ShortName AS game_short_name, vg.icon_path AS game_icon_path, vg.locator AS game_locator
+             FROM v_game_info vg
+             WHERE vg.Id IN ($placeholders)",
+            $ids
+        );
+
+        $games = [];
+        foreach ($rows as $row) {
+            $gameId = (int)($row['game_id'] ?? 0);
+            $iconPath = $this->mediaUrl(isset($row['game_icon_path']) ? (string)$row['game_icon_path'] : null);
+            $games[$gameId] = [
+                'id' => $gameId,
+                'name' => (string)($row['game_name'] ?? ''),
+                'shortName' => (string)($row['game_short_name'] ?? ''),
+                'icon' => $iconPath,
+                'locator' => (string)($row['game_locator'] ?? ''),
+            ];
+        }
+
+        return $games;
     }
 
     private function resolveAccount(?int $requestedAccountId, ?string $requestedUsername, ?vAccount $activeAccount) : ?vAccount
