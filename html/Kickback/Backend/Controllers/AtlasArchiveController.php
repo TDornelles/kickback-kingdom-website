@@ -559,10 +559,51 @@ ORDER BY score DESC, bayes_avg DESC, participants_total DESC
             return null;
         }
 
+        $gameRows = $this->fetchAll(
+            'SELECT vg.Id AS game_id,
+                    vg.Name AS game_name,
+                    vg.ShortName AS game_short_name,
+                    vg.media_icon_id AS game_media_icon_id,
+                    vg.icon_path AS game_icon_path,
+                    vg.locator AS game_locator
+             FROM v_game_elo_rank_info v
+             LEFT JOIN v_game_info vg ON v.game_id = vg.Id
+             WHERE v.rank = 1 AND v.is_ranked = 1 AND v.account_id = ?
+             GROUP BY vg.Id, vg.Name, vg.ShortName, vg.media_icon_id, vg.icon_path, vg.locator
+             ORDER BY vg.Name',
+            [$row['account_id']]
+        );
+
+        $games = array_values(array_filter(array_map(function (array $gameRow) {
+            if (empty($gameRow['game_id'])) {
+                return null;
+            }
+
+            $iconPath = null;
+            if (!empty($gameRow['game_media_icon_id'])) {
+                $icon = new vMedia('', (int)$gameRow['game_media_icon_id']);
+                if (!empty($gameRow['game_icon_path'])) {
+                    $icon->setMediaPath($gameRow['game_icon_path']);
+                }
+                $iconPath = $icon->getFullPath();
+            } elseif (!empty($gameRow['game_icon_path'])) {
+                $iconPath = (string)$gameRow['game_icon_path'];
+            }
+
+            return [
+                'id' => (int)$gameRow['game_id'],
+                'name' => (string)($gameRow['game_name'] ?? ''),
+                'shortName' => (string)($gameRow['game_short_name'] ?? ''),
+                'icon' => $iconPath,
+                'locator' => (string)($gameRow['game_locator'] ?? ''),
+            ];
+        }, $gameRows)));
+
         return [
             'profile' => $this->formatAccountProfile($profile),
             'goldCards' => (int)$row['gold_cards'],
             'eloSum' => isset($row['elo_sum']) ? (float)$row['elo_sum'] : null,
+            'games' => $games,
         ];
     }
 
