@@ -704,11 +704,11 @@ ORDER BY score DESC, bayes_avg DESC, participants_total DESC
             $winRate = ($accountStats['wins'] ?? 0) / max($accountStats['matches'], 1);
         }
 
-        $bestFriends = $this->buildBestFriends($accountId, $yearStart, $yearEnd);
+        $bestFriends = $this->buildQuestBestFriends($accountId, $yearStart, $yearEnd);
         $favoriteRankedGame = $this->buildFavoriteRankedGame($accountId, $yearStart, $yearEnd);
         $matchmaker = $this->buildMatchmakerStreaks($accountId, $yearStart, $yearEnd);
         $momentumShifts = $this->buildMomentumShifts($accountId, $yearStart, $yearEnd);
-        $duoOfDestiny = $bestFriends[0] ?? null;
+        $duoOfDestiny = $this->buildDuoOfDestiny($accountId, $yearStart, $yearEnd);
         $nemeses = $this->buildNemeses($accountId, $yearStart, $yearEnd);
 
         return [
@@ -748,23 +748,23 @@ ORDER BY score DESC, bayes_avg DESC, participants_total DESC
         ];
     }
 
-    private function buildBestFriends(int $accountId, string $yearStart, string $yearEnd) : array
+    private function buildQuestBestFriends(int $accountId, string $yearStart, string $yearEnd) : array
     {
         $rows = $this->fetchAll(
             'SELECT teammate.account_id AS teammate_id,
-                    COUNT(*) AS matches,
-                    SUM(CASE WHEN me.win = 1 THEN 1 ELSE 0 END) AS wins
-             FROM game_record me
-             INNER JOIN game_record teammate
-                ON me.game_match_id = teammate.game_match_id
-               AND IFNULL(me.team_name, "") = IFNULL(teammate.team_name, "")
+                    COUNT(*) AS quests_together
+             FROM quest_applicants me
+             INNER JOIN quest_applicants teammate
+                ON me.quest_id = teammate.quest_id
                AND me.account_id <> teammate.account_id
-             INNER JOIN game_match gm ON gm.Id = me.game_match_id
+             INNER JOIN quest q ON q.Id = me.quest_id
              WHERE me.account_id = ?
-               AND gm.Date >= ?
-               AND gm.Date < ?
+               AND me.participated = 1
+               AND teammate.participated = 1
+               AND q.end_date >= ?
+               AND q.end_date < ?
              GROUP BY teammate.account_id
-             ORDER BY matches DESC, teammate.account_id
+             ORDER BY quests_together DESC, teammate.account_id
              LIMIT 3',
             [$accountId, $yearStart, $yearEnd]
         );
@@ -772,13 +772,10 @@ ORDER BY score DESC, bayes_avg DESC, participants_total DESC
         $profiles = $this->loadAccountProfiles(array_map(fn ($row) => (int)($row['teammate_id'] ?? 0), $rows));
 
         return array_values(array_map(function ($row) use ($profiles) {
-            $matches = (int)($row['matches'] ?? 0);
-            $wins = (int)($row['wins'] ?? 0);
+            $questsTogether = (int)($row['quests_together'] ?? 0);
             return [
                 'profile' => $profiles[(int)($row['teammate_id'] ?? 0)] ?? null,
-                'matches' => $matches,
-                'wins' => $wins,
-                'winRate' => $matches > 0 ? $wins / max($matches, 1) : null,
+                'quests' => $questsTogether,
             ];
         }, $rows));
     }
@@ -885,6 +882,72 @@ ORDER BY score DESC, bayes_avg DESC, participants_total DESC
                 'date' => (string)($row['match_date'] ?? ''),
             ];
         }, $rows));
+    }
+
+    private function buildDuoOfDestiny(int $accountId, string $yearStart, string $yearEnd) : ?array
+    {
+        $duo = $this->fetchOne(
+            'SELECT teammate.account_id AS teammate_id,
+                    COUNT(*) AS matches,
+                    SUM(CASE WHEN me.win = 1 THEN 1 ELSE 0 END) AS wins
+             FROM game_record me
+             INNER JOIN game_record teammate
+               ON me.game_match_id = teammate.game_match_id
+              AND IFNULL(me.team_name, "") = IFNULL(teammate.team_name, "")
+              AND me.account_id <> teammate.account_id
+             INNER JOIN game_match gm ON gm.Id = me.game_match_id
+             WHERE me.account_id = ?
+               AND gm.`set` IN (0,1)
+               AND gm.Date >= ?
+               AND gm.Date < ?
+             GROUP BY teammate.account_id
+             ORDER BY matches DESC, teammate.account_id
+             LIMIT 1',
+            [$accountId, $yearStart, $yearEnd]
+        );
+
+        if (empty($duo['teammate_id'])) {
+            return null;
+        }
+
+        $teammateId = (int)$duo['teammate_id'];
+        $games = $this->fetchAll(
+            'SELECT me.game_id, COUNT(*) AS matches
+             FROM game_record me
+             INNER JOIN game_record teammate
+               ON me.game_match_id = teammate.game_match_id
+              AND IFNULL(me.team_name, "") = IFNULL(teammate.team_name, "")
+              AND me.account_id = ?
+              AND teammate.account_id = ?
+             INNER JOIN game_match gm ON gm.Id = me.game_match_id
+             WHERE gm.`set` IN (0,1)
+               AND gm.Date >= ?
+               AND gm.Date < ?
+             GROUP BY me.game_id
+             ORDER BY matches DESC',
+            [$accountId, $teammateId, $yearStart, $yearEnd]
+        );
+
+        $gameDetails = $this->loadGamesByIds(array_map(fn ($row) => (int)($row['game_id'] ?? 0), $games));
+        $formattedGames = array_values(array_map(function ($row) use ($gameDetails) {
+            $gameId = (int)($row['game_id'] ?? 0);
+            return [
+                'game' => $gameDetails[$gameId] ?? ['id' => $gameId],
+                'matches' => (int)($row['matches'] ?? 0),
+            ];
+        }, $games));
+
+        $matches = (int)($duo['matches'] ?? 0);
+        $wins = (int)($duo['wins'] ?? 0);
+        $profiles = $this->loadAccountProfiles([$teammateId]);
+
+        return [
+            'profile' => $profiles[$teammateId] ?? null,
+            'matches' => $matches,
+            'wins' => $wins,
+            'winRate' => $matches > 0 ? $wins / max($matches, 1) : null,
+            'games' => $formattedGames,
+        ];
     }
 
     private function buildNemeses(int $accountId, string $yearStart, string $yearEnd) : array

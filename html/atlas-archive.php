@@ -1544,7 +1544,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           return `
             <div class="slide-hero">
               <div class="mega">Best Friends</div>
-              <div class="lead">Top 3 teammates you quested with the most.</div>
+              <div class="lead">Top 3 adventurers you quested with the most.</div>
             </div>
             ${friends.length === 0 ? `<div class="muted">No shared matches found for this year.</div>` : `
               <div class="card-grid">
@@ -1552,19 +1552,14 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
                   <div class="list-card sequence-item" data-delay="${idx * 120}">
                     <div class="title-row">
                       <span class="pill">#${idx + 1}</span>
-                      <span class="pill-muted">Win Rate ${fmtPct(friend.winRate)}</span>
+                      <span class="pill-muted">Quest Buddy</span>
                     </div>
                     ${renderProfileChip(friend.profile, "Teammate")}
                     <div class="stat-hero" style="margin-top:10px;">
                       <div class="card">
-                        <div class="pill">Matches</div>
-                        ${renderKpi(friend.matches)}
-                        <p class="sub">Shared squads</p>
-                      </div>
-                      <div class="card">
-                        <div class="pill">Wins</div>
-                        ${renderKpi(friend.wins)}
-                        <p class="sub">Victories together</p>
+                        <div class="pill">Quests Together</div>
+                        ${renderKpi(friend.quests)}
+                        <p class="sub">Co-adventured</p>
                       </div>
                     </div>
                   </div>
@@ -1736,14 +1731,14 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
             return `
               <div class="slide-hero">
                 <div class="mega">No duo yet</div>
-                <div class="lead">Team up consistently to forge your Duo of Destiny.</div>
+                <div class="lead">Play ranked as a team to forge your Duo of Destiny.</div>
               </div>
             `;
           }
           return `
             <div class="slide-hero">
               <div class="mega">Duo of Destiny</div>
-              <div class="lead">Your most frequent teammate based on shared teams, and the duo’s combined win rate.</div>
+              <div class="lead">Your most frequent ranked teammate based on shared teams, the duo’s combined win rate, and the games you climbed together.</div>
             </div>
             <div class="list-card">
               <div class="title-row">
@@ -1762,6 +1757,18 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
                   <p class="sub">Victories side-by-side</p>
                 </div>
               </div>
+              ${duo.games && duo.games.length ? `
+                <div class="card-grid">
+                  ${duo.games.map((entry, idx) => `
+                    <div class="list-card sequence-item" data-delay="${idx * 120}">
+                      <div class="title-row">
+                        ${renderGameBadge(entry.game)}
+                        <span class="pill-muted">${fmt(entry.matches)} ranked matches together</span>
+                      </div>
+                    </div>
+                  `).join("")}
+                </div>
+              ` : ``}
             </div>
           `;
         },
