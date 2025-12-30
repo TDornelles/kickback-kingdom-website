@@ -750,7 +750,7 @@ ORDER BY score DESC, bayes_avg DESC, participants_total DESC
 
     private function buildQuestBestFriends(int $accountId, string $yearStart, string $yearEnd) : array
     {
-        $rows = $this->fetchAll(
+        $questRows = $this->fetchAll(
             'SELECT teammate.account_id AS teammate_id,
                     COUNT(*) AS quests_together
              FROM quest_applicants me
@@ -763,21 +763,80 @@ ORDER BY score DESC, bayes_avg DESC, participants_total DESC
                AND teammate.participated = 1
                AND q.end_date >= ?
                AND q.end_date < ?
-             GROUP BY teammate.account_id
-             ORDER BY quests_together DESC, teammate.account_id
-             LIMIT 3',
+             GROUP BY teammate.account_id',
             [$accountId, $yearStart, $yearEnd]
         );
 
-        $profiles = $this->loadAccountProfiles(array_map(fn ($row) => (int)($row['teammate_id'] ?? 0), $rows));
+        $teamMatchRows = $this->fetchAll(
+            'SELECT teammate.account_id AS teammate_id,
+                    COUNT(*) AS team_matches
+             FROM game_record me
+             INNER JOIN game_record teammate
+               ON me.game_match_id = teammate.game_match_id
+              AND IFNULL(me.team_name, "") = IFNULL(teammate.team_name, "")
+              AND me.account_id <> teammate.account_id
+             INNER JOIN game_match gm ON gm.Id = me.game_match_id
+             WHERE me.account_id = ?
+               AND gm.`set` IN (0,1)
+               AND gm.Date >= ?
+               AND gm.Date < ?
+             GROUP BY teammate.account_id',
+            [$accountId, $yearStart, $yearEnd]
+        );
 
-        return array_values(array_map(function ($row) use ($profiles) {
-            $questsTogether = (int)($row['quests_together'] ?? 0);
-            return [
-                'profile' => $profiles[(int)($row['teammate_id'] ?? 0)] ?? null,
-                'quests' => $questsTogether,
+        $combined = [];
+
+        foreach ($questRows as $row) {
+            $teammateId = (int)($row['teammate_id'] ?? 0);
+            if ($teammateId === 0) {
+                continue;
+            }
+            $combined[$teammateId]['quests'] = (int)($row['quests_together'] ?? 0);
+        }
+
+        foreach ($teamMatchRows as $row) {
+            $teammateId = (int)($row['teammate_id'] ?? 0);
+            if ($teammateId === 0) {
+                continue;
+            }
+            $combined[$teammateId]['teamMatches'] = (int)($row['team_matches'] ?? 0);
+        }
+
+        foreach ($combined as $teammateId => &$entry) {
+            $questsTogether = (int)($entry['quests'] ?? 0);
+            $teamMatches = (int)($entry['teamMatches'] ?? 0);
+            $entry['quests'] = $questsTogether;
+            $entry['teamMatches'] = $teamMatches;
+            $entry['totalShared'] = $questsTogether + $teamMatches;
+        }
+        unset($entry);
+
+        uasort($combined, function (array $a, array $b) {
+            $totalDiff = ($b['totalShared'] ?? 0) <=> ($a['totalShared'] ?? 0);
+            if ($totalDiff !== 0) {
+                return $totalDiff;
+            }
+            $teamDiff = ($b['teamMatches'] ?? 0) <=> ($a['teamMatches'] ?? 0);
+            if ($teamDiff !== 0) {
+                return $teamDiff;
+            }
+            return ($b['quests'] ?? 0) <=> ($a['quests'] ?? 0);
+        });
+
+        $topEntries = array_slice($combined, 0, 3, true);
+        $profiles = $this->loadAccountProfiles(array_keys($topEntries));
+
+        $result = [];
+        foreach ($topEntries as $teammateId => $entry) {
+            $result[] = [
+                'profile' => $profiles[(int)$teammateId] ?? null,
+                'quests' => (int)($entry['quests'] ?? 0),
+                'teamMatches' => (int)($entry['teamMatches'] ?? 0),
+                'totalShared' => (int)($entry['totalShared'] ?? 0),
             ];
-        }, $rows));
+        }
+
+        return $result;
     }
 
     private function buildFavoriteRankedGame(int $accountId, string $yearStart, string $yearEnd) : ?array

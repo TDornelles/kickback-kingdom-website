@@ -75,6 +75,16 @@ class AdCarousel
             array_push($this->ads, $pageAds[$currentPage]);
         }
 
+        if ($this->isJanuaryWindow()) {
+            array_push($this->ads, new CarouselAd(
+                "/assets/media/context/Kickback_Banners_New_Year_1920-500.png",
+                "/assets/media/context/Kickback_Banners_New_Year_1080-500.png",
+                "New Year Kingdom Kickoff",
+                "Ring in the year with fresh quests, rewards, and celebrations all January long!",
+                "/town-square.php"
+            ));
+        }
+
         try
         {
             $treasureHunts = TreasureHuntController::queryCurrentEventsAndUpcoming();
@@ -160,26 +170,37 @@ class AdCarousel
         $this->ads[0]->isActive = true;
     }
 
-private function addDefaultAd(): void
-{
-    // Ask the SeasonController what the current season config is
-    $seasonController = new SeasonController();
-    $config = $seasonController->getSeasonConfig(); // returns ['key', 'title', 'subtitle', 'images' => [...]]    
+    private function addDefaultAd(): void
+    {
+        // Ask the SeasonController what the current season config is
+        $seasonController = new SeasonController();
+        $config = $seasonController->getSeasonConfig(); // returns ['key', 'title', 'subtitle', 'images' => [...]]    
 
-    // Fallbacks in case something is missing
-    $image1 = $config['images'][0] ?? "/assets/images/kk-1.jpg";
-    $image2 = $config['images'][1] ?? "/assets/images/kk-2.jpg";
+        // Fallbacks in case something is missing
+        $image1 = $config['images'][0] ?? "/assets/images/kk-1.jpg";
+        $image2 = $config['images'][1] ?? "/assets/images/kk-2.jpg";
 
-    $title    = $config['title']    ?? "Welcome to Kickback Kingdom";
-    $subtitle = $config['subtitle'] ?? "The gaming realm where friendships are formed and scores are settled.";
+        $title    = $config['title']    ?? "Welcome to Kickback Kingdom";
+        $subtitle = $config['subtitle'] ?? "The gaming realm where friendships are formed and scores are settled.";
 
-    $this->ads[] = new CarouselAd(
-        $image1,
-        $image2,
-        $title,
-        $subtitle
-    );
-}
+        $this->ads[] = new CarouselAd(
+            $image1,
+            $image2,
+            $title,
+            $subtitle
+        );
+    }
+
+    private function isJanuaryWindow(): bool
+    {
+        try {
+            $today = new \DateTimeImmutable('now');
+        } catch (\Exception $e) {
+            return false;
+        }
+
+        return (int)$today->format('n') === 1;
+    }
 
 
     public function render(): string
