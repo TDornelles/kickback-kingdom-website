@@ -1390,7 +1390,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           const username = account?.profile?.username;
           const heroTitle = username ? `${escapeHtml(username)}'s Atlas Archive` : "Your Atlas Archive";
           const leadCopy = username
-            ? `From realm-wide legends to ${escapeHtml(username)}'s personal saga. Ready to see this account's tale?`
+            ? `From realm-wide legends to ${escapeHtml(username)}'s personal saga. Ready to see this guildsmen's tale?`
             : "From realm-wide legends to your personal saga. Ready to see your account's tale?";
           const ctaLabel = username ? `View ${escapeHtml(username)}'s Story` : "View Your Story";
 
