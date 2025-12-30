@@ -195,6 +195,7 @@ class Session {
     {
         $info = new vSessionInformation();
 
+        $info->account = null;
         $info->chestsJSON = "[]";
         $info->chests = [];
         $info->notifications = [];
@@ -227,6 +228,7 @@ class Session {
         }
 
         self::setCurrentAccount($account);
+        $info->account = $accountResp->data;
         $chestsResp = AccountController::getAccountChests($account);
         // @phpstan-ignore assign.propertyType
         $info->chests = $chestsResp->data;
