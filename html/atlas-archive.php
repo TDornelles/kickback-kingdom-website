@@ -683,25 +683,23 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       color: #3b2a00 !important;
       text-shadow: 0 1px 0 rgba(255,255,255,0.3);
     }
-    .raffle-rewards {
-      display: grid;
-      gap: 12px;
-      margin-top: 14px;
-    }
-    .raffle-reward-card {
+    .raffle-rewards { margin-top: 14px; }
+    .raffle-reward-strip {
       border: 1px solid var(--border);
       border-radius: 14px;
-      padding: 12px 12px 10px;
+      padding: 12px;
       background: rgba(255,255,255,0.02);
       box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02), 0 10px 28px rgba(0,0,0,0.25);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
     }
-    .raffle-reward-header {
+    .raffle-reward-strip-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 10px;
       flex-wrap: wrap;
-      margin-bottom: 8px;
     }
     .raffle-reward-title {
       font-weight: 800;
@@ -714,46 +712,75 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       color: var(--muted);
       font-size: 13px;
     }
-    .raffle-reward-items {
+    .raffle-item-grid {
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
-      align-items: stretch;
-    }
-    .reward-item {
-      min-width: 94px;
-      max-width: 120px;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 10px 8px;
-      background: rgba(255,255,255,0.02);
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
       align-items: center;
-      text-align: center;
     }
-    .reward-icon {
-      width: 62px;
-      height: 62px;
+    .raffle-item {
+      position: relative;
+      width: 68px;
+      height: 68px;
       border-radius: 12px;
       border: 1px solid var(--border);
-      background: rgba(255,255,255,0.05);
+      background: rgba(255,255,255,0.04);
       display: grid;
       place-items: center;
       overflow: hidden;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03);
     }
-    .reward-icon img {
+    .raffle-item-icon {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+    }
+    .raffle-item-icon img {
       width: 100%;
       height: 100%;
       object-fit: cover;
       display: block;
     }
-    .reward-name {
-      font-weight: 700;
-      color: var(--text);
-      font-size: 13px;
-      line-height: 1.2;
+    .raffle-item:hover {
+      transform: translateY(-4px) scale(1.02);
+      box-shadow: 0 10px 22px rgba(0,0,0,0.30);
+      border-color: rgba(255,255,255,0.18);
+    }
+    .raffle-item-popout {
+      position: absolute;
+      inset: auto auto -10px 50%;
+      transform: translate(-50%, 14px);
+      background: rgba(6,9,16,0.96);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px 10px;
+      box-shadow: 0 14px 30px rgba(0,0,0,0.36);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 140ms ease, transform 140ms ease;
+      min-width: 180px;
+      text-align: center;
+      z-index: 5;
+    }
+    .raffle-item:hover .raffle-item-popout,
+    .raffle-item:focus-visible .raffle-item-popout {
+      opacity: 1;
+      transform: translate(-50%, 4px);
+    }
+    .raffle-item:focus-visible {
+      outline: 2px solid var(--accent-2);
+      outline-offset: 2px;
+    }
+    .raffle-item-name {
+      font-weight: 800;
+      letter-spacing: 0.01em;
+    }
+    .raffle-item-meta {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 4px;
+      line-height: 1.3;
     }
     .slide-icon {
       transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
@@ -1004,15 +1031,17 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           ? `<img src="${icon}" alt="${name} icon">`
           : `<span class="game-icon-fallback">${fallback}</span>`;
         return `
-          <div class="reward-item slide-icon" title="${name}" data-bs-toggle="tooltip" data-bs-placement="top">
-            <div class="reward-icon">${visual}</div>
-            <div class="reward-name">${name}</div>
-            ${category ? `<div class="raffle-reward-meta">${category}</div>` : ""}
+          <div class="raffle-item slide-icon" tabindex="0" aria-label="${name}">
+            <div class="raffle-item-icon">${visual}</div>
+            <div class="raffle-item-popout">
+              <div class="raffle-item-name">${name}</div>
+              ${category ? `<div class="raffle-item-meta">${category}</div>` : ""}
+            </div>
           </div>
         `;
       }).join("");
 
-      return `<div class="raffle-reward-items">${items}</div>`;
+      return `<div class="raffle-item-grid slide-icon-group" aria-label="Raffle rewards">${items}</div>`;
     };
 
     const renderRaffleRewards = (raffleRewards) => {
@@ -1024,8 +1053,8 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         const questName = escapeHtml(raffle.questName ?? "Unknown Quest");
         const dateLabel = raffle.endDate ? new Date(raffle.endDate).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "Date unknown";
         return `
-          <div class="raffle-reward-card">
-            <div class="raffle-reward-header">
+          <div class="raffle-reward-strip">
+            <div class="raffle-reward-strip-header">
               <div class="raffle-reward-title">
                 <span class="pill">Raffle</span>
                 <span>${questName}</span>
