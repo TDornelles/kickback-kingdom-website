@@ -1367,6 +1367,9 @@ if (!Session::isLoggedIn()) {
                 <a class="nav-link mobile-menu-item" href="<?php echo Version::urlBetaPrefix(); ?>/games.php"><i class="nav-icon fa-solid fa-gamepad"></i> Games & Activities<i class="fa-solid fa-chevron-right mobile-menu-item-arrow"></i></a>
             </li>
             <li class="nav-item">
+                <a class="nav-link mobile-menu-item" href="<?php echo Version::urlBetaPrefix(); ?>/market.php"><i class="nav-icon fa-solid fa fa-space-shuttle"></i> Emberwood Market<i class="fa-solid fa-chevron-right mobile-menu-item-arrow"></i></a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link mobile-menu-item" href="<?php echo Version::urlBetaPrefix(); ?>/servers.php"><i class="nav-icon fa-regular fa-server"></i> Community Servers <i class="fa-solid fa-chevron-right mobile-menu-item-arrow"></i></a>
             </li>
             <li class="nav-item">

@@ -5,8 +5,13 @@
     "videoUrl": "https://www.youtube.com/watch?v=WDxw9w_npsk",
     "accountIds": []
   },
+  "2024": {
+    "description": "Our best attempt at Operation Fly Down in Arma 3!",
+    "videoUrl": "https://www.youtube.com/watch?v=BSrKsr0H39Y",
+    "accountIds": [1, 2, 7, 15, 19, 13]
+  },
   "2025": {
-    "description": "Example: Swap this text and account IDs to spotlight your own unforgettable play.",
-    "accountIds": [1, 2, 3]
+    "description": "How could any exiled forget the fall of the infamous \"Offline Kings\"? For six brutal months, they haunted the Exiled Lands from the shadows, striking in silence and vanishing by dawn. In that darkness, a warrior named Lobo arose and united the Sons of Atlas, the Outlaw Kings, and Legion under one banner. Together, the server rose as one, shattered the Offline Kings, and cast their reign of shadow into ruin and legend.",
+    "accountIds": [1, 107, 15, 188, 164, 76, 100]
   }
 }

@@ -1336,7 +1336,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
             </div>
             <div class="title-present">Presents</div>
             <div class="mega">Atlas Archive ${year}</div>
-            <div class="lead">A reflection of what we have achieved together in the past year.</div>
+            <div class="lead">This archive is a testament to the age just passed. In a year of trials and triumphs, legends were born, alliances were forged, and the fate of the realm was shaped by those who dared to stand. What follows is the tale of battles fought, bonds sealed, and a legacy written into the ever-unfolding epic of Kickback Kingdom.</div>
             <div class="actions" style="justify-content:center;">
               <button class="cta-primary" data-action="next">Start</button>
               <button class="cta-primary" data-action="fullscreen">Fullscreen</button>
@@ -1357,7 +1357,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           const metricCards = [
             {
               key: "accounts",
-              label: "Guildsmen",
+              label: "New Guildsmen",
               sub: `New guildsmen in ${previousYear}`,
               fallbackEnd: w.guildsmen,
               primary: "direct",
@@ -1438,7 +1438,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           return `
             <div class="slide-hero">
               <div class="mega">Cheers to the Kingdom!</div>
-              <div class="lead">${previousYear} brought new friendships, lasting memories, and unforgettable moments of fierce competition.</div>
+              <div class="lead">In ${previousYear}, the Kingdom thrived through unity, rivalry, and shared adventure. New guildsmen joined the ranks, countless quests were undertaken, and battles echoed across the realm. Together, these moments formed a year worthy of celebration and remembrance.</div>
             </div>
             <div class="stat-hero">
               ${metricCards.map((metric) => {
@@ -1467,7 +1467,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         render: () => `
           <div class="slide-hero">
             <div class="mega">Honorable Stats & Achievements</div>
-            <div class="lead">Remembering our most epic moments and legendary heroes!</div>
+            <div class="lead">Here are the deeds that defined the age. Triumphs once thought impossible and streaks forged through sheer will stand as lasting testaments to bravery and mastery. What follows is the saga of unforgettable heroes and moments etched forever into the Kingdom's living legend.</div>
             <div class="actions" style="justify-content:center;">
               <button class="cta-primary" data-action="next">Begin Highlights</button>
             </div>
@@ -1484,7 +1484,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           return `
             <div class="slide-hero">
               <div class="mega">Most Tournaments Won</div>
-              <div class="lead">This goes to our adventurer with the most championships in ${previousYear}! Nothing can stop them!</div>
+              <div class="lead">Through relentless mastery and unshakable resolve, one adventurer rose above all others. In ${previousYear}, no arena proved unconquerable, no challenge insurmountable. This honor belongs to the champion whose victories echoed across the Kingdom.</div>
             </div>
             <div class="honor-card">
               ${renderHonorProfile(entry, `Led the ranked quests in ${previousYear}`)}
@@ -1508,7 +1508,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           return `
             <div class="slide-hero">
               <div class="mega">Most Prestigious</div>
-              <div class="lead">This guildsman is beloved by the community and was most recognized in ${previousYear} for their valiant efforts.</div>
+              <div class="lead">Prestige is not claimed through victory alone, but earned through respect, character, and unwavering dedication. In ${previousYear}, this guildsman stood as a pillar of the community, recognized time and again for their valor, integrity, and service to the Kingdom.</div>
             </div>
             <div class="honor-card">
               ${renderHonorProfile(entry, `Commended the most in ${previousYear}`)}
@@ -1532,7 +1532,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           return `
             <div class="slide-hero">
               <div class="mega">Most Adventurous</div>
-              <div class="lead">This hero answered the call and completed more quests than any other in ${previousYear}.</div>
+              <div class="lead">Some heroes do not wait for destiny to find them. In ${previousYear}, this adventurer answered every call, crossed every threshold, and faced more trials than any other. Their journey stands as a testament to courage, curiosity, and an unyielding thirst for adventure.</div>
             </div>
             <div class="honor-card">
               ${renderHonorProfile(entry, `Completed the most quests in ${previousYear}`)}
@@ -1555,8 +1555,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           return `
             <div class="slide-hero">
               <div class="mega">Greatest Quest Giver</div>
-              <div class="lead">In ${previousYear}, they united the Adventurers' Guild and safeguarded the realm by crafting the quests that heroes rose to complete.
-</div>
+              <div class="lead">Great quests do more than test heroes. In ${previousYear}, this quest giver shaped the paths others would walk, uniting the Adventurers' Guild and calling champions to action through trials worthy of legend. By their design, the realm was challenged, strengthened, and safeguarded.</div>
             </div>
             <div class="honor-card">
               ${renderHonorProfile(entry, `Greatest Quest Giver in ${previousYear}`)}
@@ -1580,7 +1579,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           return `
             <div class="slide-hero">
               <div class="mega">Most Renown</div>
-              <div class="lead">In ${previousYear}, no name carried greater renown, as they earned more badges than any other in the realm.</div>
+              <div class="lead">When tales of great deeds spread across the Kingdom in ${previousYear}, one name rose above the rest. Through countless achievements and hard-won honors, this hero became a figure of true renown.</div>
             </div>
             <div class="honor-card">
               ${renderHonorProfile(entry, `Badge haul in ${previousYear}`)}
@@ -1601,7 +1600,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           return `
             <div class="slide-hero">
               <div class="mega">Most Treasure Collected</div>
-              <div class="lead">In ${previousYear}, no secret stayed buried — this adventurer uncovered more hidden treasure than any other across the realm.</div>
+              <div class="lead">Some heroes seek glory, others seek what lies hidden. In ${previousYear}, no secret remained buried and no vault untouched, as this adventurer uncovered more treasure than any other across the realm. Their discoveries turned whispers into legend and fortune into history.</div>
             </div>
             <div class="honor-card">
               ${renderHonorProfile(entry, `Greatest treasure hunter of ${previousYear}`)}
@@ -1625,7 +1624,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           return `
             <div class="slide-hero">
               <div class="mega">Luckiest Person</div>
-              <div class="lead">In ${previousYear}, fortune smiled brightest on this adventurer, granting them more raffle victories than any other.</div>
+              <div class="lead">Not all victories are claimed by strength alone. In ${previousYear}, fortune herself smiled upon this adventurer, guiding chance in their favor and granting more victories of chance than any other. When fate cast its dice, their name was written in the stars.</div>
             </div>
             <div class="honor-card">
               ${renderHonorProfile(entry, `Fortune's favorite in ${previousYear}`)}
@@ -1650,7 +1649,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           return `
             <div class="slide-hero">
               <div class="mega">King of Games</div>
-              <div class="lead">In ${previousYear}, songs were sung of one who mastered every contest, crowned by fate as the King of Games — a legend that will echo through the ages.</div>
+              <div class="lead">In ${previousYear}, the realm bore witness to a master without equal. Across battlefields, boards, and contests of every kind, one champion rose supreme. Crowned not by title alone but by undeniable dominance, this legend stands eternal as the King of Games.</div>
             </div>
             <div class="honor-card">
               ${renderHonorProfile(entry, `The King of Games — Holder of the most Gold Cards in ${previousYear}`)}
@@ -1698,8 +1697,9 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           const username = account?.profile?.username;
           const heroTitle = username ? `${escapeHtml(username)}'s Atlas Archive` : "Your Atlas Archive";
           const leadCopy = username
-            ? `From realm-wide legends to ${escapeHtml(username)}'s personal saga. Ready to see this guildsmen's tale?`
-            : "From realm-wide legends to your personal saga. Ready to see your account's tale?";
+            ? `The great legends of the realm have been told, but every saga is shaped by those who walked its paths. Now the Chronicle turns to ${escapeHtml(username)}, revealing the trials faced, the victories claimed, and the mark they left upon the Kingdom. This is the story of their journey.`
+            : "The great legends of the realm have been told, but every saga is shaped by those who walked its paths. Now the Chronicle turns to you, revealing the trials faced, the victories claimed, and the mark you left upon the Kingdom. This is the story of your journey.";
+
           const ctaLabel = username ? `View ${escapeHtml(username)}'s Story` : "View Your Story";
 
           return `
@@ -1734,7 +1734,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           return `
             <div class="slide-hero">
               <div class="mega">Best Friends</div>
-              <div class="lead">Top 3 adventurers you quested or teamed with the most.</div>
+              <div class="lead">No legend is forged alone. Through countless quests, shared victories, and hard-fought battles, these allies stood side by side time and again. Their bonds were tested in trial and triumph alike, shaping a fellowship that became as much a part of the journey as the adventures themselves.</div>
             </div>
             ${friends.length === 0 ? `<div class="muted">No shared matches found for this year.</div>` : `
               <div class="card-grid">
@@ -1747,7 +1747,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
                     ${renderProfileChip(friend.profile, "Teammate")}
                     <div class="stat-hero" style="margin-top:10px;">
                       <div class="card">
-                        <div class="pill">Shared Runs</div>
+                        <div class="pill">Shared Activities</div>
                         ${renderKpi(friend.totalShared ?? ((friend.quests ?? 0) + (friend.teamMatches ?? 0)))}
                         <p class="sub">Combined quests and team-ups</p>
                       </div>
@@ -1785,7 +1785,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           return `
             <div class="slide-hero">
               <div class="mega">Favorite Ranked Game</div>
-              <div class="lead">The game you played the most ranked matches in.</div>
+              <div class="lead">Every hero has a battlefield where their legend is forged. Through countless ranked clashes and hard-fought victories, this game became the proving ground where skill was tested, rivalries were born, and resolve was tempered in the heat of competition.</div>
             </div>
             <div class="list-card">
               <div class="title-row">
@@ -1827,7 +1827,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           return `
             <div class="slide-hero">
               <div class="mega">Matchmaker Streaks</div>
-              <div class="lead">Total ranked matches, wins, win rate, plus every ladder you queued in.</div>
+              <div class="lead">The arena is the great forge of rivalry, where legends are tempered in ranked fire. Each match is a wager of pride, each ladder a proving ground, and every streak a testament to discipline and resolve. What follows is the record of battles fought, victories claimed, and arenas conquered across the realm.</div>
             </div>
             <div class="stat-hero">
               <div class="card">
@@ -1897,7 +1897,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           return `
             <div class="slide-hero">
               <div class="mega">Momentum Shifts</div>
-              <div class="lead">Biggest Elo gains and drops from single matches, spotlighting comebacks and lessons.</div>
+              <div class="lead">Fortunes are rarely steady in the heat of competition. In a single match, momentum can surge or shatter, lifting a hero toward glory or casting them back into reflection. These moments mark the turning tides of fate, where triumphs are seized, lessons are learned, and resolve is tested in an instant.</div>
             </div>
             ${!hasAny ? `<div class="muted">No Elo swings found for this year.</div>` : `
               <div class="card-grid momentum-grid">
@@ -1949,7 +1949,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           return `
             <div class="slide-hero">
               <div class="mega">Duo of Destiny</div>
-              <div class="lead">Your most frequent teammate across every ladder, showing your combined win rate and the games you conquered together.</div>
+              <div class="lead">Some victories are forged alone, but the greatest are won side by side. Through shared battles, hard choices, and moments where trust meant everything, this partnership became a force of destiny. Together, these two faced the ladders of fate, carving victories and memories that neither could have claimed alone.</div>
             </div>
             <div class="list-card">
               <div class="title-row">
@@ -2014,7 +2014,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           return `
             <div class="slide-hero">
               <div class="mega">Nemesis</div>
-              <div class="lead">Opponents who beat you the most across all games — including where they claimed those wins.</div>
+              <div class="lead">Every legend is sharpened by those who stand in its way. These rivals tested resolve, exposed weakness, and forced growth through repeated defeat. In their opposition, they became more than adversaries, they became the crucible through which mastery was forged.</div>
             </div>
             ${nemeses.length === 0 ? `<div class="muted">No rivalries detected this year.</div>` : `
               <div class="nemesis-list">
@@ -2041,8 +2041,8 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
         showNextCta: false,
         render: () => `
           <div class="slide-hero">
-            <div class="mega">Thank you for building ${year}</div>
-            <div class="lead">From controllers to quests, every row tells a story. See you in the next chapter.</div>
+            <div class="mega">Thank you for contributing to the legends of Kickback Kingdom!</div>
+            <div class="lead">Every battle fought, every quest answered, and every moment shared has shaped the living legend of Kickback Kingdom. These stories do not end here, they carry forward with those who dare to return. Until the next chapter is written, may your banner stand tall.</div>
             <div class="actions" style="justify-content:center;">
               <button class="cta-primary" data-action="celebrate">Raise Banner</button>
               <button class="cta-primary" data-action="share">Share Archive</button>
