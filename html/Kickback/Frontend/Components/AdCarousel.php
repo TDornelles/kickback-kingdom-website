@@ -10,6 +10,7 @@ use Kickback\Backend\Views\vTreasureHuntEvent;
 use Kickback\Backend\Controllers\SeasonController;
 use Kickback\Common\Version;
 use Kickback\Services\Session;
+use Kickback\Backend\Views\vDateTime;
 
 class AdCarousel
 {
@@ -77,15 +78,16 @@ class AdCarousel
         }
 
         if ($this->isJanuaryWindow()) {
-            $atlasYear = (int)(new \DateTimeImmutable('now'))->format('Y');
+            $now = new vDateTime();
+            $atlasYear = $now->getYear() - 1;
             $atlasArchivePath = "atlas-archive.php?year={$atlasYear}";
             $atlasArchiveUrl = Version::urlBetaPrefix() . "/" . $atlasArchivePath;
             $atlasArchiveLoginUrl = Version::urlBetaPrefix() . "/login.php?redirect=" . urlencode($atlasArchivePath);
             $atlasArchiveCta = Session::isLoggedIn() ? $atlasArchiveUrl : $atlasArchiveLoginUrl;
             $atlasArchiveCtaLabel = "View Atlas Archive";
             array_push($this->ads, new CarouselAd(
-                "/assets/media/context/Kickback_Banners_New_Year_1920-500.png",
-                "/assets/media/context/Kickback_Banners_New_Year_1080-500.png",
+                "/assets/media/events/1843.png",
+                "/assets/media/events/1844.png",
                 "Atlas Archive {$atlasYear}",
                 "Step into your personal chronicle and relive every win, run, and memory from the previous year.",
                 $atlasArchiveCta,
@@ -205,12 +207,12 @@ class AdCarousel
     private function isJanuaryWindow(): bool
     {
         try {
-            $today = new \DateTimeImmutable('now');
-        } catch (\Exception $e) {
+            $today = new vDateTime(); // UTC "now"
+        } catch (\Throwable $e) {
             return false;
         }
 
-        return (int)$today->format('n') === 1;
+        return $today->getMonth() === 1;
     }
 
 

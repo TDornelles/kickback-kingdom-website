@@ -1,7 +1,7 @@
 <?php
 // Kickback Kingdom - Atlas Archive (POC with immersive award-show styling)
 $requestedAtlasYear = filter_input(INPUT_GET, 'year', FILTER_VALIDATE_INT, ['options' => ['min_range' => 2000, 'max_range' => 3000]]);
-$atlasYear = $requestedAtlasYear === false || $requestedAtlasYear === null ? 2026 : $requestedAtlasYear;
+$atlasYear = $requestedAtlasYear === false || $requestedAtlasYear === null ? 2025 : $requestedAtlasYear;
 $pageTitle = "Atlas Archive {$atlasYear} - Yearly Review (POC)";
 $pageImage = "https://kickback-kingdom.com/assets/media/context/loading.gif";
 $pageDesc = "Yearly recap for Kickback Kingdom adventurers in {$atlasYear}.";
@@ -15,7 +15,7 @@ require(\Kickback\SCRIPT_ROOT . "/php-components/base-page-pull-active-account-i
 $requestedAccountId = filter_input(INPUT_GET, 'accountId', FILTER_VALIDATE_INT);
 $requestedUsername = filter_input(INPUT_GET, 'accountUsername', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 $initialTab = filter_input(INPUT_GET, 'tab', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
-
+$atlasYear = $atlasYear + 1;
 $atlasPayload = AtlasArchiveController::buildPayload(
     $atlasYear,
     $activeAccountInfo->account ?? null,
@@ -169,7 +169,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       border: 1px solid var(--border);
       background: linear-gradient(160deg, rgba(16,23,32,0.92), rgba(12,18,28,0.96));
       box-shadow: var(--shadow);
-      height: min(85vh, 980px);
+      height: min(85vh, 1100px);
       padding: 88px 18px 18px;
       isolation: isolate;
       max-width: 1200px;
@@ -301,6 +301,9 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       border: 1px solid var(--border);
       color: #ffd166;
       background: rgba(255, 255, 255, 0.02);
+    }
+    .pill-active {
+      background: #ffe20047;
     }
     .slide h2 {
       margin: 0;
@@ -1017,8 +1020,10 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
           <div class="slides-stage w-100">
             <div class="hud floating d-flex align-items-center justify-content-between flex-wrap gap-2">
               <div class="hud-left d-inline-flex align-items-center gap-2 flex-wrap">
-                <span class="pill">Atlas</span>
-                <span class="pill"><?php echo htmlspecialchars((string)$atlasYear, ENT_QUOTES, 'UTF-8'); ?></span>
+                <span class="pill">Atlas Archive</span>
+                <a class="text-decoration-none" href="/atlas-archive.php?year=2023"><span class="pill <?= ($atlasYear-1==2023?"pill-active":""); ?>">2023</span></a>
+                <a class="text-decoration-none" href="/atlas-archive.php?year=2024"><span class="pill <?= ($atlasYear-1==2024?"pill-active":""); ?>">2024</span></a>
+                <a class="text-decoration-none" href="/atlas-archive.php?year=2025"><span class="pill <?= ($atlasYear-1==2025?"pill-active":""); ?>">2025</span></a>
               </div>
             <div class="hud-dots d-inline-flex gap-2" id="dot-nav" aria-label="Slide navigation"></div>
             </div>
@@ -1062,7 +1067,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
     const buildShareUrl = (slideId) => {
       const slideSegment = slugifySegment(slideId, "opening");
       const audienceSegment = slugifySegment(account?.profile?.username, "kingdom");
-      const yearSegment = encodeURIComponent(year ?? new Date().getFullYear());
+      const yearSegment = encodeURIComponent(previousYear ?? new Date().getFullYear()-1);
       return `${window.location.origin}/atlas-archive/${yearSegment}/${audienceSegment}/${slideSegment}/`;
     };
 
@@ -1195,7 +1200,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
             <div class="honor-avatar"></div>
             <div class="honor-meta">
               <div class="mega" style="font-size:32px;">No data</div>
-              <div class="muted">Not enough records in ${year}</div>
+              <div class="muted">Not enough records in ${previousYear}</div>
             </div>
           </div>
         `;
@@ -1335,7 +1340,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
               <img src="https://kickback-kingdom.com/assets/images/logo-kk.png" alt="Kickback Kingdom" class="img-fluid">
             </div>
             <div class="title-present">Presents</div>
-            <div class="mega">Atlas Archive ${year}</div>
+            <div class="mega">Atlas Archive ${previousYear}</div>
             <div class="lead">This archive is a testament to the age just passed. In a year of trials and triumphs, legends were born, alliances were forged, and the fate of the realm was shaped by those who dared to stand. What follows is the tale of battles fought, bonds sealed, and a legacy written into the ever-unfolding epic of Kickback Kingdom.</div>
             <div class="actions" style="justify-content:center;">
               <button class="cta-primary" data-action="next">Start</button>
@@ -2044,7 +2049,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
             <div class="mega">Thank you for contributing to the legends of Kickback Kingdom!</div>
             <div class="lead">Every battle fought, every quest answered, and every moment shared has shaped the living legend of Kickback Kingdom. These stories do not end here, they carry forward with those who dare to return. Until the next chapter is written, may your banner stand tall.</div>
             <div class="actions" style="justify-content:center;">
-              <button class="cta-primary" data-action="celebrate">Raise Banner</button>
+              <a class="cta-primary" href="/">Raise Banner</a>
               <button class="cta-primary" data-action="share">Share Archive</button>
             </div>
           </div>
@@ -2513,7 +2518,7 @@ $atlasYear = $atlasPayload['year'] ?? $atlasYear;
       }
       if (target.matches(".cta-primary[data-action='share']")) {
         const slideId = slides[activeIndex].id;
-        const url = buildShareUrl(slideId);
+        const url = buildShareUrl();
         navigator.clipboard.writeText(url).then(() => {
           target.textContent = "Copied!";
           setTimeout(() => target.textContent = "Share Slide", 1200);

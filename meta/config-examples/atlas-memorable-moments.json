@@ -5,6 +5,11 @@
     "videoUrl": "https://www.youtube.com/watch?v=WDxw9w_npsk",
     "accountIds": []
   },
+  "2023": {
+    "description": "The time a massive zombie horde dug all the way down to our underground base in 7 Days to Die!",
+    "videoUrl": "https://www.youtube.com/watch?v=qAH8jQNvL7U",
+    "accountIds": [1, 2, 7, 20]
+  },
   "2024": {
     "description": "Our best attempt at Operation Fly Down in Arma 3!",
     "videoUrl": "https://www.youtube.com/watch?v=BSrKsr0H39Y",

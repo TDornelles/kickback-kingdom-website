@@ -1,7 +1,8 @@
 <?php
 declare(strict_types=1);
-
 namespace Kickback\Backend\Controllers;
+
+use Kickback\Backend\Views\vDateTime;
 
 class SeasonController
 {
@@ -84,18 +85,33 @@ class SeasonController
 
     public function isNewYearSeason(?\DateTimeInterface $now = null): bool
     {
-        if ($now === null) {
-            $now = new \DateTimeImmutable('now');
-        }
+        // Always evaluate in UTC using vDateTime
+        $nowV = $now === null
+            ? new vDateTime()
+            : vDateTime::fromDateTime(new \DateTime($now->format('Y-m-d H:i:s'), new \DateTimeZone('UTC')));
 
-        $year = (int)$now->format('Y');
+        $year  = $nowV->getYear();
+        $month = $nowV->getMonth();
 
-        // Season from Dec 27 (previous year) to Jan 3 (current year)
-        $start = new \DateTimeImmutable(($year - 1) . "-12-27 00:00:00");
-        $end   = new \DateTimeImmutable("$year-01-03 23:59:59");
+        // Dec 27 → Jan 3 window spanning the year boundary
+        $startYear = ($month === 12) ? $year : ($year - 1);
+        $endYear   = ($month === 12) ? ($year + 1) : $year;
 
-        return $this->isBetween($now, $start, $end);
+        $start = (new vDateTime())
+            ->setYear($startYear)
+            ->setMonth(12)
+            ->setDay(27)
+            ->setTime(0, 0, 0);
+
+        $end = (new vDateTime())
+            ->setYear($endYear)
+            ->setMonth(1)
+            ->setDay(3)
+            ->setTime(23, 59, 59);
+
+        return $nowV->isSameOrAfter($start) && $nowV->isSameOrBefore($end);
     }
+
 
     public function isValentinesSeason(?\DateTimeInterface $now = null): bool
     {
@@ -198,8 +214,8 @@ class SeasonController
                     'title'    => 'New Year, New Adventures',
                     'subtitle' => 'Kick off the year with fresh quests, seasons, and challenges in Kickback Kingdom.',
                     'images'   => [
-                        '/assets/images/kk-1.jpg',
-                        '/assets/images/kk-2.jpg',
+                        '/assets/media/events/1843.png',
+                        '/assets/media/events/1844.png',
                     ],
                 ];
 
