@@ -36,6 +36,7 @@ final class Version
         [0,1,2,"","", "ranked-match-history"],
         [0,1,3,"","", "league-progression-viewer"],
         [0,2,0,"","", "butter-late-than-never"],
+        [0,2,1,"","", "2026-new-year-atlas-archive"],
     ];
 
     //private const LAST_HISTORY_ENTRY_IDX = array_key_last(self::HISTORY);
