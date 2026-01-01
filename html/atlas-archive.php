@@ -2,7 +2,7 @@
 // Kickback Kingdom - Atlas Archive (POC with immersive award-show styling)
 $requestedAtlasYear = filter_input(INPUT_GET, 'year', FILTER_VALIDATE_INT, ['options' => ['min_range' => 2000, 'max_range' => 3000]]);
 $atlasYear = $requestedAtlasYear === false || $requestedAtlasYear === null ? 2025 : $requestedAtlasYear;
-$pageTitle = "Atlas Archive {$atlasYear} - Yearly Review (POC)";
+$pageTitle = "Atlas Archive {$atlasYear} - Yearly Review";
 $pageImage = "https://kickback-kingdom.com/assets/media/context/loading.gif";
 $pageDesc = "Yearly recap for Kickback Kingdom adventurers in {$atlasYear}.";
 require_once(($_SERVER["DOCUMENT_ROOT"] ?: __DIR__) . "/Kickback/init.php");
