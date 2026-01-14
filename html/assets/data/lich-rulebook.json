@@ -1963,7 +1963,17 @@
       "name": "Move",
       "definition": "Change position along adjacent unoccupied tiles up to the stated amount; moving 0 still creates a reactable movement event.",
       "tags": [
-        "keyword"
+        "keyword",
+        "teleport"
+      ]
+    },
+    {
+      "id": "KW-Teleport",
+      "name": "Teleport",
+      "definition": "Change position to an unoccupied tile; teleporting still creates a reactable movement event.",
+      "tags": [
+        "keyword",
+        "teleport"
       ]
     },
     {
