@@ -8,37 +8,29 @@ use PDO;
 use PDOException;
 use Kickback\Backend\Config\ServiceCredentials;
 
-/**
- * New database access class which uses PDO's insetad of mysqli
- * PDO's rely more heavily on the pattern: returns values for data, throws exceptions for errors.
- * the old myslqi based access is generally more status code focused.
- * Since the pattern for handling the status codes is throwing exceptions anyway if they are error codes, PDO makes a little more sense
- * 
- * PDO based database access has the other benefit of being more univserally compatible with multple types of Database as msyqli is specifically for mysql
- * (however this is a benefit we'll probably never see or care for)
- * 
- * Overall, PDO's seem just slightly better than mysqli. Becuase the beneifit is, at a resonable best, minor, old classes shouldn't be required to be refactored to
- * include this new approach however new classes which are made —or refactored— within the new backendV2 architcure, should use this class instead of the old
- * myslqi based one
- * 
- * 
- * I've also made this not use the singleton pattern as that can incure some nasty —and mostly hidden— side-effects.
- * Cheifly, if the singleton connection is used multiple times, it can trickle down the state of previous queries, transactions being a good example.
- * Moving this away from singleton —and static-ness— also allows for dependency injection to be used
- */
 final class Database
 {
-    private PDO $pdo;
+    private static ?PDO $conn = null;
 
-    public function __construct(?PDO $pdo = null)
-    {
-        $this->pdo = $pdo ?? self::createPdoFromConfig();
-    }
+    public static function getConnection(): ?PDO {
+    // If a connection exists but has been closed (for example, by other code
+    // calling \mysqli::close()), clear it so a fresh connection can be created.
+    if (self::$conn !== null) {
+        try {
+            if (!@self::$conn->ping()) {
+                self::$conn = null;
+            }
+        } catch (\Throwable $e) {
+            // Certain operations on closed mysqli objects throw Errors instead of warnings.
+            // Reset the connection so a new one can be created safely.
+            self::$conn = null;
+        }
 
+        if (self::$conn === null) {
+            self::$conn = static::createPdoFromConfig();
+        }
 
-    public function getConnection(): PDO
-    {
-        return $this->pdo;
+        return self::$conn;
     }
 
     private static function createPdoFromConfig(): PDO
