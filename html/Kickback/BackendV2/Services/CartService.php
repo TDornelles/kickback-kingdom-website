@@ -2,97 +2,55 @@
 
 declare(strict_types=1);
 
+namespace Kickback\BackendV2\Services;
+
+use Exception;
 use Kickback\Backend\Models\Cart;
 use Kickback\Backend\Models\Response;
-use Kickback\BackendV2\Repositories\Cart\CartRepository;
-use Kickback\BackendV2\Repositories\Cart\PDOCartRepository;
+use Kickback\Backend\Views\vRecordId;
+use Kickback\Backend\Views\vCart;
+use Kickback\Backend\Views\vPriceComponent;
+use Kickback\BackendV2\DAO\Cart\CartDAO;
+use Kickback\BackendV2\DAO\Cart\PDOCartRepository;
 
 class CartService
 {
-    private CartRepository $repo;
+    private CartDAO $dao;
 
-    public function __construct(?CartRepository $cartRepository = null)
+    public function __construct(?CartDAO $cartDao = null)
     {
-        $repo = is_null($cartRepository) ? new PDOCartRepository() : $cartRepository;
+        $this->dao = is_null($cartDao) ? new PDOCartRepository() : $cartDao;
     }
 
-
-     /**
-     * Gets a cart for an account
-     * Either selects an already existing cart or creates a new one
-     * 
-     * Additionally gets all items in the cart
-     * @param vRecordId $accountId the account id to get the cart for
-     * @param vRecordId $storeId the store to get the cart for
-     * @return Response $resp the response containg the found vCart object in the data field
-     */
+    /**
+    * Gets a cart for an account
+    * Either selects an already existing cart or creates a new one
+    * 
+    * Additionally gets all items in the cart
+    * @param vRecordId $accountId the account id to get the cart for
+    * @param vRecordId $storeId the store to get the cart for
+    * @return Response $resp the response containg the found vCart object in the data field
+    */
     public function getCartForAccount(vRecordId $accountId, vRecordId $storeId) : Response
     {
         $resp = new Response(false, "unkown error in getting cart for account", null);
-
-        $cart = new Cart($accountId->ctime, $accountId->crand, $storeId->ctime, $storeId->crand);
-
-        $sql = "INSERT INTO cart (
-            ctime, crand, checked_out, void,
-            ref_account_ctime, ref_account_crand,
-            ref_store_ctime, ref_store_crand
-        )
-        SELECT ?, ?, 0, 0, ?, ?, ?, ?
-        WHERE NOT EXISTS (
-            SELECT 1
-            FROM cart
-            WHERE ref_account_crand = ? AND ref_store_ctime = ? AND ref_store_crand = ? AND checked_out = 0 AND void = 0
-        );";
-
-        $params = [$cart->ctime, $cart->crand, $accountId->ctime, $accountId->crand, $storeId->ctime, $storeId->crand, $accountId->crand, $storeId->ctime, $storeId->crand];
-
         
         try
         {
-            $result = Database::executeSqlQuery($sql, $params);
+            $cart = $this->dao->getOrCreateCart($accountId, $storeId);
 
-            if(!$result)
+            if($cart == null)
             {
-                $resp->message = "Failed to run duplicate-tolerant insert command for inserting cart";
+                $resp->message = "Failed to get or create cart";
                 return $resp;
             }
 
 
-            $selectSql = "SELECT
-                ".static::$columnsInCartView."
-                FROM v_cart
-                WHERE account_crand = ? AND store_ctime = ? AND store_crand = ? AND checked_out = 0 AND void = 0;
-            ";
+            $cartView = $this->dao->getCartView($cart);
 
-            $params = [$accountId->crand, $storeId->ctime, $storeId->crand];
+            $cartItems = $this->dao->getCartItemViews($cartView);
 
-            $selectResult = Database::executeSqlQuery($selectSql, $params);
-
-            if(!$selectResult)
-            {
-                $resp->message = "Failed to select cart for account";
-                return $resp;
-            } 
-
-            if($selectResult->num_rows <= 0)
-            {
-                $resp->message = "cart not found after insertion";
-                return $resp;
-            }
-
-            $row = $selectResult->fetch_assoc();
-
-            $cartView = static::cartToView($row);
-
-            $cartItemsResp = static::getItemsInCart($cartView);
-
-            if(!$cartItemsResp->success)
-            {
-                $resp->message = "Failed to get cart items : $cartItemsResp->message";
-                return $resp;
-            }
-
-            $cartView->cartProducts = $cartItemsResp->data;
+            $cartView->cartProducts = $cartItems;
 
             $cartView->totals = static::calculateCartTotalPriceCompnents($cartView->cartProducts);
 
@@ -102,10 +60,62 @@ class CartService
         }
         catch(Exception $e)
         {
-            throw new Exception("exception caught while getting cart for account : $e");
+            $resp->message = "Exception caught while trying to get cart for account : $e";
         }
 
         return $resp;
+    }
+
+    /**
+     * Calculates the totals for the price in the cart
+     * @param array $cartItems all of the items in the cart, an array of vCartItems
+     * @return array $totalprice the returned array which contains the price of the totals in vPriceComponent objects
+     */
+    private static function calculateCartTotalPriceCompnents(array $cartItems) : array
+    {
+        $totals = [];
+
+        foreach($cartItems as $cartItem)
+        {
+            $price = $cartItem->product->price;
+
+            foreach($price as $priceComponent)
+            {
+                $alreadyExistingTotal = null;
+
+                foreach($totals as $total)
+                {
+
+                    //Does priceComponent being checked match an already existing total
+                    if(
+                        (!is_null($priceComponent->item) && !is_null($total->item) && 
+                        $priceComponent->item->ctime == $total->item->ctime && $priceComponent->item->crand == $total->item->crand)
+                        ||
+                        (!is_null($priceComponent->currencyCode) && !is_null($total->currencyCode) &&
+                        $priceComponent->currencyCode == $total->currencyCode)
+                    )
+                    {
+                        $alreadyExistingTotal = $total;
+                        break;
+                    }
+                }
+
+                //Add amount of already existing total or create new total
+                if(is_null($alreadyExistingTotal))
+                {
+                    //Clone price component so we don't affect the idividual price of items in the cart
+                    $totalComponent = new vPriceComponent('', 0, $priceComponent->amount, $priceComponent->item, $priceComponent->currencyCode);
+
+                    array_push($totals, $totalComponent);
+                }
+                else
+                {
+                    $alreadyExistingTotal->amount = $alreadyExistingTotal->amount + $priceComponent->amount;
+                }
+            }
+        }
+
+        return $totals;
     }
 }
 

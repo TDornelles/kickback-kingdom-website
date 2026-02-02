@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Kickback\BackendV2\Repositories\Cart;
+namespace Kickback\BackendV2\DAO\Cart;
 
 use Exception;
 use Kickback\Backend\Models\Cart;
@@ -15,7 +15,7 @@ use Kickback\Backend\Views\vTransaction;
 use Kickback\BackendV2\Persistance\Database;
 use PDOException;
 
-class PDOCartRepository extends CartRepository
+class PDOCartRepository extends CartDAO
 {
     private Database $pdo;
 
@@ -84,7 +84,7 @@ class PDOCartRepository extends CartRepository
         coupon_assignment_group_crand
     ";
 
-    public function getOrCreate(vRecordId $accountId, vRecordId $storeId) : ?Cart
+    public function getOrCreateCart(vRecordId $accountId, vRecordId $storeId) : ?Cart
     {
         $cart = new Cart($accountId->ctime, $accountId->crand, $storeId->ctime, $storeId->crand);
 
