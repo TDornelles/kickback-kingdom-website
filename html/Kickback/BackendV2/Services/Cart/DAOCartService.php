@@ -10,34 +10,30 @@ use Kickback\Backend\Models\Response;
 use Kickback\Backend\Views\vRecordId;
 use Kickback\Backend\Views\vCart;
 use Kickback\Backend\Views\vPriceComponent;
-use Kickback\BackendV2\DAO\Cart\CartDAO;
-use Kickback\BackendV2\DAO\Cart\PDOCartRepository;
+use Kickback\BackendV2\DAO\cartDAO;
+use Kickback\BackendV2\DAO\PDOCartDAO;
+use Kickback\BackendV2\DAO\PDOStoreDAO;
+use Kickback\BackendV2\DAO\StoreDAO;
 
-class CartService
+class DAOCartService implements CartService
 {
-    private CartDAO $dao;
+    private cartDAO $cartDAO;
+    private StoreDAO $storeDAO;
 
-    public function __construct(?CartDAO $cartDao = null)
+    public function __construct(?CartDAO $cartDao = null, ?StoreDAO $storeDAO = null)
     {
-        $this->dao = is_null($cartDao) ? new PDOCartRepository() : $cartDao;
+        $this->cartDAO = is_null($cartDao) ? new PDOCartDAO() : $cartDao;
+        $this->storeDAO = is_null($storeDAO) ? new PDOStoreDAO() : $storeDAO;
     }
 
-    /**
-    * Gets a cart for an account
-    * Either selects an already existing cart or creates a new one
-    * 
-    * Additionally gets all items in the cart
-    * @param vRecordId $accountId the account id to get the cart for
-    * @param vRecordId $storeId the store to get the cart for
-    * @return Response $resp the response containg the found vCart object in the data field
-    */
-    public function getCartForAccount(vRecordId $accountId, vRecordId $storeId) : Response
+    public function GetCartForAccountWithStoreId(vRecordId $accountId, vRecordId $storeId) : Response
     {
         $resp = new Response(false, "unkown error in getting cart for account", null);
         
         try
         {
-            $cart = $this->dao->getOrCreateCart($accountId, $storeId);
+
+            $cart = $this->cartDAO->getOrCreateCartWithStoreId($accountId, $storeId);
 
             if($cart == null)
             {
@@ -46,9 +42,9 @@ class CartService
             }
 
 
-            $cartView = $this->dao->getCartView($cart);
+            $cartView = $this->cartDAO->getCartView($cart);
 
-            $cartItems = $this->dao->getCartItemViews($cartView);
+            $cartItems = $this->cartDAO->getCartItemViews($cartView);
 
             $cartView->cartProducts = $cartItems;
 
@@ -61,6 +57,49 @@ class CartService
         catch(Exception $e)
         {
             $resp->message = "Exception caught while trying to get cart for account : $e";
+        }
+
+        return $resp;
+    }
+
+    public function GetCartForAccountWithStoreLocator(vRecordId $accountId, string $storeLocator) : Response
+    {
+        $resp = new Response(false, "unkown error in getting cart for account with store locator \"$storeLocator\"", null);
+        
+        try
+        {
+            $storeId = $this->storeDAO->getStoreByLocator($storeLocator);
+
+            if(is_null($storeId))
+            {
+                $resp->message = "Failed to resolve store locator \"$storeLocator\" to store view";
+                return $resp;
+            }
+
+            $cart = $this->cartDAO->getOrCreateCartWithStoreId($accountId, $storeId);
+
+            if($cart == null)
+            {
+                $resp->message = "Failed to get or create cart for account with store locator \"$storeLocator\"";
+                return $resp;
+            }
+
+
+            $cartView = $this->cartDAO->getCartView($cart);
+
+            $cartItems = $this->cartDAO->getCartItemViews($cartView);
+
+            $cartView->cartProducts = $cartItems;
+
+            $cartView->totals = static::calculateCartTotalPriceCompnents($cartView->cartProducts);
+
+            $resp->success = true;
+            $resp->message = "Cart returned for account";
+            $resp->data = $cartView; 
+        }
+        catch(Exception $e)
+        {
+            $resp->message = "Exception caught while trying to get cart for account with store locator \"$storeLocator\" : $e";
         }
 
         return $resp;
