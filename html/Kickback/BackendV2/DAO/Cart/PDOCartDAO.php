@@ -15,7 +15,7 @@ use Kickback\Backend\Views\vTransaction;
 use Kickback\BackendV2\Persistance\Database;
 use PDOException;
 
-class PDOCartDAO extends CartDAO
+class PDOCartDAO implements CartDAO
 {
     private Database $pdo;
 

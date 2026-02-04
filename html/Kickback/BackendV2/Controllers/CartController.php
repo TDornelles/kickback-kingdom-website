@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+namespace Kickback\BackendV2\Controllers;
+
+use Exception;
 use Kickback\Backend\Models\Response;
 use Kickback\Backend\Views\vAccount;
 use Kickback\BackendV2\Services\CartService;

@@ -6,6 +6,7 @@ namespace Kickback\BackendV2\DAO;
 
 use Exception;
 use Kickback\Backend\Views\vAccount;
+use Kickback\Backend\Views\vRecordId;
 use Kickback\Backend\Views\vStore;
 use Kickback\BackendV2\Persistance\Database;
 use PDO;
@@ -71,6 +72,90 @@ class PDOStoreDAO implements StoreDAO
         catch (Exception $e)
         {
             throw new Exception("Exception caught while getting store by locator : " . $e->getMessage(), 0, $e);
+        }
+    }
+
+    public function doesStoreExistById(vRecordId $storeId) : ?bool
+    {
+        try
+        {
+            $sql = "SELECT 1 as 'exists' FROM store WHERE ctime = ? AND crand = ? LIMIT 1;";
+
+            $params = [$storeId->ctime, $storeId->crand];
+
+            $conn = $this->pdo->getConnection();
+
+            $stmt = $conn->prepare($sql);
+            if ($stmt === false) 
+            {
+                return null;
+            }
+
+            $result = $stmt->execute($params);
+
+            if ($result === false)
+            {
+                return null;
+            }
+
+            if($stmt->rowCount() > 0)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        catch (PDOException $e)
+        {
+            throw new Exception("PDO exception caught while checking if store exists by store id : " . $e->getMessage(), 0, $e);
+        }
+        catch (Exception $e)
+        {
+            throw new Exception("Exception caught while checking if store exists by store id : " . $e->getMessage(), 0, $e);
+        }
+    }
+
+    public function doesStoreExistByLocator(string $storeLocator) : ?bool
+    {
+        try
+        {
+            $sql = "SELECT 1 as 'exists' FROM store WHERE locator = ? LIMIT 1;";
+
+            $params = [$storeLocator];
+
+            $conn = $this->pdo->getConnection();
+
+            $stmt = $conn->prepare($sql);
+            if ($stmt === false) 
+            {
+                return null;
+            }
+
+            $result = $stmt->execute($params);
+
+            if ($result === false)
+            {
+                return null;
+            }
+
+            if($stmt->rowCount() > 0)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        catch (PDOException $e)
+        {
+            throw new Exception("PDO exception caught while checking if store exists by store locator \"$storeLocator\" : " . $e->getMessage(), 0, $e);
+        }
+        catch (Exception $e)
+        {
+            throw new Exception("Exception caught while checking if store exists by store locator \"$storeLocator\" : " . $e->getMessage(), 0, $e);
         }
     }
 

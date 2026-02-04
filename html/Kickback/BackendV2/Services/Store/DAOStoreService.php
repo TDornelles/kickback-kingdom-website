@@ -6,6 +6,7 @@ namespace Kickback\BackendV2\Services;
 
 use Exception;
 use Kickback\Backend\Models\Response;
+use Kickback\Backend\Views\vRecordId;
 use Kickback\BackendV2\DAO\PDOStoreDAO;
 use Kickback\BackendV2\DAO\StoreDAO;
 
@@ -43,6 +44,58 @@ class DAOStoreService implements StoreService
 
         return $resp;
     }
+
+    public function doesStoreExistById(vRecordId $storeId) : Response
+    {
+        $resp = new Response(false, "Unkown error in verifying store's existence by id");
+
+        try
+        {
+            $storeExists = $this->dao->doesStoreExistById($storeId);
+
+            if(is_null($storeExists))
+            {
+                $resp->message = "Failed to verify store's existence by id";
+                return $resp;
+            }
+
+            $resp->success = true;
+            $resp->message = $storeExists ? "Store exists" : "Store does not exist";
+            $resp->data = $storeExists;
+        }
+        catch(Exception $e)
+        {
+            $resp->message = "Exception caugh while trying to verify store's existence by id : $e";
+        }
+
+        return $resp;
+    }
+
+    public function doesStoreExistByLocator(string $storeLocator) : Response
+    {
+        $resp = new Response(false, "Unkown error in verifying store's existence by locator");
+
+        try
+        {
+            $storeExists = $this->dao->doesStoreExistByLocator($storeLocator);
+
+            if(is_null($storeExists))
+            {
+                $resp->message = "Failed to verify store's existence by locator";
+                return $resp;
+            }
+
+            $resp->success = true;
+            $resp->message = $storeExists ? "Store exists" : "Store does not exist";
+            $resp->data = $storeExists;
+        }
+        catch(Exception $e)
+        {
+            $resp->message = "Exception caugh while trying to verify store's existence by locator : $e";
+        }
+
+        return $resp;
+    } 
 }
 
 ?>

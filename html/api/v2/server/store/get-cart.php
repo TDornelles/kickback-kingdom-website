@@ -8,6 +8,7 @@ use Kickback\Backend\Models\Response;
 use Kickback\Services\ApiV2\Endpoint;
 use Kickback\Services\Session;
 use Kickback\Services\StoreService;
+use Kickback\BackendV2\Controllers\CartController;
 
 \header('Content-Type: application/json');
 
@@ -17,7 +18,8 @@ try
     $sessionAccount = Endpoint::requireAccountSession();
     $request_contents_json = Endpoint::file_get_contents('php://input');
     $response = null;
-    $response_code = StoreService::get_cart_for_account($sessionAccount, $request_contents_json, $response);
+    $cartController = new CartController();
+    $response_code = $cartController->getCartForAccountWithStoreLocator($sessionAccount, $request_contents_json, $response);
     if ( $response_code !== 0 ) {
         \http_response_code($response_code);
         // Otherwise let PHP/Apache/HTTPD respond with what it feels is appropriate.
