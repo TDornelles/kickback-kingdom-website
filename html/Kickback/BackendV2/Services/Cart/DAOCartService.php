@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Kickback\BackendV2\Services;
+namespace Kickback\BackendV2\Services\Cart;
 
 use Exception;
 use Kickback\Backend\Models\Cart;
@@ -10,14 +10,15 @@ use Kickback\Backend\Models\Response;
 use Kickback\Backend\Views\vRecordId;
 use Kickback\Backend\Views\vCart;
 use Kickback\Backend\Views\vPriceComponent;
-use Kickback\BackendV2\DAO\cartDAO;
-use Kickback\BackendV2\DAO\PDOCartDAO;
-use Kickback\BackendV2\DAO\PDOStoreDAO;
-use Kickback\BackendV2\DAO\StoreDAO;
+
+use Kickback\BackendV2\DAO\Cart\CartDAO;
+use Kickback\BackendV2\DAO\Cart\PDOCartDAO;
+use Kickback\BackendV2\DAO\Store\PDOStoreDAO;
+use Kickback\BackendV2\DAO\Store\StoreDAO;
 
 class DAOCartService implements CartService
 {
-    private cartDAO $cartDAO;
+    private CartDAO $cartDAO;
     private StoreDAO $storeDAO;
 
     public function __construct(?CartDAO $cartDao = null, ?StoreDAO $storeDAO = null)
@@ -26,7 +27,7 @@ class DAOCartService implements CartService
         $this->storeDAO = is_null($storeDAO) ? new PDOStoreDAO() : $storeDAO;
     }
 
-    public function GetCartForAccountWithStoreId(vRecordId $accountId, vRecordId $storeId) : Response
+    public function getCartForAccountWithStoreId(vRecordId $accountId, vRecordId $storeId) : Response
     {
         $resp = new Response(false, "unkown error in getting cart for account", null);
         
@@ -44,7 +45,7 @@ class DAOCartService implements CartService
 
             $cartView = $this->cartDAO->getCartView($cart);
 
-            $cartItems = $this->cartDAO->getCartItemViews($cartView);
+            $cartItems = $this->cartDAO->getCartProductsViews($cartView);
 
             $cartView->cartProducts = $cartItems;
 
@@ -62,7 +63,7 @@ class DAOCartService implements CartService
         return $resp;
     }
 
-    public function GetCartForAccountWithStoreLocator(vRecordId $accountId, string $storeLocator) : Response
+    public function getCartForAccountWithStoreLocator(vRecordId $accountId, string $storeLocator) : Response
     {
         $resp = new Response(false, "unkown error in getting cart for account with store locator \"$storeLocator\"", null);
         
@@ -87,7 +88,7 @@ class DAOCartService implements CartService
 
             $cartView = $this->cartDAO->getCartView($cart);
 
-            $cartItems = $this->cartDAO->getCartItemViews($cartView);
+            $cartItems = $this->cartDAO->getCartProductsViews($cartView);
 
             $cartView->cartProducts = $cartItems;
 
@@ -100,6 +101,31 @@ class DAOCartService implements CartService
         catch(Exception $e)
         {
             $resp->message = "Exception caught while trying to get cart for account with store locator \"$storeLocator\" : $e";
+        }
+
+        return $resp;
+    }
+
+    public function addProductToCart(vRecordId $cartId, vRecordId $productId) : Response
+    {
+        $resp = new Response(false, "unkown error in adding product to cart", null);
+
+        try
+        {
+            $added = $this->cartDAO->addProductToCart($cartId, $productId);
+
+            if(!$added)
+            {
+                $resp->message = "Failed to add product \"$productId\" to cart \"$cartId\"";
+                return $resp;
+            }
+
+            $resp->success = true;
+            $resp->message = "Successfully added product \"$productId\" to cart \"$cartId\"";
+        }
+        catch(Exception $e)
+        {
+            $resp->message = "Exception caught while trying to add product \"$productId\" to cart \"$cartId\" : $e";
         }
 
         return $resp;

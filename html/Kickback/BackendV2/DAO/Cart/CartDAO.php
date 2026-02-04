@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Kickback\BackendV2\DAO;
+namespace Kickback\BackendV2\DAO\Cart;
 
 use Kickback\Backend\Models\Cart;
 use Kickback\Backend\Views\vCart;
@@ -12,9 +12,11 @@ interface CartDAO
 {
     public function getOrCreateCartWithStoreId(vRecordId $accountId, vRecordId $storeId) : ?Cart;
 
-    public function getCartItemViews(vRecordId $cartId) : ?array;
+    public function getCartProductsViews(vRecordId $cartId) : ?array;
 
     public function getCartView(vRecordId $cartId) : ?vCart;
+
+    public function addProductToCart(vRecordId $cartId, vRecordId $productId) : ?bool;
 }
 
 ?>

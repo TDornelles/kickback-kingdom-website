@@ -2,7 +2,7 @@
 
 declare(strict_types = 1);
 
-namespace Kickback\BackendV2\DAO;
+namespace Kickback\BackendV2\DAO\Store;
 
 use Kickback\Backend\Views\vRecordId;
 use Kickback\Backend\Views\vStore;

@@ -2,12 +2,14 @@
 
 declare(strict_types = 1);
 
-namespace Kickback\BackendV2\DAO;
+namespace Kickback\BackendV2\DAO\Store;
 
 use Exception;
 use Kickback\Backend\Views\vAccount;
 use Kickback\Backend\Views\vRecordId;
 use Kickback\Backend\Views\vStore;
+use Kickback\BackendV2\DAO\Product\PDOProductDAO;
+use Kickback\BackendV2\DAO\Product\ProductDAO;
 use Kickback\BackendV2\Persistance\Database;
 use PDO;
 use PDOException;
@@ -25,7 +27,7 @@ class PDOStoreDAO implements StoreDAO
     public function __construct(?Database $pdo = null, ?ProductDAO $productDAO = null)
     {
         $this->pdo = $pdo ?? new Database;
-        $this->productDAO = $productDAO ?? new ProductDAO();
+        $this->productDAO = $productDAO ?? new PDOProductDAO();
     }
 
     public function getStoreByLocator(string $locator) : ?vStore

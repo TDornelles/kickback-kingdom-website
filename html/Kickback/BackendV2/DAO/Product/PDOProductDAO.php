@@ -2,11 +2,14 @@
 
 declare(strict_types = 1);
 
-namespace Kickback\BackendV2\DAO;
+namespace Kickback\BackendV2\DAO\Product;
 
 use Exception;
+use Kickback\Backend\Models\Enums\CurrencyCode;
 use Kickback\Backend\Views\vAccount;
+use Kickback\Backend\Views\vItem;
 use Kickback\Backend\Views\vMedia;
+use Kickback\Backend\Views\vPriceComponent;
 use Kickback\Backend\Views\vProduct;
 use Kickback\Backend\Views\vRecordId;
 use Kickback\Backend\Views\vStore;
@@ -71,6 +74,55 @@ class PDOProductDAO implements ProductDAO
         }
     }
 
+    public function getProductByLocator(string $productLocator) : ?vProduct
+    {
+        try
+        {
+            $sql = "SELECT ".static::$columnsInProductView." FROM v_product WHERE locator = ? LIMIT 1;";
+
+            $params = [$productLocator];
+
+            $conn = $this->pdo->getConnection();
+
+            $stmt = $conn->prepare($sql);
+            if ($stmt === false)
+            {
+                return null;
+            }
+
+            $result = $stmt->execute($params);
+            if ($result === false)
+            {
+                return null;
+            }
+
+            if ($stmt->rowCount() === 0)
+            {
+                return null;
+            }
+
+            $product = static::rowToVProduct($stmt->fetch(PDO::FETCH_ASSOC));
+            $priceComponents = $this->getBasePriceForProduct($product);
+
+            if ($priceComponents === null)
+            {
+                return null;
+            }
+
+            $product->price = $priceComponents;
+
+            return $product;
+        }
+        catch (PDOException $e)
+        {
+            throw new Exception("PDO exception caught while getting product by locator : " . $e->getMessage(), 0, $e);
+        }
+        catch (Exception $e)
+        {
+            throw new Exception("Exception caught while getting product by locator : " . $e->getMessage(), 0, $e);
+        }
+    }
+
     /**
      * Converts an associative row of the product view and returns a populated vProduct object
      * 
@@ -111,6 +163,88 @@ class PDOProductDAO implements ProductDAO
             $product->mediaBack = $backIcon;
 
         return $product;
+    }
+
+    /**
+     * Returns the base price components for a product
+     *
+     * @param vRecordId $product the product id
+     *
+     * @return ?array array of vPriceComponent or null on failure
+     */
+    private function getBasePriceForProduct(vRecordId $product) : ?array
+    {
+        $sql = "SELECT 
+            vp.ctime, 
+            vp.crand, 
+            vp.amount, 
+            vp.currency_code, 
+            vp.item_ctime, 
+            vp.item_crand, 
+            vp.item_name, 
+            vp.item_desc,  
+            vp.media_path_small, 
+            vp.media_path_large, 
+            vp.media_path_back,
+            vp.item_is_fungible
+            FROM v_price_component vp 
+            JOIN product_price_component_link ppl ON ppl.ref_price_component_ctime = vp.ctime AND ppl.ref_price_component_crand = vp.crand
+            WHERE ppl.ref_product_ctime = ? AND ppl.ref_product_crand = ?;";
+
+        $params = [$product->ctime, $product->crand];
+
+        $conn = $this->pdo->getConnection();
+        $stmt = $conn->prepare($sql);
+        if ($stmt === false)
+        {
+            return null;
+        }
+
+        $result = $stmt->execute($params);
+        if ($result === false)
+        {
+            return null;
+        }
+
+        $priceComponents = [];
+
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC))
+        {
+            $priceComponents[] = static::priceComponentToView($row);
+        }
+
+        return $priceComponents;
+    }
+
+    private static function priceComponentToView(array $row) : vPriceComponent
+    {
+        $iconSmall = new vMedia();
+        $iconSmall->setMediaPath($row["media_path_small"]);
+
+        $iconLarge = new vMedia();
+        $iconLarge->setMediaPath($row["media_path_large"]);
+
+        $iconBack = new vMedia();
+        if (!empty($row["media_path_back"]))$iconBack->setMediaPath($row["media_path_back"]);
+
+        $item = new vItem($row["item_ctime"], $row["item_crand"]);
+        $item->name = $row["item_name"];
+        $item->description = $row["item_desc"];
+        $item->iconSmall = $iconSmall;
+        $item->iconBig = $iconLarge;
+        $item->iconBack = $iconBack;
+        $item->applyMediaFallbacks();
+        $item->fungible = boolval($row["item_is_fungible"]);
+
+        $currencyCode = $row["currency_code"] !== null ? CurrencyCode::from($row["currency_code"]) : null;
+
+        return new vPriceComponent(
+            $row["ctime"],
+            $row["crand"],
+            $row["amount"],
+            $item,
+            $currencyCode
+        );
     }
 }
 

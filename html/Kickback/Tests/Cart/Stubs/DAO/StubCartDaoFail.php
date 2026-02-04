@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Kickback\Tests\Cart\Stubs;
+namespace Kickback\Tests\Cart\Stubs\DAO;
 
 use Exception;
 use Kickback\BackendV2\DAO\Cart\CartDAO;
@@ -12,12 +12,12 @@ use Kickback\Backend\Views\vRecordId;
 
 class StubCartDAOFail implements CartDAO
 {
-    public function getOrCreateCart(vRecordId $accountId, vRecordId $storeId) : ?Cart
+    public function getOrCreateCartWithStoreId(vRecordId $accountId, vRecordId $storeId) : ?Cart
     {
         return null;
     }
 
-    public function getCartItemViews(vRecordId $cartId) : ?array
+    public function getCartProductsViews(vRecordId $cartId) : ?array
     {
         return null;
     }
@@ -25,6 +25,11 @@ class StubCartDAOFail implements CartDAO
     public function getCartView(vRecordId $cartId) : ?vCart
     {
        return null;
+    }
+
+    public function addProductToCart(vRecordId $cartId, vRecordId $productId) : ?bool
+    {
+        return false;
     }
 }
 
