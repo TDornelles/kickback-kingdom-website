@@ -116,16 +116,17 @@ class DAOCartService implements CartService
 
             if(!$added)
             {
-                $resp->message = "Failed to add product \"$productId\" to cart \"$cartId\"";
+                $resp->message = "Failed to add product to cart";
                 return $resp;
             }
 
             $resp->success = true;
-            $resp->message = "Successfully added product \"$productId\" to cart \"$cartId\"";
+            $resp->message = "Successfully added product to cart";
+            $resp->data = true;
         }
         catch(Exception $e)
         {
-            $resp->message = "Exception caught while trying to add product \"$productId\" to cart \"$cartId\" : $e";
+            $resp->message = "Exception caught while trying to add product to cart : $e";
         }
 
         return $resp;

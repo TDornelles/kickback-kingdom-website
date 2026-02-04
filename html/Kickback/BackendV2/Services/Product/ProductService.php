@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Kickback\BackendV2\Services\Cart;
+namespace Kickback\BackendV2\Services\Product;
 
 use Kickback\Backend\Models\Response;
 use Kickback\Backend\Views\vRecordId;

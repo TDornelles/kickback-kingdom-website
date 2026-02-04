@@ -129,10 +129,10 @@ final class CartControllerUnitTests implements Tests
     private function unittest_addProduct_success_returns200() : void
     {
         $account = $this->makeAccount();
-        $json = json_encode(["productId" => $this->makeProductIdPayload()]);
+        $json = json_encode($this->makeProductLocatorPayload());
 
         $resp = null;
-        $code = $this->controllerSuccess->addProductToCart($account, $json, $resp);
+        $code = $this->controllerSuccess->addProductToCartByProductLocator($account, $json, $resp);
 
         if($code !== 200) throw new Exception("Expected 200, got $code");
         if(is_null($resp)) throw new Exception("Response out-param was null");
@@ -146,7 +146,7 @@ final class CartControllerUnitTests implements Tests
         $json = json_encode([]);
 
         $resp = null;
-        $code = $this->controllerSuccess->addProductToCart($account, $json, $resp);
+        $code = $this->controllerSuccess->addProductToCartByProductLocator($account, $json, $resp);
 
         if($code !== 400) throw new Exception("Expected 400, got $code");
         if(is_null($resp)) throw new Exception("Response out-param was null");
@@ -156,10 +156,10 @@ final class CartControllerUnitTests implements Tests
     private function unittest_addProduct_invalidProductId_returns400() : void
     {
         $account = $this->makeAccount();
-        $json = json_encode(["productId" => "invalid"]);
+        $json = json_encode(["productLocator" => null]);
 
         $resp = null;
-        $code = $this->controllerSuccess->addProductToCart($account, $json, $resp);
+        $code = $this->controllerSuccess->addProductToCartByProductLocator($account, $json, $resp);
 
         if($code !== 400) throw new Exception("Expected 400, got $code");
         if(is_null($resp)) throw new Exception("Response out-param was null");
@@ -169,10 +169,10 @@ final class CartControllerUnitTests implements Tests
     private function unittest_addProduct_serviceFail_returns500() : void
     {
         $account = $this->makeAccount();
-        $json = json_encode(["productId" => $this->makeProductIdPayload()]);
+        $json = json_encode($this->makeProductLocatorPayload());
 
         $resp = null;
-        $code = $this->controllerFail->addProductToCart($account, $json, $resp);
+        $code = $this->controllerFail->addProductToCartByProductLocator($account, $json, $resp);
 
         if($code !== 500) throw new Exception("Expected 500, got $code");
         if(is_null($resp)) throw new Exception("Response out-param was null");
@@ -182,12 +182,12 @@ final class CartControllerUnitTests implements Tests
     private function unittest_addProduct_serviceException_returns500() : void
     {
         $account = $this->makeAccount();
-        $json = json_encode(["productId" => $this->makeProductIdPayload()]);
+        $json = json_encode($this->makeProductLocatorPayload());
 
         $resp = null;
 
         try {
-            $code = $this->controllerException->addProductToCart($account, $json, $resp);
+            $code = $this->controllerException->addProductToCartByProductLocator($account, $json, $resp);
         } catch (\Throwable $t) {
             throw new Exception("Controller threw instead of returning 500: " . $t->getMessage(), 0, $t);
         }

@@ -6,7 +6,7 @@ namespace Kickback\Tests\Product\Stubs\Services;
 
 use Kickback\Backend\Models\Response;
 use Kickback\Backend\Views\vProduct;
-use Kickback\BackendV2\Services\Cart\ProductService;
+use Kickback\BackendV2\Services\Product\ProductService;
 
 final class StubProductServiceSuccess implements ProductService
 {

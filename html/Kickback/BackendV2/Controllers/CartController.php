@@ -10,8 +10,8 @@ use Kickback\Backend\Views\vAccount;
 use Kickback\Backend\Views\vRecordId;
 use Kickback\BackendV2\Services\Cart\CartService;
 use Kickback\BackendV2\Services\Cart\DAOCartService;
-use Kickback\BackendV2\Services\Cart\DAOProductService;
-use Kickback\BackendV2\Services\Cart\ProductService;
+use Kickback\BackendV2\Services\Product\DAOProductService;
+use Kickback\BackendV2\Services\Product\ProductService;
 
 class CartController
 {
@@ -57,6 +57,12 @@ class CartController
             }
 
             $productLocator = $assocRequest["productLocator"];
+
+            if(is_null($productLocator) || !is_string($productLocator))
+            {
+                $response->message = "productLocator must be a non-null string";
+                return 400;
+            }
 
             $getProductResp = $this->productService->getProductByLocator($productLocator);
 
