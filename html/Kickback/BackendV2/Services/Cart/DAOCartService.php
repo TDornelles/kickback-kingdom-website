@@ -10,6 +10,7 @@ use Kickback\Backend\Models\Response;
 use Kickback\Backend\Views\vRecordId;
 use Kickback\Backend\Views\vCart;
 use Kickback\Backend\Views\vPriceComponent;
+use Kickback\Backend\Views\vCartItem;
 
 use Kickback\BackendV2\DAO\Cart\CartDAO;
 use Kickback\BackendV2\DAO\Cart\PDOCartDAO;
@@ -127,6 +128,69 @@ class DAOCartService implements CartService
         catch(Exception $e)
         {
             $resp->message = "Exception caught while trying to add product to cart : $e";
+        }
+
+        return $resp;
+    }
+
+    public function removeProductFromCart(vCartItem $cartProduct) : Response
+    {
+        $resp = new Response(false, "unkown error in removing product from cart", null);
+
+        try
+        {
+            $removed = $this->cartDAO->removeProductFromCart($cartProduct);
+
+            if(!$removed)
+            {
+                $resp->message = "Failed to remove product from cart";
+                return $resp;
+            }
+
+            $resp->success = true;
+            $resp->message = "Successfully removed product from cart";
+            $resp->data = true;
+        }
+        catch(Exception $e)
+        {
+            $resp->message = "Exception caught while trying to remove product from cart : $e";
+        }
+
+        return $resp;
+    }
+
+    public function checkoutCart(vRecordId $accountId, string $storeLocator) : Response
+    {
+        $resp = new Response(false, "unkown error in checking out cart", null);
+
+        try
+        {
+            $cartResp = $this->getCartForAccountWithStoreLocator($accountId, $storeLocator);
+
+            if(!$cartResp->success || is_null($cartResp->data))
+            {
+                $resp->message = "Failed to get cart for account with store locator \"$storeLocator\"";
+                return $resp;
+            }
+
+            $cart = $cartResp->data;
+
+            $checkoutResp = $this->cartDAO->checkoutCart($cart);
+
+            if(!$checkoutResp->success)
+            {
+                $resp->message = "Failed to checkout cart : $checkoutResp->message";
+                $resp->data = $checkoutResp->data;
+                return $resp;
+            }
+
+            $resp->success = true;
+            $resp->message = "Cart Checked Out";
+            $resp->data = $checkoutResp->data;
+        }
+        catch(Exception $e)
+        {
+            $resp->message = "Exception caught while trying to checkout cart : $e";
         }
 
         return $resp;

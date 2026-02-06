@@ -6,7 +6,9 @@ namespace Kickback\Tests\Cart\Stubs\DAO;
 
 use Kickback\BackendV2\DAO\Cart\CartDAO;
 use Kickback\Backend\Models\Cart;
+use Kickback\Backend\Models\Response;
 use Kickback\Backend\Views\vCart;
+use Kickback\Backend\Views\vCartItem;
 use Kickback\Backend\Views\vRecordId;
 
 class StubCartDAOSuccess implements CartDAO
@@ -29,6 +31,16 @@ class StubCartDAOSuccess implements CartDAO
     public function addProductToCart(vRecordId $cartId, vRecordId $productId) : ?bool
     {
         return true;
+    }
+
+    public function removeProductFromCart(vCartItem $cartProduct) : ?bool
+    {
+        return true;
+    }
+
+    public function checkoutCart(vCart $cart) : Response
+    {
+        return new Response(true, "Stub success", true);
     }
 }
 

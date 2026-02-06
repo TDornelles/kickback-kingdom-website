@@ -6,6 +6,7 @@ namespace Kickback\BackendV2\DAO\Cart;
 
 use Exception;
 use Kickback\Backend\Models\Cart;
+use Kickback\Backend\Models\Response;
 use Kickback\Backend\Models\CartProductLink;
 use Kickback\Backend\Models\CartProductPriceComponentLink;
 use Kickback\Backend\Views\vAccount;
@@ -18,11 +19,17 @@ use Kickback\Backend\Views\vProduct;
 use Kickback\Backend\Views\vRecordId;
 use Kickback\Backend\Views\vStore;
 use Kickback\Backend\Views\vTransaction;
+use Kickback\BackendV2\DAO\Coupon\PDOCouponDAO;
+use Kickback\BackendV2\DAO\Loot\PDOLootDAO;
+use Kickback\BackendV2\DAO\Product\PDOProductDAO;
 use Kickback\BackendV2\Persistance\Database;
 use PDOException;
+use DateTime;
 
 class PDOCartDAO implements CartDAO
 {
+    private static int $productReservationTimeInSeconds = 10;
+
     private Database $pdo;
 
     public function __construct(?Database $pdo = null)
@@ -186,7 +193,8 @@ class PDOCartDAO implements CartDAO
 
             $conn->beginTransaction();
 
-            $amountAvailable = $this->getProductAmountAvailable($conn, $productId);
+            $productDao = new PDOProductDAO($this->pdo);
+            $amountAvailable = $productDao->getProductAmountAvailable($productId);
             if ($amountAvailable === null)
             {
                 $conn->rollBack();
@@ -214,7 +222,8 @@ class PDOCartDAO implements CartDAO
                 return null;
             }
 
-            $priceComponents = $this->getPriceComponentIdsForProduct($conn, $productId);
+            $productDao = new PDOProductDAO($this->pdo);
+            $priceComponents = $productDao->getBasePriceComponentIdsForProduct($productId);
             if (empty($priceComponents))
             {
                 $conn->rollBack();
@@ -251,28 +260,536 @@ class PDOCartDAO implements CartDAO
         }
     }
 
-    private function getProductAmountAvailable(\PDO $conn, vRecordId $productId) : ?int
+    public function removeProductFromCart(vCartItem $cartProduct) : ?bool
     {
-        $sql = "SELECT amount_available FROM v_product WHERE ctime = ? AND crand = ? LIMIT 1;";
+        try
+        {
+            $conn = $this->pdo->getConnection();
+            if ($conn === null)
+            {
+                return null;
+            }
+
+            $conn->beginTransaction();
+
+            if (!$this->markCartProductRemoved($conn, $cartProduct))
+            {
+                $conn->rollBack();
+                return null;
+            }
+
+            $couponDao = new PDOCouponDAO($this->pdo);
+            if (!$couponDao->removeCartProductCoupons($cartProduct))
+            {
+                $conn->rollBack();
+                return null;
+            }
+
+            if (!$this->removeCartProductPriceComponents($conn, $cartProduct))
+            {
+                $conn->rollBack();
+                return null;
+            }
+
+            $conn->commit();
+            return true;
+        }
+        catch (PDOException $e)
+        {
+            if (isset($conn) && $conn->inTransaction())
+            {
+                $conn->rollBack();
+            }
+
+            throw new Exception("PDO exception caught while removing product from cart : " . $e->getMessage(), 0, $e);
+        }
+        catch (Exception $e)
+        {
+            if (isset($conn) && $conn->inTransaction())
+            {
+                $conn->rollBack();
+            }
+
+            throw new Exception("Exception caught while removing product from cart : " . $e->getMessage(), 0, $e);
+        }
+    }
+
+    public function checkoutCart(vCart $cart) : Response
+    {
+        $resp = new Response(false, "unkown error in checking out cart", null);
+
+        try
+        {
+            $validationResp = $this->validateCartForCheckout($cart);
+            if (!is_null($validationResp))
+            {
+                return $validationResp;
+            }
+
+            $affordResp = $this->canAccountAffordItemPriceInCart($cart);
+            if (!$affordResp->success)
+            {
+                $resp->message = "Error in getting if account can afford cart price : $affordResp->message";
+                return $resp;
+            }
+
+            if ($affordResp->data === false)
+            {
+                $resp->message = "Account cannot afford item price to checkout cart";
+                $resp->data = false;
+                return $resp;
+            }
+
+            $stockResp = $this->reserveProductStockInCart($cart);
+            if (!$stockResp->success)
+            {
+                $resp->message = "failed to reserve product stock : $stockResp->message";
+                $resp->data = $stockResp->data;
+                return $resp;
+            }
+
+            $lootEntryQuantities = [];
+            $lootReserved = $this->reserveLootForPriceInCart($cart, $lootEntryQuantities);
+            if ($lootReserved !== true)
+            {
+                $productDao = new PDOProductDAO($this->pdo);
+                $productDao->closeProductReservations($stockResp->data);
+                $resp->message = "failed to reserve loot for cart";
+                $resp->data = $lootReserved;
+                return $resp;
+            }
+
+            $lootDao = new PDOLootDAO($this->pdo);
+            $lootIds = $this->extractLootIdsFromEntries($lootEntryQuantities);
+            $lootReservations = $lootDao->getActiveLootReservationsForLoots($lootIds);
+            $lootDao->closeLootReservations($lootReservations);
+
+            $productDao = new PDOProductDAO($this->pdo);
+            $productDao->closeProductReservations($stockResp->data);
+            $this->markCartCheckedOut($cart);
+            $this->markCartProductsCheckedOut($cart);
+            $this->markCartProductPricesCheckedOut($cart);
+
+            $resp->success = true;
+            $resp->message = "Checked Out Cart";
+            $resp->data = true;
+            return $resp;
+        }
+        catch (Exception $e)
+        {
+            throw new Exception("Exception caught while checking out cart : " . $e->getMessage(), 0, $e);
+        }
+    }
+
+    private function validateCartForCheckout(vCart $cart) : ?Response
+    {
+        if ($cart->account->equals($cart->store->owner))
+        {
+            return new Response(false, "Cannot checkout cart for a store you own", null);
+        }
+
+        if (empty($cart->cartProducts))
+        {
+            return new Response(false, "Cart does not have items to checkout", null);
+        }
+
+        return null;
+    }
+
+    private function canAccountAffordItemPriceInCart(vCart $cart) : Response
+    {
+        $resp = new Response(false, "Unknown error in checking if account can afford item price in cart", null);
+
+        $totals = $this->getItemTotals($cart->totals);
+        if (empty($totals))
+        {
+            $resp->success = true;
+            $resp->message = "No item totals to check";
+            $resp->data = true;
+            return $resp;
+        }
+
+        $lootForCart = $this->getLootAmountsForTotals($cart, $totals);
+
+        foreach($totals as $total)
+        {
+            $itemId = $total->item->crand;
+            $amountNeeded = $total->amount;
+            $amountAvailable = $lootForCart[$itemId] ?? 0;
+
+            if(($amountAvailable - $amountNeeded) < 0)
+            {
+                $resp->success = true;
+                $resp->message = "Account cannot afford item price";
+                $resp->data = false;
+                return $resp;
+            }
+        }
+
+        $resp->success = true;
+        $resp->message = "Account can afford item price";
+        $resp->data = true;
+        return $resp;
+    }
+
+    private function getLootAmountsForTotals(vCart $cart, array $totals) : array
+    {
+        $itemIds = $this->getItemIdsFromTotals($totals);
+        if (empty($itemIds))
+        {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($itemIds), '?'));
+        $sql = "SELECT l.item_id, SUM(l.Quantity) AS amount
+            FROM loot l
+            LEFT JOIN raffle_submissions rs ON l.Id = rs.loot_id
+            WHERE rs.loot_id IS NULL AND l.account_id = ? AND l.item_id IN ($placeholders)
+            GROUP BY l.item_id;";
+
+        $params = array_merge([$cart->account->crand], $itemIds);
+
+        $conn = $this->pdo->getConnection();
         $stmt = $conn->prepare($sql);
         if ($stmt === false)
         {
-            return null;
+            throw new Exception("Failed to prepare loot amount query");
         }
 
-        $result = $stmt->execute([$productId->ctime, $productId->crand]);
+        $result = $stmt->execute($params);
         if ($result === false)
         {
-            return null;
+            throw new Exception("Failed to execute loot amount query");
         }
 
-        $row = $stmt->fetch();
-        if ($row === false)
+        $lootAmounts = [];
+        while ($row = $stmt->fetch())
         {
-            return null;
+            $lootAmounts[(int)$row["item_id"]] = (int)$row["amount"];
         }
 
-        return (int)$row["amount_available"];
+        return $lootAmounts;
+    }
+
+    private function getItemTotals(array $totals) : array
+    {
+        $itemTotals = [];
+
+        foreach($totals as $total)
+        {
+            if(is_null($total->item) || $total->amount === 0) continue;
+            $itemTotals[] = $total;
+        }
+
+        return $itemTotals;
+    }
+
+    private function getItemIdsFromTotals(array $totals) : array
+    {
+        $itemIds = [];
+
+        foreach($totals as $total)
+        {
+            if(is_null($total->item)) continue;
+            $itemIds[] = $total->item->crand;
+        }
+
+        return $itemIds;
+    }
+
+    private function reserveProductStockInCart(vCart $cart) : Response
+    {
+        $resp = new Response(false, "unknown error in reserving stock", null);
+
+        $availabilityResp = $this->areCartProductsAvailable($cart);
+        if(!$availabilityResp->success)
+        {
+            $resp->message = "Error in checking if cart items are available : $availabilityResp->message";
+            return $resp;
+        }
+
+        if(!$availabilityResp->data)
+        {
+            $resp->message = "Some items in cart are out-of-stock";
+            $resp->data = $availabilityResp->data;
+            return $resp;
+        }
+
+        $productEntryQuantities = $this->buildProductReservationEntries($cart);
+        if (empty($productEntryQuantities))
+        {
+            $resp->message = "No reservations created";
+            return $resp;
+        }
+
+        $productDao = new PDOProductDAO($this->pdo);
+        $reserveResult = $productDao->reserveStockForProducts($productEntryQuantities, $cart);
+        if ($reserveResult !== true)
+        {
+            $resp->message = "Failed to reserve product stock";
+            $resp->data = $reserveResult;
+            return $resp;
+        }
+
+        $resp->success = true;
+        $resp->message = "Reserved the cart products";
+        $resp->data = $productDao->getActiveProductReservationsForCart($cart);
+        return $resp;
+    }
+
+    private function areCartProductsAvailable(vCart $cart) : Response
+    {
+        $resp = new Response(false, "unknown error in checking if cart items are still in stock", null);
+
+        $cartProducts = $cart->cartProducts;
+        if (empty($cartProducts))
+        {
+            $resp->success = true;
+            $resp->message = "Cart is empty";
+            $resp->data = false;
+            return $resp;
+        }
+
+        $counts = $this->countProductsInCart($cartProducts);
+        $productDao = new PDOProductDAO($this->pdo);
+        $productIds = $this->getProductIdsFromCartProducts($cartProducts);
+        $availability = $productDao->areProductsAvailableInStore($cart->store, $productIds);
+        if ($availability === null)
+        {
+            $resp->message = "Failed to check product availability";
+            return $resp;
+        }
+
+        $available = $this->areProductCountsWithinAvailability($counts, $availability);
+
+        $resp->success = true;
+        $resp->message = $available ? "All cart products available" : "One or more products are out of availability";
+        $resp->data = $available;
+        return $resp;
+    }
+
+    private function countProductsInCart(array $cartProducts) : array
+    {
+        $counts = [];
+        foreach($cartProducts as $cartProduct)
+        {
+            $key = $cartProduct->product->ctime . '|' . $cartProduct->product->crand;
+            $counts[$key] = ($counts[$key] ?? 0) + 1;
+        }
+
+        return $counts;
+    }
+
+    private function getProductIdsFromCartProducts(array $cartProducts) : array
+    {
+        $productIds = [];
+        foreach ($cartProducts as $cartProduct)
+        {
+            $product = $cartProduct->product ?? null;
+            if (!($product instanceof vRecordId))
+            {
+                continue;
+            }
+
+            $productIds[] = $product;
+        }
+
+        return $productIds;
+    }
+
+    private function areProductCountsWithinAvailability(array $productCounts, array $availability) : bool
+    {
+        $availabilityMap = [];
+        foreach ($availability as $entry)
+        {
+            $productId = $entry["productId"] ?? null;
+            if (!($productId instanceof vRecordId))
+            {
+                continue;
+            }
+
+            $key = $productId->ctime . '|' . $productId->crand;
+            $availabilityMap[$key] = (int)($entry["quantityAvailable"] ?? 0);
+        }
+
+        foreach ($productCounts as $key => $qty)
+        {
+            $availableQty = $availabilityMap[$key] ?? 0;
+            if (($availableQty - $qty) < 0)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function buildProductReservationEntries(vCart $cart) : array
+    {
+        $entriesByKey = [];
+
+        foreach($cart->cartProducts as $cartProduct)
+        {
+            $product = $cartProduct->product ?? null;
+            if (!($product instanceof vRecordId))
+            {
+                continue;
+            }
+
+            $key = $product->ctime . '|' . $product->crand;
+            if (!isset($entriesByKey[$key]))
+            {
+                $entriesByKey[$key] = [
+                    "productId" => $product,
+                    "quantity" => 0
+                ];
+            }
+
+            $entriesByKey[$key]["quantity"]++;
+        }
+
+        return array_values($entriesByKey);
+    }
+
+    private function reserveLootForPriceInCart(vCart $cart, array &$lootEntryQuantities) : ?bool
+    {
+        $lootDao = new PDOLootDAO($this->pdo);
+        $lootEntryQuantities = $lootDao->getLootFromAccountForItems($cart->account, $cart->totals);
+        return $lootDao->reserveLoots($lootEntryQuantities, static::$productReservationTimeInSeconds);
+    }
+
+    private function extractLootIdsFromEntries(array $lootEntryQuantities) : array
+    {
+        $lootIds = [];
+
+        foreach ($lootEntryQuantities as $entry)
+        {
+            if (!is_array($entry))
+            {
+                continue;
+            }
+
+            $lootId = $entry["lootId"] ?? null;
+            if ($lootId instanceof vRecordId)
+            {
+                $lootIds[] = $lootId;
+            }
+        }
+
+        return $lootIds;
+    }
+
+    private function markCartCheckedOut(vCart $cart) : void
+    {
+        $sql = "UPDATE cart SET checked_out = 1 WHERE ctime = ? AND crand = ?";
+        $params = [$cart->ctime, $cart->crand];
+
+        $conn = $this->pdo->getConnection();
+        $stmt = $conn->prepare($sql);
+        if ($stmt === false)
+        {
+            throw new Exception("Failed to prepare mark cart checked out");
+        }
+
+        $result = $stmt->execute($params);
+        if ($result === false)
+        {
+            throw new Exception("Failed to mark cart checked out");
+        }
+    }
+
+    private function markCartProductsCheckedOut(vCart $cart) : void
+    {
+        $sql = "UPDATE cart_product_link SET checked_out = 1 WHERE ref_cart_ctime = ? AND ref_cart_crand = ?";
+        $params = [$cart->ctime, $cart->crand];
+
+        $conn = $this->pdo->getConnection();
+        $stmt = $conn->prepare($sql);
+        if ($stmt === false)
+        {
+            throw new Exception("Failed to prepare mark cart products checked out");
+        }
+
+        $result = $stmt->execute($params);
+        if ($result === false)
+        {
+            throw new Exception("Failed to mark cart products checked out");
+        }
+    }
+
+    private function markCartProductPricesCheckedOut(vCart $cart) : void
+    {
+        if (empty($cart->cartProducts))
+        {
+            return;
+        }
+
+        $whereClause = $this->buildCartProductIdWhereClause($cart->cartProducts);
+        $params = $this->buildCartProductIdParams($cart->cartProducts);
+
+        $sql = "UPDATE cart_product_price_component_link SET checked_out = 1 WHERE $whereClause";
+
+        $conn = $this->pdo->getConnection();
+        $stmt = $conn->prepare($sql);
+        if ($stmt === false)
+        {
+            throw new Exception("Failed to prepare mark cart product prices checked out");
+        }
+
+        $result = $stmt->execute($params);
+        if ($result === false)
+        {
+            throw new Exception("Failed to mark cart product prices checked out");
+        }
+    }
+
+    private function buildCartProductIdWhereClause(array $cartProducts) : string
+    {
+        $clauses = [];
+        foreach($cartProducts as $cartProduct)
+        {
+            $clauses[] = "(ref_cart_product_link_ctime = ? AND ref_cart_product_link_crand = ?)";
+        }
+
+        return implode(" OR ", $clauses);
+    }
+
+    private function buildCartProductIdParams(array $cartProducts) : array
+    {
+        $params = [];
+        foreach($cartProducts as $cartProduct)
+        {
+            $params[] = $cartProduct->ctime;
+            $params[] = $cartProduct->crand;
+        }
+
+        return $params;
+    }
+
+    private function markCartProductRemoved(\PDO $conn, vCartItem $cartProduct) : bool
+    {
+        $sql = "UPDATE cart_product_link SET removed = 1 WHERE ctime = ? AND crand = ?;";
+        $stmt = $conn->prepare($sql);
+        if ($stmt === false)
+        {
+            return false;
+        }
+
+        $result = $stmt->execute([$cartProduct->ctime, $cartProduct->crand]);
+        return $result !== false;
+    }
+
+    private function removeCartProductPriceComponents(\PDO $conn, vCartItem $cartProduct) : bool
+    {
+        $sql = "UPDATE cart_product_price_component_link SET removed = 1 WHERE ref_cart_product_link_ctime = ? AND ref_cart_product_link_crand = ?;";
+        $stmt = $conn->prepare($sql);
+        if ($stmt === false)
+        {
+            return false;
+        }
+
+        $result = $stmt->execute([$cartProduct->ctime, $cartProduct->crand]);
+        return $result !== false;
     }
 
     private function getProductQuantityInCart(\PDO $conn, vRecordId $cartId, vRecordId $productId) : ?int
@@ -352,34 +869,7 @@ class PDOCartDAO implements CartDAO
         return $cartProductLink;
     }
 
-    private function getPriceComponentIdsForProduct(\PDO $conn, vRecordId $productId) : ?array
-    {
-        $sql = "SELECT 
-            vp.ctime,
-            vp.crand
-            FROM v_price_component vp
-            JOIN product_price_component_link ppl
-                ON ppl.ref_price_component_ctime = vp.ctime
-                AND ppl.ref_price_component_crand = vp.crand
-            WHERE ppl.ref_product_ctime = ?
-                AND ppl.ref_product_crand = ?;";
-
-        $stmt = $conn->prepare($sql);
-        if ($stmt === false)
-        {
-            return null;
-        }
-
-        $result = $stmt->execute([$productId->ctime, $productId->crand]);
-        if ($result === false)
-        {
-            return null;
-        }
-
-        return $stmt->fetchAll();
-    }
-
-    private function insertCartProductPriceComponents(\PDO $conn, CartProductLink $cartProductLink, array $priceComponents) : bool
+    private function insertCartProductPriceComponents(\PDO $conn, CartProductLink $cartProductLink, array $priceComponentIds) : bool
     {
         $sql = "INSERT INTO cart_product_price_component_link (
             ctime,
@@ -398,25 +888,22 @@ class PDOCartDAO implements CartDAO
             return false;
         }
 
-        foreach ($priceComponents as $priceComponent)
+        foreach ($priceComponentIds as $priceComponentId)
         {
             $cartProductPriceComponentLink = new CartProductPriceComponentLink();
             $cartProductPriceComponentLink->cartProductLinkId = new vRecordId(
                 $cartProductLink->ctime,
                 $cartProductLink->crand
             );
-            $cartProductPriceComponentLink->priceComponentId = new vRecordId(
-                $priceComponent["ctime"],
-                $priceComponent["crand"]
-            );
+            $cartProductPriceComponentLink->priceComponentId = $priceComponentId;
 
             $result = $stmt->execute([
                 $cartProductPriceComponentLink->ctime,
                 $cartProductPriceComponentLink->crand,
                 $cartProductLink->ctime,
                 $cartProductLink->crand,
-                $priceComponent["ctime"],
-                $priceComponent["crand"]
+                $priceComponentId->ctime,
+                $priceComponentId->crand
             ]);
             if ($result === false)
             {

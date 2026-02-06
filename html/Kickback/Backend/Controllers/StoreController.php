@@ -205,6 +205,39 @@ class StoreController
         return $resp;
     }
 
+    /**
+     * Public wrapper for reserving loot for cart totals.
+     * This exposes the internal checkout helper for DAO usage.
+     */
+    public static function reserveLootForPriceInCartPublic(vCart $cart) : Response
+    {
+        return static::reserveLootForPriceInCart($cart);
+    }
+
+    /**
+     * Public wrapper for removing product reservations.
+     */
+    public static function removeProductReservationsPublic(array $reservations) : Response
+    {
+        return static::removeProductReservations($reservations);
+    }
+
+    /**
+     * Public wrapper for calculating currency totals in a cart.
+     */
+    public static function returnCartLovelacePriceComponentPublic(vCart $cart) : int
+    {
+        return static::returnCartLovelacePriceComponent($cart);
+    }
+
+    /**
+     * Public wrapper for undoing product/loot reservations.
+     */
+    public static function undoReservationsPublic(vCart $cart, array $productReservations, array $lootReservations, ?array $productLootReservations = null) : void
+    {
+        static::undoReservations($cart, $productReservations, $lootReservations, $productLootReservations);
+    }
+
     private static function undoReservations(vCart $cart, array $productReservations, array $lootReservations, ?array $productLootReservations = null) : void
     {
         $removeLootReservations = static::removeLootReservations($lootReservations);
@@ -1308,36 +1341,36 @@ class StoreController
 
 
 
-    /**
- * Reconstructs the SQL by replacing each ? with the quoted parameter value.
- * This shows exactly what mysqli_execute_query() is sending to MySQL.
- */
-private static function interpolateSql(string $sql, array $params): string
-{
-    $i = 0;
+        /**
+     * Reconstructs the SQL by replacing each ? with the quoted parameter value.
+     * This shows exactly what mysqli_execute_query() is sending to MySQL.
+     */
+    private static function interpolateSql(string $sql, array $params): string
+    {
+        $i = 0;
 
-    return preg_replace_callback('/\?/', function() use (&$i, $params) {
-        if (!array_key_exists($i, $params)) {
-            return '?'; // shouldn't happen
-        }
+        return preg_replace_callback('/\?/', function() use (&$i, $params) {
+            if (!array_key_exists($i, $params)) {
+                return '?'; // shouldn't happen
+            }
 
-        $value = $params[$i++];
-        
-        // NULL
-        if ($value === null) {
-            return "NULL";
-        }
+            $value = $params[$i++];
+            
+            // NULL
+            if ($value === null) {
+                return "NULL";
+            }
 
-        // Numeric (but mysqli binds as string, so must quote)
-        if (is_int($value) || is_float($value)) {
-            // For debug, mysqli sends numeric as string, so quote it.
+            // Numeric (but mysqli binds as string, so must quote)
+            if (is_int($value) || is_float($value)) {
+                // For debug, mysqli sends numeric as string, so quote it.
+                return "'" . addslashes((string)$value) . "'";
+            }
+
+            // Everything else → treat as string
             return "'" . addslashes((string)$value) . "'";
-        }
-
-        // Everything else → treat as string
-        return "'" . addslashes((string)$value) . "'";
-    }, $sql);
-}
+        }, $sql);
+    }
 
 
     private static function getLootFromMaterializedLootReservations(array $lootReservations) : array

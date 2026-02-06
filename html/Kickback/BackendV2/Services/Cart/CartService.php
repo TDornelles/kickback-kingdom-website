@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Kickback\BackendV2\Services\Cart;
 
 use Kickback\Backend\Models\Response;
+use Kickback\Backend\Views\vCartItem;
 use Kickback\Backend\Views\vRecordId;
 
 interface CartService
@@ -44,6 +45,25 @@ interface CartService
      * @return Response the response indicating success or failure
      */
     public function addProductToCart(vRecordId $cartId, vRecordId $productId) : Response;
+
+    /**
+     * Removes a cart product from the cart
+     *
+     * @param vCartItem $cartProduct the cart product to remove
+     *
+     * @return Response the response indicating success or failure
+     */
+    public function removeProductFromCart(vCartItem $cartProduct) : Response;
+
+    /**
+     * Checks out a cart for an account by store locator
+     *
+     * @param vRecordId $accountId the account to checkout the cart for
+     * @param string $storeLocator the store locator of the cart
+     *
+     * @return Response the response indicating success or failure
+     */
+    public function checkoutCart(vRecordId $accountId, string $storeLocator) : Response;
 }
 
 ?>

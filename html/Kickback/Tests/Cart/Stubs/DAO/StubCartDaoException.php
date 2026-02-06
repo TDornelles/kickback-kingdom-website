@@ -7,7 +7,9 @@ namespace Kickback\Tests\Cart\Stubs\DAO;
 use Exception;
 use Kickback\BackendV2\DAO\Cart\CartDAO;
 use Kickback\Backend\Models\Cart;
+use Kickback\Backend\Models\Response;
 use Kickback\Backend\Views\vCart;
+use Kickback\Backend\Views\vCartItem;
 use Kickback\Backend\Views\vRecordId;
 
 class StubCartDAOException implements CartDAO
@@ -30,6 +32,16 @@ class StubCartDAOException implements CartDAO
     public function addProductToCart(vRecordId $cartId, vRecordId $productId) : ?bool
     {
         throw new Exception("Stub Exception : Failed to add product to cart");
+    }
+
+    public function removeProductFromCart(vCartItem $cartProduct) : ?bool
+    {
+        throw new Exception("Stub Exception : Failed to remove product from cart");
+    }
+
+    public function checkoutCart(vCart $cart) : Response
+    {
+        throw new Exception("Stub Exception : Failed to checkout cart");
     }
 }
 
