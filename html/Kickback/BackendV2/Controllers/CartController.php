@@ -74,11 +74,21 @@ class CartController
 
             $product = $getProductResp->data;
 
-            $addProductResp = $this->cartService->addProductToCart($account, $product);
+            $getCartResp = $this->cartService->getCartForAccountWithStoreId($account, $product->store);
+
+            if(!$getCartResp->success || is_null($getCartResp->data))
+            {
+                $response->message = "Failed to get cart for account to add product to cart by product locator \"$productLocator\"";
+                return 500;
+            }
+
+            $cart = $getCartResp->data;
+
+            $addProductResp = $this->cartService->addProductToCart($cart, $product);
 
             if(!$addProductResp->success)
             {
-                $response->message = "Failed to add product with locator \"$productLocator\" to cart";
+                $response->message = "Failed to add product with locator \"$productLocator\" to cart : $addProductResp->message";
                 return 500;
             }
 
@@ -89,7 +99,7 @@ class CartController
         }
         catch(Exception $e)
         {
-            $response->message = "Exception caught while adding product to cart by locator";
+            $response->message = "Exception caught while adding product to cart by locator : $e";
             $response->data = $e;
             return 500;
         }
@@ -305,7 +315,7 @@ class CartController
                     return 403;
                 }
 
-                $response->message = "Failed to checkout cart";
+                $response->message = "Error while checkout cart". json_encode($checkoutResp);
                 return 500;
             }
 

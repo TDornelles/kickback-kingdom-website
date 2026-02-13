@@ -9,13 +9,13 @@ use Kickback\Backend\Models\Response;
 use Kickback\Backend\Views\vAccount;
 use Kickback\BackendV2\Controllers\CartController;
 use Kickback\Tests\Tests;
-use Kickback\Tests\Cart\Stubs\Services\StubCartServiceSuccess;
-use Kickback\Tests\Cart\Stubs\Services\StubCartServiceFail;
-use Kickback\Tests\Cart\Stubs\Services\StubCartServiceException;
-use Kickback\Tests\Cart\Stubs\Services\StubCartServiceCannotAfford;
-use Kickback\Tests\Product\Stubs\Services\StubProductServiceSuccess;
-use Kickback\Tests\Product\Stubs\Services\StubProductServiceFail;
-use Kickback\Tests\Product\Stubs\Services\StubProductServiceException;
+use Kickback\Tests\Stubs\Cart\Services\StubCartServiceSuccess;
+use Kickback\Tests\Stubs\Cart\Services\StubCartServiceFail;
+use Kickback\Tests\Stubs\Cart\Services\StubCartServiceException;
+use Kickback\Tests\Stubs\Cart\Services\StubCartServiceCannotAfford;
+use Kickback\Tests\Stubs\Product\Services\StubProductServiceSuccess;
+use Kickback\Tests\Stubs\Product\Services\StubProductServiceFail;
+use Kickback\Tests\Stubs\Product\Services\StubProductServiceException;
 
 final class CartControllerUnitTests implements Tests
 {

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Kickback\Tests\Cart\Stubs\Services;
+namespace Kickback\Tests\Stubs\Cart\Services;
 
 use Kickback\Backend\Models\Response;
 use Kickback\Backend\Views\vCart;

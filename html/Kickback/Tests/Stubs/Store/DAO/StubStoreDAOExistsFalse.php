@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Kickback\Tests\Store\Stubs\DAO;
+namespace Kickback\Tests\Stubs\Store\DAO;
 
-use Kickback\BackendV2\DAO\Store\StoreDAO;
 use Kickback\Backend\Views\vRecordId;
 use Kickback\Backend\Views\vStore;
+use Kickback\BackendV2\DAO\Store\StoreDAO;
 
-final class StubStoreDAOSuccess implements StoreDAO
+final class StubStoreDAOExistsFalse implements StoreDAO
 {
     public function getStoreByLocator(string $locator): ?vStore
     {
@@ -17,12 +17,12 @@ final class StubStoreDAOSuccess implements StoreDAO
 
     public function doesStoreExistById(vRecordId $storeId): ?bool
     {
-        return true;
+        return false;
     }
 
     public function doesStoreExistByLocator(string $storeLocator): ?bool
     {
-        return true;
+        return false;
     }
 }
 

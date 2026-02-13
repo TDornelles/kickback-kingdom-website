@@ -7,8 +7,8 @@ namespace Kickback\BackendV2\Controllers;
 use Exception;
 use Kickback\Backend\Models\Response;
 use Kickback\Backend\Views\vAccount;
-use Kickback\BackendV2\Services\StoreService;
-use Kickback\BackendV2\Services\DAOStoreService;
+use Kickback\BackendV2\Services\Store\StoreService;
+use Kickback\BackendV2\Services\Store\DAOStoreService;
 
 class StoreController
 {
@@ -39,9 +39,15 @@ class StoreController
 
         try
         {
-            $assocRequest = json_decode($jsonRequest, true);
+            $assocRequest = json_decode((string)$jsonRequest, true);
 
-            if(!$assocRequest->key_exists("storeLocator"))
+            if(!is_array($assocRequest))
+            {
+                $response->message = "failed to decode request body as JSON";
+                return 400;
+            }
+
+            if(!array_key_exists("storeLocator", $assocRequest))
             {
                 $response->message = "Key \"storeLocator\" is missing from request body";
                 return 400;
@@ -89,9 +95,15 @@ class StoreController
 
         try
         {
-            $assocRequest = json_decode($jsonRequest, true);
+            $assocRequest = json_decode((string)$jsonRequest, true);
 
-            if(!$assocRequest->key_exists("storeLocator"))
+            if(!is_array($assocRequest))
+            {
+                $response->message = "failed to decode request body as JSON";
+                return 400;
+            }
+
+            if(!array_key_exists("storeLocator", $assocRequest))
             {
                 $response->message = "Key \"storeLocator\" is missing from request body";
                 return 400;

@@ -35,7 +35,7 @@ class DAOCartService implements CartService
         try
         {
 
-            $cart = $this->cartDAO->getOrCreateCartWithStoreId($accountId, $storeId);
+            $cart = $this->cartDAO->getOrCreateCartIdWithStoreId($accountId, $storeId);
 
             if($cart == null)
             {
@@ -78,7 +78,7 @@ class DAOCartService implements CartService
                 return $resp;
             }
 
-            $cart = $this->cartDAO->getOrCreateCartWithStoreId($accountId, $storeId);
+            $cart = $this->cartDAO->getOrCreateCartIdWithStoreId($accountId, $storeId);
 
             if($cart == null)
             {
@@ -86,8 +86,12 @@ class DAOCartService implements CartService
                 return $resp;
             }
 
-
             $cartView = $this->cartDAO->getCartView($cart);
+
+            if($cartView == null)
+            {
+                throw new Exception("Failed to get cart view for cart after cart was created or retrieved for account with store locator \"$storeLocator\"");
+            }
 
             $cartItems = $this->cartDAO->getCartProductsViews($cartView);
 
@@ -115,9 +119,15 @@ class DAOCartService implements CartService
         {
             $added = $this->cartDAO->addProductToCart($cartId, $productId);
 
-            if(!$added)
+            if(is_null($added))
             {
                 $resp->message = "Failed to add product to cart";
+                return $resp;
+            }
+
+            if(!$added)
+            {
+                $resp->message = "Not enough stock available to add product to cart";
                 return $resp;
             }
 
@@ -175,18 +185,18 @@ class DAOCartService implements CartService
 
             $cart = $cartResp->data;
 
-            $checkoutResp = $this->cartDAO->checkoutCart($cart);
+            $checkoutResult = $this->cartDAO->checkoutCart($cart);
 
-            if(!$checkoutResp->success)
+            if ($checkoutResult !== true)
             {
-                $resp->message = "Failed to checkout cart : $checkoutResp->message";
-                $resp->data = $checkoutResp->data;
+                $resp->message = "Failed to checkout cart";
+                $resp->data = $checkoutResult;
                 return $resp;
             }
 
             $resp->success = true;
             $resp->message = "Cart Checked Out";
-            $resp->data = $checkoutResp->data;
+            $resp->data = true;
         }
         catch(Exception $e)
         {

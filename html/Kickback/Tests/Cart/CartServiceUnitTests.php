@@ -12,13 +12,13 @@ use Kickback\BackendV2\Services\Cart\CartService;
 use Kickback\BackendV2\Services\Cart\DAOCartService;
 
 use Kickback\Common\Unittesting\AssertException;
-use Kickback\Tests\Cart\Stubs\DAO\StubCartDAOException;
-use Kickback\Tests\Cart\Stubs\DAO\StubCartDAOFail;
-use Kickback\Tests\Cart\Stubs\DAO\StubCartDAOSuccess;
-use Kickback\Tests\Cart\Stubs\DAO\StubCartDAOCannotAfford;
-use Kickback\Tests\Store\Stubs\DAO\StubStoreDAOSuccess;
-use Kickback\Tests\Store\Stubs\DAO\StubStoreDAOFail;
-use Kickback\Tests\Store\Stubs\DAO\StubStoreDAOException;
+use Kickback\Tests\Stubs\Cart\DAO\StubCartDAOException;
+use Kickback\Tests\Stubs\Cart\DAO\StubCartDAOFail;
+use Kickback\Tests\Stubs\Cart\DAO\StubCartDAOSuccess;
+use Kickback\Tests\Stubs\Cart\DAO\StubCartDAOCannotAfford;
+use Kickback\Tests\Stubs\Store\DAO\StubStoreDAOSuccess;
+use Kickback\Tests\Stubs\Store\DAO\StubStoreDAOFail;
+use Kickback\Tests\Stubs\Store\DAO\StubStoreDAOException;
 use Kickback\Tests\Tests;
 
 class CartServiceUnitTests implements Tests
@@ -41,6 +41,9 @@ class CartServiceUnitTests implements Tests
         $this->unittest_getCartForAccountWithStoreId_validCartStub_returnsPopulatedCart();
         $this->unittest_getCartForAccountWithStoreId_nullCartStub_failResponse();
         $this->unittest_getCartForAccountWithStoreId_exception_failResponse();
+        $this->unittest_getCartForAccountWithStoreLocator_validCartStub_returnsPopulatedCart();
+        $this->unittest_getCartForAccountWithStoreLocator_nullStoreStub_failResponse();
+        $this->unittest_getCartForAccountWithStoreLocator_exception_failResponse();
         $this->unittest_addProductToCart_successStub_returnsSuccess();
         $this->unittest_addProductToCart_failStub_returnsFailure();
         $this->unittest_addProductToCart_exceptionStub_returnsFailure();
@@ -101,6 +104,49 @@ class CartServiceUnitTests implements Tests
 
         if(property_exists($cartResp, 'message') && (is_null($cartResp->message) || trim((string)$cartResp->message) === ''))
             throw new Exception("Service with exception stub returned failure but message was empty");
+    }
+
+    private function unittest_getCartForAccountWithStoreLocator_validCartStub_returnsPopulatedCart() : void
+    {
+        $accountId = new RecordId();
+        $storeLocator = "TEST_STORE";
+
+        $cartResp = $this->ServiceSuccessDAOStub->getCartForAccountWithStoreLocator($accountId, $storeLocator);
+
+        if(!$cartResp->success) throw new Exception("Service with success stub returned failure");
+        if(is_null($cartResp->data)) throw new Exception("Service with success stub returned null data");
+        if(!($cartResp->data instanceof vCart)) throw new Exception("Service with success stub returned object which is not vCart");
+    }
+
+    private function unittest_getCartForAccountWithStoreLocator_nullStoreStub_failResponse() : void
+    {
+        $accountId = new RecordId();
+        $storeLocator = "TEST_STORE";
+
+        $cartResp = $this->ServiceFailDAOStub->getCartForAccountWithStoreLocator($accountId, $storeLocator);
+
+        if($cartResp->success) throw new Exception("Service with fail stub returned success");
+        if(!is_null($cartResp->data)) throw new Exception("Service with fail stub returned non-null data");
+        if($cartResp->data instanceof vCart) throw new Exception("Service with fail stub returned a vCart when it should have failed");
+    }
+
+    private function unittest_getCartForAccountWithStoreLocator_exception_failResponse() : void
+    {
+        $accountId = new RecordId();
+        $storeLocator = "TEST_STORE";
+
+        try
+        {
+            $cartResp = $this->ServiceExceptionDAOStub->getCartForAccountWithStoreLocator($accountId, $storeLocator);
+        }
+        catch(\Throwable $e)
+        {
+            throw new Exception("Service with exception stub threw instead of returning a failure response: " . $e->getMessage(), 0, $e);
+        }
+
+        if($cartResp->success) throw new Exception("Service with exception stub returned success");
+        if(!is_null($cartResp->data)) throw new Exception("Service with exception stub returned non-null data");
+        if($cartResp->data instanceof vCart) throw new Exception("Service with exception stub returned a vCart when it should have failed");
     }
 
     private function unittest_addProductToCart_successStub_returnsSuccess() : void

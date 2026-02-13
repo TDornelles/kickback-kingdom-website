@@ -6,11 +6,11 @@ namespace Kickback\Tests\Product;
 
 use Exception;
 use Kickback\Backend\Views\vProduct;
-use Kickback\BackendV2\Services\Cart\DAOProductService;
-use Kickback\BackendV2\Services\Cart\ProductService;
-use Kickback\Tests\Product\Stubs\DAO\StubProductDAOSuccess;
-use Kickback\Tests\Product\Stubs\DAO\StubProductDAOFail;
-use Kickback\Tests\Product\Stubs\DAO\StubProductDAOException;
+use Kickback\BackendV2\Services\Product\DAOProductService;
+use Kickback\BackendV2\Services\Product\ProductService;
+use Kickback\Tests\Stubs\Product\DAO\StubProductDAOSuccess;
+use Kickback\Tests\Stubs\Product\DAO\StubProductDAOFail;
+use Kickback\Tests\Stubs\Product\DAO\StubProductDAOException;
 use Kickback\Tests\Tests;
 
 final class ProductServiceUnitTests implements Tests

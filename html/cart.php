@@ -325,8 +325,14 @@ $isLoggedIn = Session::isLoggedIn();
                     return;
                 }
 
+                const productLocator = cartProduct?.product?.locator;
+                if (!productLocator) {
+                    showModal('errorModal', 'Unable to remove this item because its product locator is missing.');
+                    return;
+                }
+
                 try {
-                    await StoreClient.removeProductFromCart(cartProduct);
+                    await StoreClient.removeProductFromCart(productLocator);
                     showModal('successModal', 'Removed item from your cart.');
                     await loadCart();
                 } catch (error) {

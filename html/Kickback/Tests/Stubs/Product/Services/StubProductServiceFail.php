@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Kickback\Tests\Product\Stubs\Services;
+namespace Kickback\Tests\Stubs\Product\Services;
 
 use Kickback\Backend\Models\Response;
 use Kickback\BackendV2\Services\Product\ProductService;

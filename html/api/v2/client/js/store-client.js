@@ -16,7 +16,7 @@ class StoreClient {
 
         try {
             const bodyData = {
-                "locator": locator
+                "storeLocator": locator
             };
 
             const response = await fetch(`/api/v2/server/store/get-by-locator`, {
@@ -54,7 +54,7 @@ class StoreClient {
     }
 
     static async getStoreByAccount(accountId){
-        if (!locator) {
+        if (!accountId) {
             throw new Error('Account ID is required');
         }
 
@@ -182,7 +182,11 @@ class StoreClient {
         }
     }
 
-    static async addProductToCartByLocator(cart, productLocator){
+    static async addProductToCartByLocator(cartOrProductLocator, maybeProductLocator){
+        const productLocator = typeof maybeProductLocator === 'string'
+            ? maybeProductLocator
+            : cartOrProductLocator;
+
         if (!productLocator) {
             throw new Error('productLocator is required');
         }
@@ -221,18 +225,22 @@ class StoreClient {
             return jsonData;
 
         } catch (error) {
-            console.error(`Store.addProductToCartByLocator(${cart}, ${productLocator}) failed:`, error);
+            console.error(`Store.addProductToCartByLocator(${productLocator}) failed:`, error);
             throw error;
         }
     }
 
-    static async removeProductFromCart(cartProduct){
-        if (!cartProduct) {
-            throw new Error('CartProduct is required');
+    static async removeProductFromCart(productLocatorOrCartProduct){
+        const productLocator = typeof productLocatorOrCartProduct === 'string'
+            ? productLocatorOrCartProduct
+            : productLocatorOrCartProduct?.product?.locator;
+
+        if (!productLocator) {
+            throw new Error('productLocator is required');
         }
 
         const bodyData = {
-            "cartProduct": cartProduct,
+            "productLocator": productLocator,
         };
 
         try {
@@ -265,18 +273,22 @@ class StoreClient {
             return jsonData;
 
         } catch (error) {
-            console.error(`Store.removeProductFromCart(${cartProduct}) failed:`, error);
+            console.error(`Store.removeProductFromCart(${productLocator}) failed:`, error);
             throw error;
         }
     }
 
-    static async checkoutCart(cart){
-        if (!cart) {
-            throw new Error('Cart is required');
+    static async checkoutCart(storeLocatorOrCart){
+        const storeLocator = typeof storeLocatorOrCart === 'string'
+            ? storeLocatorOrCart
+            : storeLocatorOrCart?.store?.locator;
+
+        if (!storeLocator) {
+            throw new Error('Store Locator is required');
         }
 
         const bodyData = {
-            "cart": cart,
+            "storeLocator": storeLocator,
         };
 
         try {
@@ -319,17 +331,16 @@ class StoreClient {
         }
     }
 
-    static async applyCoupon(cart, couponCode){
-        if (!cart) {
-            throw new Error('Cart is required');
-        }
+    static async applyCoupon(cartOrCouponCode, maybeCouponCode){
+        const couponCode = typeof maybeCouponCode === 'string'
+            ? maybeCouponCode
+            : cartOrCouponCode;
 
         if (!couponCode) {
             throw new Error('Coupon Code is required');
         }
 
         const bodyData = {
-            "cart": cart,
             "couponCode": couponCode
         };
 
@@ -363,7 +374,7 @@ class StoreClient {
             return jsonData;
 
         } catch (error) {
-            console.error(`Store.applyCoupon(${cart}, ${couponCode}) failed:`, error);
+            console.error(`Store.applyCoupon(${couponCode}) failed:`, error);
             throw error;
         }
     }

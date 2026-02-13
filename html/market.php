@@ -913,7 +913,7 @@ if (Session::isLoggedIn()) {
 
                 try
                 {
-                    await StoreClient.addProductToCartByLocator(cart, productLocator);
+                    await StoreClient.addProductToCartByLocator(productLocator);
                     showModal("successModal", "Successfully added product to cart.", "Added to cart");
                     await refreshCartFromShared();
                     await refreshProducts();

@@ -2,19 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Kickback\Tests\Cart\Stubs\DAO;
+namespace Kickback\Tests\Stubs\Cart\DAO;
 
 use Exception;
 use Kickback\BackendV2\DAO\Cart\CartDAO;
 use Kickback\Backend\Models\Cart;
-use Kickback\Backend\Models\Response;
 use Kickback\Backend\Views\vCart;
 use Kickback\Backend\Views\vCartItem;
 use Kickback\Backend\Views\vRecordId;
 
 class StubCartDAOException implements CartDAO
 {
-    public function getOrCreateCartWithStoreId(vRecordId $accountId, vRecordId $storeId) : ?Cart
+    public function getOrCreateCartIdWithStoreId(vRecordId $accountId, vRecordId $storeId) : ?Cart
     {
         throw new Exception("Stub Exception : Failed to get or create cart");
     }
@@ -39,7 +38,7 @@ class StubCartDAOException implements CartDAO
         throw new Exception("Stub Exception : Failed to remove product from cart");
     }
 
-    public function checkoutCart(vCart $cart) : Response
+    public function checkoutCart(vCart $cart) : ?bool
     {
         throw new Exception("Stub Exception : Failed to checkout cart");
     }

@@ -21,6 +21,41 @@ final class Database
         return self::$conn;
     }
 
+    /**
+     * Reconstructs the SQL by replacing each ? with the quoted parameter value.
+     * This shows exactly what mysqli_execute_query() is sending to MySQL.
+     */
+    public static function interpolateSql(string $sql, array $params): string
+    {
+        $i = 0;
+
+        $interpolated = preg_replace_callback('/\?/', function () use (&$i, $params) {
+
+            if (!array_key_exists($i, $params)) {
+                return '?';
+            }
+
+            $value = $params[$i++];
+
+            if ($value === null) {
+                return "NULL";
+            }
+
+            // Escape single quotes SQL-style
+            return "'" . str_replace("'", "''", (string)$value) . "'";
+
+        }, $sql);
+
+        // Remove newline, carriage return, and tab characters
+        $interpolated = str_replace(["\r", "\n", "\t"], ' ', $interpolated);
+
+        // Collapse multiple spaces into one
+        $interpolated = preg_replace('/\s+/', ' ', $interpolated);
+
+        return trim($interpolated);
+    }
+
+
     private static function createPdoFromConfig(): PDO
     {
         $host = ServiceCredentials::get('sql_server_host');

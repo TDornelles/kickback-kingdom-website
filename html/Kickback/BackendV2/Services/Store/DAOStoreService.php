@@ -2,13 +2,13 @@
 
 declare(strict_types = 1);
 
-namespace Kickback\BackendV2\Services;
+namespace Kickback\BackendV2\Services\Store;
 
 use Exception;
 use Kickback\Backend\Models\Response;
 use Kickback\Backend\Views\vRecordId;
-use Kickback\BackendV2\DAO\PDOStoreDAO;
-use Kickback\BackendV2\DAO\StoreDAO;
+use Kickback\BackendV2\DAO\Store\PDOStoreDAO;
+use Kickback\BackendV2\DAO\Store\StoreDAO;
 
 class DAOStoreService implements StoreService
 {

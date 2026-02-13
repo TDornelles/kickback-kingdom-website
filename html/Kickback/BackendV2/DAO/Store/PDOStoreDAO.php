@@ -21,7 +21,7 @@ class PDOStoreDAO implements StoreDAO
     private ProductDAO $productDAO;
 
     private string $columnsInStoreTable = "ctime, crand, name, locator, description, ref_owner_ctime, ref_owner_crand";
-    private string $columnsInStoreView = "ctime, crand, name, locator, description, ref_owner_ctime, ref_owner_crand";
+    private string $columnsInStoreView = "ctime, crand, name, locator, description, owner_username, owner_ctime, owner_crand";
 
 
     public function __construct(?Database $pdo = null, ?ProductDAO $productDAO = null)
@@ -34,7 +34,7 @@ class PDOStoreDAO implements StoreDAO
     {
         try
         {
-            $sql = "SELECT ".static::$columnsInStoreView." FROM v_store WHERE locator = ? LIMIT 1;";
+            $sql = "SELECT ".$this->columnsInStoreView." FROM v_store WHERE locator = ? LIMIT 1;";
 
             $params = [$locator];
 

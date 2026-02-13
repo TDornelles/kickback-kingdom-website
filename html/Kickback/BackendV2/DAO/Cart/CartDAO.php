@@ -18,9 +18,9 @@ interface CartDAO
      * @param vRecordId $accountId the account id for which to get or create the cart
      * @param vRecordId $storeId the store id for which to get or create the cart
      * 
-     * @return Cart|null the cart for the provided account and store, or null on failure
+     * @return vRecordId|null the id cart for the provided account and store, or null on failure
      */
-    public function getOrCreateCartWithStoreId(vRecordId $accountId, vRecordId $storeId) : ?Cart;
+    public function getOrCreateCartIdWithStoreId(vRecordId $accountId, vRecordId $storeId) : ?vRecordId;
 
     /**
      * Gets the cart products for a given cart id
@@ -46,7 +46,7 @@ interface CartDAO
      * @param vRecordId $cartId the cart id to which to add the product
      * @param vRecordId $productId the product id of the product to add to the cart
      * 
-     * @return ?bool true on success, false on failure, or null if the cart or product was not found
+     * @return ?bool true on success, false on not enough stock available, or null if the cart or product was not found or another failure occurred
      */
     public function addProductToCart(vRecordId $cartId, vRecordId $productId) : ?bool;
 
@@ -66,7 +66,7 @@ interface CartDAO
      * 
      * @return Response the response of the checkout operation
      */
-    public function checkoutCart(vCart $cart) : Response;
+    public function checkoutCart(vCart $cart) : ?bool;
 }
 
 ?>

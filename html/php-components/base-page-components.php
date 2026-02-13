@@ -2051,9 +2051,15 @@ if (!Session::isLoggedIn()) {
                 return;
             }
 
+            const productLocator = cartProduct?.product?.locator;
+            if (!productLocator) {
+                setOffcanvasStatus('Unable to remove item because its product locator is missing.', 'danger');
+                return;
+            }
+
             try {
                 setOffcanvasStatus('Removing item...', 'info');
-                await StoreClient.removeProductFromCart(cartProduct);
+                await StoreClient.removeProductFromCart(productLocator);
                 clearOffcanvasStatus();
                 await fetchCart({ showLoading: false });
             } catch (error) {

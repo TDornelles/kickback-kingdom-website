@@ -2,23 +2,22 @@
 
 declare(strict_types=1);
 
-namespace Kickback\Tests\Cart\Stubs\DAO;
+namespace Kickback\Tests\Stubs\Cart\DAO;
 
 use Kickback\BackendV2\DAO\Cart\CartDAO;
 use Kickback\Backend\Models\Cart;
-use Kickback\Backend\Models\Response;
 use Kickback\Backend\Views\vCart;
 use Kickback\Backend\Views\vCartItem;
 use Kickback\Backend\Views\vRecordId;
 
-final class StubCartDAOCannotAfford implements CartDAO
+class StubCartDAOSuccess implements CartDAO
 {
-    public function getOrCreateCartWithStoreId(vRecordId $accountId, vRecordId $storeId) : ?Cart
+    public function getOrCreateCartIdWithStoreId(vRecordId $accountId, vRecordId $storeId) : ?Cart
     {
         return new Cart($accountId->ctime, $accountId->crand, $storeId->ctime, $storeId->crand, null, null);
     }
 
-    public function getCartProductsViews(vRecordId $cartId) : ?array
+    public function getCartProductsViews(vRecordId $cartId) : array
     {
         return [];
     }
@@ -38,9 +37,9 @@ final class StubCartDAOCannotAfford implements CartDAO
         return true;
     }
 
-    public function checkoutCart(vCart $cart) : Response
+    public function checkoutCart(vCart $cart) : ?bool
     {
-        return new Response(false, "Stub cannot afford", false);
+        return true;
     }
 }
 

@@ -359,7 +359,7 @@ $isLoggedIn = Session::isLoggedIn();
                 }
 
                 try {
-                    await StoreClient.applyCoupon(cart, code);
+                    await StoreClient.applyCoupon(code);
                     showModal('successModal', 'Coupon applied!');
                     couponInput.value = '';
                     await loadCart();
@@ -376,7 +376,7 @@ $isLoggedIn = Session::isLoggedIn();
                 }
 
                 try {
-                    await StoreClient.checkoutCart(cart);
+                    await StoreClient.checkoutCart(storeLocator);
                     showModal('successModal', 'Checkout complete! You can review your inventory for the purchased items.');
                     await loadCart();
                 } catch (error) {

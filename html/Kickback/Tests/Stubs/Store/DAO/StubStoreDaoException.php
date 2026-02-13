@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Kickback\Tests\Store\Stubs\DAO;
+namespace Kickback\Tests\Stubs\Store\DAO;
 
 use Exception;
 use Kickback\BackendV2\DAO\Store\StoreDAO;

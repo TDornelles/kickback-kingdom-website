@@ -5,8 +5,8 @@ require_once(($_SERVER['DOCUMENT_ROOT'] ?: __DIR__ . "/../../../..") . "/Kickbac
 
 use Kickback\Common\Exceptions\ThrowableOverrides;
 use Kickback\Backend\Models\Response;
+use Kickback\BackendV2\Controllers\CartController;
 use Kickback\Services\ApiV2\Endpoint;
-use Kickback\Services\StoreService;
 
 \header('Content-Type: application/json');
 
@@ -16,7 +16,8 @@ try
     $sessionAccount = Endpoint::requireAccountSession();
     $request_contents_json = Endpoint::file_get_contents('php://input');
     $response = null;
-    $response_code = StoreService::checkout_cart($sessionAccount, $request_contents_json, $response);
+    $cartController = new CartController();
+    $response_code = $cartController->checkoutCart($sessionAccount, $request_contents_json, $response);
     if ( $response_code !== 0 ) {
         \http_response_code($response_code);
         // Otherwise let PHP/Apache/HTTPD respond with what it feels is appropriate.
