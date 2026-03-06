@@ -12,16 +12,20 @@ class StoreClient {
         if (!locator) {
             throw new Error('Store Locator is required');
         }
+        
 
         try {
-            const response = await fetch(`api/v2/server/store/get-by-locator`, {
+            const bodyData = {
+                "storeLocator": locator
+            };
+
+            const response = await fetch(`/api/v2/server/store/get-by-locator`, {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
                 },
-                body:{
-                    locator
-                }
+                body: JSON.stringify(bodyData)
             });
 
             if (!response.ok) {
@@ -50,19 +54,22 @@ class StoreClient {
     }
 
     static async getStoreByAccount(accountId){
-        if (!locator) {
+        if (!accountId) {
             throw new Error('Account ID is required');
         }
 
         try {
-            const response = await fetch(`api/v2/server/store/get-by-account`, {
+            const bodyData = {
+                "accountId": accountId
+            };
+
+            const response = await fetch(`/api/v2/server/store/get-by-account`, {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
                 },
-                body:{
-                    accountId
-                }
+                body: JSON.stringify(bodyData)
             });
 
             if (!response.ok) {
@@ -96,7 +103,7 @@ class StoreClient {
                 "storeLocator": storeLocator
             };
 
-            const response = await fetch(`api/v2/server/store/get-cart`, {
+            const response = await fetch(`/api/v2/server/store/get-cart`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
@@ -131,21 +138,17 @@ class StoreClient {
     }
 
     static async addProductToCartById(cart, productId){
-        if (!cart) {
-            throw new Error('Cart is required');
-        }
 
         if (!productId) {
             throw new Error('ProductId is required');
         }
 
         const bodyData = {
-            "cart": cart,
             "productId": productId
         };
 
         try {
-            const response = await fetch(`api/v2/server/store/add-product-to-cart-by-id`, {
+            const response = await fetch(`/api/v2/server/store/add-product-to-cart-by-id`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
@@ -179,22 +182,21 @@ class StoreClient {
         }
     }
 
-    static async addProductToCartByLocator(cart, productLocator){
-        if (!cart) {
-            throw new Error('Cart is required');
-        }
+    static async addProductToCartByLocator(cartOrProductLocator, maybeProductLocator){
+        const productLocator = typeof maybeProductLocator === 'string'
+            ? maybeProductLocator
+            : cartOrProductLocator;
 
         if (!productLocator) {
             throw new Error('productLocator is required');
         }
 
         const bodyData = {
-            "cart": cart,
             "productLocator": productLocator
         };
 
         try {
-            const response = await fetch(`api/v2/server/store/add-product-to-cart-by-locator`, {
+            const response = await fetch(`/api/v2/server/store/add-product-to-cart-by-locator`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
@@ -223,22 +225,26 @@ class StoreClient {
             return jsonData;
 
         } catch (error) {
-            console.error(`Store.addProductToCartByLocator(${cart}, ${productLocator}) failed:`, error);
+            console.error(`Store.addProductToCartByLocator(${productLocator}) failed:`, error);
             throw error;
         }
     }
 
-    static async removeProductFromCart(cartProduct){
-        if (!cartProduct) {
-            throw new Error('CartProduct is required');
+    static async removeProductFromCart(productLocatorOrCartProduct){
+        const productLocator = typeof productLocatorOrCartProduct === 'string'
+            ? productLocatorOrCartProduct
+            : productLocatorOrCartProduct?.product?.locator;
+
+        if (!productLocator) {
+            throw new Error('productLocator is required');
         }
 
         const bodyData = {
-            "cartProduct": cartProduct,
+            "productLocator": productLocator,
         };
 
         try {
-            const response = await fetch(`api/v2/server/store/remove-product-from-cart`, {
+            const response = await fetch(`/api/v2/server/store/remove-product-from-cart`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
@@ -267,22 +273,32 @@ class StoreClient {
             return jsonData;
 
         } catch (error) {
-            console.error(`Store.removeProductFromCart(${cartProduct}) failed:`, error);
+            console.error(`Store.removeProductFromCart(${productLocator}) failed:`, error);
             throw error;
         }
     }
 
-    static async checkoutCart(cart){
-        if (!cart) {
-            throw new Error('Cart is required');
+    /**
+     * Initiate checkout for the cart. Returns either a Stripe redirect URL
+     * (for USD purchases) or a success result (for loot-only purchases).
+     * @param {string|Object} storeLocatorOrCart - Store locator string or cart object
+     * @returns {Promise<Object>} API response with {requiresPayment, redirectUrl} or {requiresPayment, success}
+     */
+    static async initiateCheckout(storeLocatorOrCart){
+        const storeLocator = typeof storeLocatorOrCart === 'string'
+            ? storeLocatorOrCart
+            : storeLocatorOrCart?.store?.locator;
+
+        if (!storeLocator) {
+            throw new Error('Store Locator is required');
         }
 
         const bodyData = {
-            "cart": cart,
+            "storeLocator": storeLocator,
         };
 
         try {
-            const response = await fetch(`api/v2/server/store/checkout-cart`, {
+            const response = await fetch(`/api/v2/server/payments/initiate-checkout`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
@@ -291,9 +307,111 @@ class StoreClient {
                 body: JSON.stringify(bodyData)
             });
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            const data = await response.text();
+            let jsonData;
+
+            try {
+                jsonData = JSON.parse(data);
+            } catch (parseError) {
+                throw new Error('Invalid JSON response from server');
             }
+
+            if (!response.ok) {
+                if(response.status == 403 && jsonData.data === false)
+                {
+                    throw new Error(jsonData.message);
+                }
+
+                throw new Error(jsonData.message || `HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            if (!jsonData.success) {
+                throw new Error(jsonData.message || `Failed to initiate checkout`);
+            }
+
+            return jsonData;
+
+        } catch (error) {
+            console.error(`Store.initiateCheckout failed:`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get the checkout/payment status for a cart.
+     * @param {string|Object} storeLocatorOrCart - Store locator string or cart object
+     * @returns {Promise<Object>} API response with {status, checkedOut, sessionId}
+     */
+    static async getCheckoutStatus(storeLocatorOrCart){
+        const storeLocator = typeof storeLocatorOrCart === 'string'
+            ? storeLocatorOrCart
+            : storeLocatorOrCart?.store?.locator;
+
+        if (!storeLocator) {
+            throw new Error('Store Locator is required');
+        }
+
+        const bodyData = {
+            "storeLocator": storeLocator,
+        };
+
+        try {
+            const response = await fetch(`/api/v2/server/payments/checkout-status`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(bodyData)
+            });
+
+            const data = await response.text();
+            let jsonData;
+
+            try {
+                jsonData = JSON.parse(data);
+            } catch (parseError) {
+                throw new Error('Invalid JSON response from server');
+            }
+
+            if (!response.ok) {
+                throw new Error(jsonData.message || `HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            if (!jsonData.success) {
+                throw new Error(jsonData.message || `Failed to get checkout status`);
+            }
+
+            return jsonData;
+
+        } catch (error) {
+            console.error(`Store.getCheckoutStatus failed:`, error);
+            throw error;
+        }
+    }
+
+    static async checkoutCart(storeLocatorOrCart){
+        const storeLocator = typeof storeLocatorOrCart === 'string'
+            ? storeLocatorOrCart
+            : storeLocatorOrCart?.store?.locator;
+
+        if (!storeLocator) {
+            throw new Error('Store Locator is required');
+        }
+
+        const bodyData = {
+            "storeLocator": storeLocator,
+        };
+
+        try {
+            const response = await fetch(`/api/v2/server/store/checkout-cart`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(bodyData)
+            });
 
             const data = await response.text();
             let jsonData;
@@ -302,6 +420,15 @@ class StoreClient {
                 jsonData = JSON.parse(data);
             } catch (parseError) {
                 throw new Error('Invalid JSON response from server');
+            }
+
+            if (!response.ok) {
+                if(response.status == 403 && jsonData.data === false)
+                {
+                    throw new Error(jsonData.message);
+                }
+
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
 
             if (!jsonData.success) {
@@ -316,22 +443,21 @@ class StoreClient {
         }
     }
 
-    static async applyCoupon(cart, couponCode){
-        if (!cart) {
-            throw new Error('Cart is required');
-        }
+    static async applyCoupon(cartOrCouponCode, maybeCouponCode){
+        const couponCode = typeof maybeCouponCode === 'string'
+            ? maybeCouponCode
+            : cartOrCouponCode;
 
         if (!couponCode) {
             throw new Error('Coupon Code is required');
         }
 
         const bodyData = {
-            "cart": cart,
             "couponCode": couponCode
         };
 
         try {
-            const response = await fetch(`api/v2/server/store/apply-coupon`, {
+            const response = await fetch(`/api/v2/server/store/apply-coupon`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
@@ -360,7 +486,7 @@ class StoreClient {
             return jsonData;
 
         } catch (error) {
-            console.error(`Store.applyCoupon(${cart}, ${couponCode}) failed:`, error);
+            console.error(`Store.applyCoupon(${couponCode}) failed:`, error);
             throw error;
         }
     }
@@ -375,7 +501,7 @@ class StoreClient {
         };
 
         try {
-            const response = await fetch(`api/v2/server/store/remove-coupon-from-product`, {
+            const response = await fetch(`/api/v2/server/store/remove-coupon-from-product`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {

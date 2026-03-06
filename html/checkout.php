@@ -58,86 +58,102 @@ require("php-components/base-page-pull-active-account-info.php");
                     </div>
                 </div>
 
-                <script src="https://js.stripe.com/v3/"></script>
+                <script src="/api/v2/client/js/store-client.js"></script>
                 <script>
-                    // Initialize Stripe
-                    const stripe = Stripe('<?php echo \Kickback\Backend\Controllers\StripeController::publicKey(); ?>');
-
-                    // Get cart ID from session storage or URL
-                    const cartCtime = sessionStorage.getItem('cartCtime');
-                    const cartCrand = sessionStorage.getItem('cartCrand');
+                    const storeLocator = sessionStorage.getItem('storeLocator');
 
                     const checkoutButton = document.getElementById('checkout-button');
                     const errorMessage = document.getElementById('error-message');
                     const buttonText = document.getElementById('button-text');
 
-                    // Load cart details
-                    if (cartCtime && cartCrand) {
+                    if (storeLocator) {
                         loadCart();
                     } else {
-                        showError('No cart found. Please add items to your cart first.');
+                        showError('No store found. Please add items to your cart first.');
                         buttonText.textContent = 'No Cart Found';
                     }
 
-                    function loadCart() {
-                        fetch('/php-components/store/get-cart.php', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/x-www-form-urlencoded',
-                            },
-                            body: `cartCtime=${cartCtime}&cartCrand=${cartCrand}`
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                document.getElementById('cart-items-container').innerHTML = data.data.cartHtml;
-                                document.getElementById('cart-totals-container').innerHTML = data.data.totalsHtml;
-                                checkoutButton.disabled = false;
-                                buttonText.textContent = 'Proceed to Payment';
-                            } else {
-                                showError('Error loading cart: ' + data.message);
+                    async function loadCart() {
+                        try {
+                            const cartResponse = await StoreClient.getCart(storeLocator);
+                            const cart = cartResponse.data;
+
+                            if (!cart || !cart.cartProducts || cart.cartProducts.length === 0) {
+                                showError('Your cart is empty.');
+                                buttonText.textContent = 'Cart Empty';
+                                return;
                             }
-                        })
-                        .catch(error => {
+
+                            // Render cart items
+                            let itemsHtml = '<ul class="list-group">';
+                            cart.cartProducts.forEach(item => {
+                                const productName = item.product?.name || 'Product';
+                                let priceText = '';
+                                if (item.product?.price) {
+                                    item.product.price.forEach(pc => {
+                                        if (pc.currencyCode) {
+                                            priceText += `$${(pc.amount / 100).toFixed(2)} ${pc.currencyCode} `;
+                                        } else if (pc.item) {
+                                            priceText += `${pc.amount} ${pc.item.name || 'items'} `;
+                                        }
+                                    });
+                                }
+                                itemsHtml += `<li class="list-group-item d-flex justify-content-between align-items-center">
+                                    ${productName}
+                                    <span class="badge bg-primary rounded-pill">${priceText.trim()}</span>
+                                </li>`;
+                            });
+                            itemsHtml += '</ul>';
+
+                            // Render totals
+                            let totalsHtml = '<h5>Totals</h5><ul class="list-group">';
+                            if (cart.totals) {
+                                cart.totals.forEach(total => {
+                                    if (total.currencyCode) {
+                                        totalsHtml += `<li class="list-group-item d-flex justify-content-between">
+                                            <span>${total.currencyCode}</span>
+                                            <strong>$${(total.amount / 100).toFixed(2)}</strong>
+                                        </li>`;
+                                    } else if (total.item) {
+                                        totalsHtml += `<li class="list-group-item d-flex justify-content-between">
+                                            <span>${total.item.name || 'Items'}</span>
+                                            <strong>${total.amount}</strong>
+                                        </li>`;
+                                    }
+                                });
+                            }
+                            totalsHtml += '</ul>';
+
+                            document.getElementById('cart-items-container').innerHTML = itemsHtml;
+                            document.getElementById('cart-totals-container').innerHTML = totalsHtml;
+                            checkoutButton.disabled = false;
+                            buttonText.textContent = 'Proceed to Checkout';
+                        } catch (error) {
                             showError('Error loading cart: ' + error.message);
-                        });
+                        }
                     }
 
                     checkoutButton.addEventListener('click', async () => {
                         checkoutButton.disabled = true;
-                        buttonText.textContent = 'Creating checkout session...';
+                        buttonText.textContent = 'Processing...';
 
                         try {
-                            const response = await fetch('/php-components/Stripe/create-checkout-session.php', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/x-www-form-urlencoded',
-                                },
-                                body: `cartCtime=${cartCtime}&cartCrand=${cartCrand}`
-                            });
+                            const result = await StoreClient.initiateCheckout(storeLocator);
+                            const checkoutData = result.data;
 
-                            const data = await response.json();
-
-                            if (data.success) {
-                                // Redirect to Stripe Checkout
-                                const result = await stripe.redirectToCheckout({
-                                    sessionId: data.data.sessionId
-                                });
-
-                                if (result.error) {
-                                    showError(result.error.message);
-                                    checkoutButton.disabled = false;
-                                    buttonText.textContent = 'Proceed to Payment';
-                                }
+                            if (checkoutData.requiresPayment) {
+                                // USD purchase — redirect to Stripe hosted checkout
+                                buttonText.textContent = 'Redirecting to payment...';
+                                window.location.href = checkoutData.redirectUrl;
                             } else {
-                                showError(data.message);
-                                checkoutButton.disabled = false;
-                                buttonText.textContent = 'Proceed to Payment';
+                                // Loot-only purchase — completed immediately
+                                sessionStorage.removeItem('storeLocator');
+                                window.location.href = '/checkout-success.php';
                             }
                         } catch (error) {
-                            showError('Error: ' + error.message);
+                            showError(error.message);
                             checkoutButton.disabled = false;
-                            buttonText.textContent = 'Proceed to Payment';
+                            buttonText.textContent = 'Proceed to Checkout';
                         }
                     });
 
