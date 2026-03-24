@@ -15,6 +15,9 @@ use \Kickback\Backend\Config\StoreTag;
 use \Kickback\Backend\Models\Enums\CurrencyCode;
 use \Kickback\Common\Version;
 
+use Kickback\BackendV2\Services\Store\DAOStoreService;
+use Kickback\BackendV2\Services\Cart\DAOCartService;
+
 $products = [];
 $store = null;
 $cart = null;
@@ -25,7 +28,10 @@ $cart = null;
 $account = Session::getCurrentAccount();
 $locator = $_GET["store-locator"] ?? "emberwood-market";
 
-$storeResp = StoreController::getStoreByLocator($locator);
+$storeService = new DAOStoreService();
+$cartService = new DAOCartService();
+
+$storeResp = $storeService->getStoreByLocator($locator);
 if (!$storeResp || !$storeResp->success || empty($storeResp->data)) {
     throw new Exception("Failed to retrieve store with locator: $locator - {$storeResp->message}");
 }
@@ -41,7 +47,7 @@ $products = $store->products;
 if (Session::isLoggedIn()) {
     
     // Retrieve cart for the account and store
-    $cartResp = StoreController::getCartForAccount($account, $store);
+    $cartResp = $cartService->getCartForAccountWithStoreId($account, $store);
 
     if (!$cartResp || !$cartResp->success) {
         throw new Exception("Failed to retrieve cart for account: {$cartResp->message}");

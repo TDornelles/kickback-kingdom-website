@@ -1783,7 +1783,11 @@ class PDOCartDAO implements CartDAO
                 return [];
             }
 
-            return static::cartItemResultToViews($stmt);
+            $cartProducts = static::cartItemResultToViews($stmt);
+
+            throw new Exception(json_encode($cartProducts));
+
+            return $cartProducts;
         }
         catch (PDOException $e)
         {

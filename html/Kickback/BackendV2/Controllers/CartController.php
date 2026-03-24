@@ -143,7 +143,7 @@ class CartController
 
             if(!$getCartResp->success)
             {
-                $response->message = "Failed to get cart for account with store locator \"$storeLocator\"";
+                $response->message = "Failed to get cart for account with store locator \"$storeLocator\" : $getCartResp->message";
                 return 500;
             }
 

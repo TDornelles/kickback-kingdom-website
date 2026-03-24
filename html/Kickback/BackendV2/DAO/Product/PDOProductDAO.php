@@ -64,7 +64,9 @@ class PDOProductDAO implements ProductDAO
             
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) 
             {
-                $products[] = static::rowToVProduct($row);
+                $product = static::rowToVProduct($row);
+                $product->price = $this->getBasePriceForProduct($product);
+                $products[] = $product;
             }
 
             return $products;
@@ -671,6 +673,7 @@ class PDOProductDAO implements ProductDAO
 
         return true;
     }
+
 
     private static function priceComponentToView(array $row) : vPriceComponent
     {
