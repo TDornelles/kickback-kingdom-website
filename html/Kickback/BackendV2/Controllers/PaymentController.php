@@ -100,6 +100,7 @@ class PaymentController
 
                 // Store the Stripe session ID on the cart
                 $this->cartDAO->setStripeSessionId($cart, $sessionResult['sessionId']);
+                $this->cartDAO->createStripeTransaction($cart, $sessionResult['sessionId']);
 
                 $response->success = true;
                 $response->message = "Stripe checkout session created";

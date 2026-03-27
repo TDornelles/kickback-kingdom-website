@@ -1924,6 +1924,26 @@ class PDOCartDAO implements CartDAO
         }
     }
 
+    public function createStripeTransaction(vRecordId $cartId, string $stripeTransactionId) : bool
+    {
+        $sql = "INSERT INTO stripe_transaction (ref_cart_ctime, ref_cart_crand, stripe_transaction_id)
+                VALUES (?, ?, ?)";
+        $params = [$cartId->ctime, $cartId->crand, $stripeTransactionId];
+
+        try
+        {
+            $conn = $this->pdo->getConnection();
+            $stmt = $conn->prepare($sql);
+            if ($stmt === false) { return false; }
+            $result = $stmt->execute($params);
+            return $result !== false;
+        }
+        catch (PDOException $e)
+        {
+            throw new Exception("PDO exception caught while creating stripe transaction: " . $e->getMessage(), 0, $e);
+        }
+    }
+
     public function getCartByStripeSessionId(string $sessionId) : ?vCart
     {
         $sql = "SELECT ".static::$columnsInCartView." FROM v_cart WHERE stripe_session_id = ? LIMIT 1;";
