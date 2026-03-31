@@ -1092,6 +1092,7 @@ class PDOCartDAO implements CartDAO
         }
         catch (Exception $e)
         {
+            throw $e; //remove after testing;
             return null;
         }
     }
@@ -1104,7 +1105,17 @@ class PDOCartDAO implements CartDAO
             return false;
         }
 
-        if (!$this->doesBuyerOwnExpectedProductLoot($cart->account, $buyerExpectedProductQuantities))
+        throw new Exception(json_encode(["buyerExcpectedProductQuantities"=>$buyerExpectedProductQuantities]));
+
+
+        $productLootTransfers = $this->buildProductLootTransferEntries($buyerExpectedProductQuantities);
+        if (empty($productLootTransfers))
+        {
+            return false;
+        }
+
+        
+        if (!$this->doesBuyerOwnExpectedProductLoot($cart->account, $productLootTransfers))
         {
             return false;
         }
@@ -1130,7 +1141,13 @@ class PDOCartDAO implements CartDAO
             return false;
         }
 
-        if (!$this->doProductLootTradesExist($cart, $expectedProductQuantities))
+        $productLootTransfers = $this->buildProductLootTransferEntries($expectedProductQuantities);
+        if (empty($productLootTransfers))
+        {
+            return false;
+        }
+
+        if (!$this->doProductLootTradesExist($cart, $productLootTransfers))
         {
             return false;
         }
@@ -1197,16 +1214,16 @@ class PDOCartDAO implements CartDAO
         return $this->doesInventorySatisfyExpectedItemQuantities($sellerInventory, $expectedByItemId);
     }
 
-    private function doesBuyerOwnExpectedProductLoot(vRecordId $buyerId, array $expectedProductQuantities) : bool
+    private function doesBuyerOwnExpectedProductLoot(vRecordId $buyerId, array $productLootTransfers) : bool
     {
-        $expectedByItemId = $this->resolveExpectedItemQuantitiesForProducts($expectedProductQuantities);
-        if (empty($expectedByItemId))
+        $expectedByLootId = $this->buildExpectedLootQuantitiesByLootId($productLootTransfers);
+        if (empty($expectedByLootId))
         {
             return false;
         }
 
-        $buyerInventory = $this->getAccountItemQuantities($buyerId, array_keys($expectedByItemId));
-        return $this->doesInventorySatisfyExpectedItemQuantities($buyerInventory, $expectedByItemId);
+        $buyerInventory = $this->getAccountLootQuantities($buyerId, array_keys($expectedByLootId));
+        return $this->doesInventorySatisfyExpectedItemQuantities($buyerInventory, $expectedByLootId);
     }
 
     private function doPriceLootTradesExist(vCart $cart, array $lootEntryQuantities) : bool
@@ -1257,24 +1274,24 @@ class PDOCartDAO implements CartDAO
         return true;
     }
 
-    private function doProductLootTradesExist(vCart $cart, array $expectedProductQuantities) : bool
+    private function doProductLootTradesExist(vCart $cart, array $productLootTransfers) : bool
     {
-        if (empty($expectedProductQuantities))
+        $expectedByLootId = $this->buildExpectedLootQuantitiesByLootId($productLootTransfers);
+        if (empty($expectedByLootId))
         {
             return false;
         }
 
-        $productWhereClause = $this->buildProductWhereClauseFromExpectedQuantities($expectedProductQuantities, 'ppl.ref_product_ctime', 'ppl.ref_product_crand');
-        $params = array_merge([$cart->store->owner->crand, $cart->account->crand], $this->buildProductWhereParamsFromExpectedQuantities($expectedProductQuantities));
+        $lootIds = array_keys($expectedByLootId);
+        $placeholders = implode(',', array_fill(0, count($lootIds), '?'));
+        $params = array_merge([$cart->store->owner->crand, $cart->account->crand], $lootIds);
 
-        $sql = "SELECT 
-            ppl.ref_product_ctime AS product_ctime,
-            ppl.ref_product_crand AS product_crand,
+        $sql = "SELECT
+            t.loot_id,
             SUM(t.quantity) AS traded_quantity
             FROM trade t
-            JOIN product_loot_link ppl ON ppl.ref_loot_crand = t.loot_id
-            WHERE t.from_account_id = ? AND t.to_account_id = ? AND ($productWhereClause)
-            GROUP BY ppl.ref_product_ctime, ppl.ref_product_crand";
+            WHERE t.from_account_id = ? AND t.to_account_id = ? AND t.loot_id IN ($placeholders)
+            GROUP BY t.loot_id";
 
         $conn = $this->pdo->getConnection();
         $stmt = $conn->prepare($sql);
@@ -1289,17 +1306,15 @@ class PDOCartDAO implements CartDAO
             throw new Exception("Failed to execute product trade sanity query");
         }
 
-        $tradeByProductKey = [];
+        $tradeByLootId = [];
         while($row = $stmt->fetch())
         {
-            $key = $row["product_ctime"] . '|' . $row["product_crand"];
-            $tradeByProductKey[$key] = (int)$row["traded_quantity"];
+            $tradeByLootId[(int)$row["loot_id"]] = (int)$row["traded_quantity"];
         }
 
-        foreach($expectedProductQuantities as $key => $entry)
+        foreach($expectedByLootId as $lootId => $expectedQuantity)
         {
-            $expectedQuantity = (int)($entry["quantity"] ?? 0);
-            $tradedQuantity = $tradeByProductKey[$key] ?? 0;
+            $tradedQuantity = $tradeByLootId[$lootId] ?? 0;
             if ($tradedQuantity < $expectedQuantity)
             {
                 return false;
@@ -1328,6 +1343,30 @@ class PDOCartDAO implements CartDAO
             }
 
             $expectedByLootId[$lootId->crand] = ($expectedByLootId[$lootId->crand] ?? 0) + $quantity;
+        }
+
+        return $expectedByLootId;
+    }
+
+    private function buildExpectedLootQuantitiesByLootId(array $lootTransfers) : array
+    {
+        $expectedByLootId = [];
+
+        foreach ($lootTransfers as $entry)
+        {
+            if (!is_array($entry))
+            {
+                continue;
+            }
+
+            $lootId = isset($entry["lootId"]) ? (int)$entry["lootId"] : 0;
+            $quantity = isset($entry["quantity"]) ? (int)$entry["quantity"] : 0;
+            if ($lootId <= 0 || $quantity <= 0)
+            {
+                continue;
+            }
+
+            $expectedByLootId[$lootId] = ($expectedByLootId[$lootId] ?? 0) + $quantity;
         }
 
         return $expectedByLootId;
@@ -1420,6 +1459,7 @@ class PDOCartDAO implements CartDAO
             WHERE ($whereClause)
             GROUP BY ppl.ref_product_ctime, ppl.ref_product_crand, l.item_id";
 
+
         $conn = $this->pdo->getConnection();
         $stmt = $conn->prepare($sql);
         if ($stmt === false)
@@ -1479,6 +1519,7 @@ class PDOCartDAO implements CartDAO
 
         $params = array_merge([$accountId->crand], $itemIds);
 
+
         $conn = $this->pdo->getConnection();
         $stmt = $conn->prepare($sql);
         if ($stmt === false)
@@ -1496,6 +1537,43 @@ class PDOCartDAO implements CartDAO
         while($row = $stmt->fetch())
         {
             $quantities[(int)$row["item_id"]] = (int)$row["quantity"];
+        }
+
+        return $quantities;
+    }
+
+    private function getAccountLootQuantities(vRecordId $accountId, array $lootIds) : array
+    {
+        if (empty($lootIds))
+        {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($lootIds), '?'));
+        $sql = "SELECT Id AS loot_id, SUM(quantity) AS quantity
+            FROM v_loot_item
+            WHERE account_id = ? AND Id IN ($placeholders)
+            GROUP BY Id";
+
+        $params = array_merge([$accountId->crand], $lootIds);
+
+        $conn = $this->pdo->getConnection();
+        $stmt = $conn->prepare($sql);
+        if ($stmt === false)
+        {
+            throw new Exception("Failed to prepare account loot quantity sanity query");
+        }
+
+        $result = $stmt->execute($params);
+        if ($result === false)
+        {
+            throw new Exception("Failed to execute account loot quantity sanity query");
+        }
+
+        $quantities = [];
+        while($row = $stmt->fetch())
+        {
+            $quantities[(int)$row["loot_id"]] = (int)$row["quantity"];
         }
 
         return $quantities;
@@ -1784,8 +1862,6 @@ class PDOCartDAO implements CartDAO
             }
 
             $cartProducts = static::cartItemResultToViews($stmt);
-
-            throw new Exception(json_encode($cartProducts));
 
             return $cartProducts;
         }

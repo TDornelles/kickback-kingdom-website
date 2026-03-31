@@ -40,6 +40,8 @@ final class PDOCartDAOUnitTests implements Tests
         $this->unittest_getItemTotals_filtersOutCurrencyAndZeroAmount();
         $this->unittest_getItemIdsFromTotals_returnsAllItemIds();
         $this->unittest_extractLootIdsFromEntries_returnsOnlyLootRecordIds();
+        $this->unittest_buildExpectedPriceLootByLootId_twoPriceComponents_returnsAllRequiredLoot();
+        $this->unittest_buildPriceLootTransferEntries_threePriceComponents_aggregatesDuplicateLootIds();
         $this->unittest_buildCartProductIdWhereClause_createsExpectedPredicate();
         $this->unittest_buildCartProductIdParams_flattensCartProductIds();
     }
@@ -185,6 +187,45 @@ final class PDOCartDAOUnitTests implements Tests
         if($lootIds[0]->crand !== 101) throw new Exception("Expected loot id crand=101");
     }
 
+    private function unittest_buildExpectedPriceLootByLootId_twoPriceComponents_returnsAllRequiredLoot() : void
+    {
+        $lootEntryQuantities = [
+            static::makeLootEntry('loot1', 101, 2),
+            static::makeLootEntry('loot2', 202, 5)
+        ];
+
+        $expectedByLootId = $this->invokePrivate('buildExpectedPriceLootByLootId', [$lootEntryQuantities]);
+
+        $expected = [
+            101 => 2,
+            202 => 5
+        ];
+
+        if($expectedByLootId !== $expected) throw new Exception("Expected checkout price loot requirements to preserve both price components");
+    }
+
+    private function unittest_buildPriceLootTransferEntries_threePriceComponents_aggregatesDuplicateLootIds() : void
+    {
+        $lootEntryQuantities = [
+            static::makeLootEntry('loot1', 101, 2),
+            static::makeLootEntry('loot2', 202, 3),
+            static::makeLootEntry('loot1-duplicate', 101, 4)
+        ];
+
+        $transferEntries = $this->invokePrivate('buildPriceLootTransferEntries', [$lootEntryQuantities]);
+
+        if(count($transferEntries) !== 2) throw new Exception("Expected duplicate price-component loot ids to be aggregated into two transfer entries");
+
+        $byLootId = [];
+        foreach($transferEntries as $entry)
+        {
+            $byLootId[$entry['lootId']] = $entry['quantity'];
+        }
+
+        if(($byLootId[101] ?? null) !== 6) throw new Exception("Expected loot id 101 quantity to aggregate to 6 across two price components");
+        if(($byLootId[202] ?? null) !== 3) throw new Exception("Expected loot id 202 quantity to remain 3 for the third price component");
+    }
+
     private function unittest_buildCartProductIdWhereClause_createsExpectedPredicate() : void
     {
         $cartProducts = [
@@ -229,6 +270,14 @@ final class PDOCartDAOUnitTests implements Tests
         $cartItem->product = new vProduct($productCtime, $productCrand);
 
         return $cartItem;
+    }
+
+    private static function makeLootEntry(string $lootCtime, int $lootCrand, int $quantity) : array
+    {
+        return [
+            'lootId' => new vRecordId($lootCtime, $lootCrand),
+            'quantity' => $quantity
+        ];
     }
 
     private function invokePrivate(string $methodName, array $args = [])

@@ -189,7 +189,7 @@ class DAOCartService implements CartService
 
             if ($checkoutResult !== true)
             {
-                $resp->message = "Failed to checkout cart";
+                $resp->message = "Failed to checkout cart" . $checkoutResult->message;
                 $resp->data = $checkoutResult;
                 return $resp;
             }
