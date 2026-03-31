@@ -74,3 +74,4 @@
 
 # Local development and documentation folder
 /extra/**
+.vscode/settings.json
