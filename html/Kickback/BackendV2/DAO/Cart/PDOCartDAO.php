@@ -425,6 +425,7 @@ class PDOCartDAO implements CartDAO
             if ($sanityCheckPassed !== true)
             {
                 $conn->rollBack();
+                throw new Exception("sanity check failed");
                 return null;
             }
 
@@ -460,6 +461,7 @@ class PDOCartDAO implements CartDAO
             }
 
             $productLootTransfers = $this->buildProductLootTransferEntries($expectedProductQuantities);
+            error_log("checkout cart build product loot transfer entries : ".json_encode($productLootTransfers));
             if (empty($productLootTransfers))
             {
                 return false;
@@ -512,7 +514,7 @@ class PDOCartDAO implements CartDAO
         return $entries;
     }
 
-    private function buildProductLootTransferEntries(array $expectedProductQuantities) : array
+    private function buildProductLootTransferEntries(array $expectedProductQuantities, bool $shouldBeRemoved = false) : array
     {
         if (empty($expectedProductQuantities))
         {
@@ -539,7 +541,7 @@ class PDOCartDAO implements CartDAO
             JOIN ($selectTable) pq
             ON ppl.ref_product_ctime = pq.product_ctime
             AND ppl.ref_product_crand = pq.product_crand
-            WHERE ppl.removed = 0
+            WHERE ppl.removed = ".(int)$shouldBeRemoved."
             GROUP BY ppl.ref_loot_ctime, ppl.ref_loot_crand";
 
         $conn = $this->pdo->getConnection();
@@ -1080,6 +1082,7 @@ class PDOCartDAO implements CartDAO
         {
             if (!$this->validateLootTransactedForAccounts($cart, $productReservations, $lootEntryQuantities))
             {
+                error_log("validation of loot transactions failed");
                 return false;
             }
 
@@ -1105,10 +1108,7 @@ class PDOCartDAO implements CartDAO
             return false;
         }
 
-        throw new Exception(json_encode(["buyerExcpectedProductQuantities"=>$buyerExpectedProductQuantities]));
-
-
-        $productLootTransfers = $this->buildProductLootTransferEntries($buyerExpectedProductQuantities);
+        $productLootTransfers = $this->buildProductLootTransferEntries($buyerExpectedProductQuantities, true);
         if (empty($productLootTransfers))
         {
             return false;
@@ -1117,11 +1117,13 @@ class PDOCartDAO implements CartDAO
         
         if (!$this->doesBuyerOwnExpectedProductLoot($cart->account, $productLootTransfers))
         {
+            error_log("Buyer does not own expected Product loot");
             return false;
         }
 
         if (!$this->doesSellerOwnExpectedPriceLoot($cart->store->owner, $lootEntryQuantities))
         {
+            error_log("Seller does not own expected Price loot");
             return false;
         }
 
@@ -1141,7 +1143,7 @@ class PDOCartDAO implements CartDAO
             return false;
         }
 
-        $productLootTransfers = $this->buildProductLootTransferEntries($expectedProductQuantities);
+        $productLootTransfers = $this->buildProductLootTransferEntries($expectedProductQuantities, true);
         if (empty($productLootTransfers))
         {
             return false;
@@ -1223,7 +1225,10 @@ class PDOCartDAO implements CartDAO
         }
 
         $buyerInventory = $this->getAccountLootQuantities($buyerId, array_keys($expectedByLootId));
-        return $this->doesInventorySatisfyExpectedItemQuantities($buyerInventory, $expectedByLootId);
+        error_log(json_encode($buyerInventory));
+        $doesInventorySatisfyExpectedItemQuantites = $this->doesInventorySatisfyExpectedItemQuantities($buyerInventory, $expectedByLootId);
+        
+        return $doesInventorySatisfyExpectedItemQuantites;
     }
 
     private function doPriceLootTradesExist(vCart $cart, array $lootEntryQuantities) : bool
@@ -1586,6 +1591,7 @@ class PDOCartDAO implements CartDAO
             $actualQuantity = $actualByItemId[$itemId] ?? 0;
             if ($actualQuantity < $expectedQuantity)
             {
+                error_log("actual : $actualQuantity, expected : $expectedQuantity");
                 return false;
             }
         }
@@ -1931,6 +1937,7 @@ class PDOCartDAO implements CartDAO
                 $priceComponent = static::cartItemToPriceComponentView($row);
 
                 array_push($cartItemAlreadyProccessed->price, $priceComponent);
+                array_push($cartItemAlreadyProccessed->product->price, $priceComponent);
             }
         }
 
