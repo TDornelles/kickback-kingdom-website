@@ -42,6 +42,21 @@ class StubCartDAOException implements CartDAO
     {
         throw new Exception("Stub Exception : Failed to checkout cart");
     }
+
+    public function setStripeSessionId(vRecordId $cartId, string $sessionId) : bool
+    {
+        throw new Exception("Stub Exception : Failed to set stripe session id");
+    }
+
+    public function createStripeTransaction(vRecordId $cartId, string $stripeTransactionId) : bool
+    {
+        throw new Exception("Stub Exception : Failed to create stripe transaction");
+    }
+
+    public function getCartByStripeSessionId(string $sessionId) : ?vCart
+    {
+        throw new Exception("Stub Exception : Failed to get cart by stripe session id");
+    }
 }
 
 ?>

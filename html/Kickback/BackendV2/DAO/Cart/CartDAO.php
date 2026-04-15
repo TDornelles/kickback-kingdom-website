@@ -61,12 +61,41 @@ interface CartDAO
 
     /**
      * Checks out the cart, creating an order and clearing the cart
-     * 
+     *
      * @param vCart $cart the cart to checkout
-     * 
+     *
      * @return Response the response of the checkout operation
      */
     public function checkoutCart(vCart $cart) : ?bool;
+
+    /**
+     * Sets the Stripe checkout session ID on a cart
+     *
+     * @param vRecordId $cartId the cart to update
+     * @param string $sessionId the Stripe session ID
+     *
+     * @return bool true on success, false on failure
+     */
+    public function setStripeSessionId(vRecordId $cartId, string $sessionId) : bool;
+
+    /**
+     * Records a Stripe transaction attempt for a cart.
+     *
+     * @param vRecordId $cartId             the cart for which the transaction was initiated
+     * @param string    $stripeTransactionId the Stripe checkout session ID
+     *
+     * @return bool true on success, false on failure
+     */
+    public function createStripeTransaction(vRecordId $cartId, string $stripeTransactionId) : bool;
+
+    /**
+     * Retrieves a cart by its Stripe checkout session ID
+     *
+     * @param string $sessionId the Stripe session ID to look up
+     *
+     * @return ?vCart the cart with products loaded, or null if not found
+     */
+    public function getCartByStripeSessionId(string $sessionId) : ?vCart;
 }
 
 ?>

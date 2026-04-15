@@ -375,13 +375,27 @@ $isLoggedIn = Session::isLoggedIn();
                     return;
                 }
 
+                checkoutButton.disabled = true;
+                checkoutButton.textContent = 'Processing...';
+
                 try {
-                    await StoreClient.checkoutCart(storeLocator);
-                    showModal('successModal', 'Checkout complete! You can review your inventory for the purchased items.');
-                    await loadCart();
+                    sessionStorage.setItem('storeLocator', storeLocator);
+                    const result = await StoreClient.initiateCheckout(storeLocator);
+                    const data = result.data;
+                    if (data.requiresPayment) {
+                        window.location.href = data.redirectUrl;
+                    } else {
+                        sessionStorage.removeItem('storeLocator');
+                        showModal('successModal', 'Checkout complete! You can review your inventory for the purchased items.');
+                        await loadCart();
+                    }
                 } catch (error) {
                     console.error('Checkout failed', error);
+                    sessionStorage.removeItem('storeLocator');
                     showModal('errorModal', error?.message || 'Unable to complete checkout.');
+                } finally {
+                    checkoutButton.disabled = false;
+                    checkoutButton.textContent = 'Complete Checkout';
                 }
             }
 

@@ -52,7 +52,8 @@ class PDOCartDAO implements CartDAO
         store_ctime,
         store_crand,
         transaction_ctime,
-        transaction_crand
+        transaction_crand,
+        stripe_session_id
     ";
 
     public static string $columnsInCartItemView = "
@@ -1908,6 +1909,8 @@ class PDOCartDAO implements CartDAO
         $cart->ctime = $row["ctime"];
         $cart->crand = $row["crand"];
 
+        $cart->stripeSessionId = $row["stripe_session_id"] ?? null;
+
         return $cart;
     }
 
@@ -2036,6 +2039,92 @@ class PDOCartDAO implements CartDAO
         $cartItem->price = [$priceComponent];
 
         return $cartItem;
+    }
+
+    public function setStripeSessionId(vRecordId $cartId, string $sessionId) : bool
+    {
+        $sql = "UPDATE cart SET stripe_session_id = ? WHERE ctime = ? AND crand = ?";
+        $params = [$sessionId, $cartId->ctime, $cartId->crand];
+
+        try
+        {
+            $conn = $this->pdo->getConnection();
+            $stmt = $conn->prepare($sql);
+            if ($stmt === false)
+            {
+                return false;
+            }
+
+            $result = $stmt->execute($params);
+            return $result !== false;
+        }
+        catch (PDOException $e)
+        {
+            throw new Exception("PDO exception caught while setting stripe session id : " . $e->getMessage(), 0, $e);
+        }
+    }
+
+    public function createStripeTransaction(vRecordId $cartId, string $stripeTransactionId) : bool
+    {
+        $sql = "INSERT INTO stripe_transaction (ref_cart_ctime, ref_cart_crand, stripe_transaction_id)
+                VALUES (?, ?, ?)";
+        $params = [$cartId->ctime, $cartId->crand, $stripeTransactionId];
+
+        try
+        {
+            $conn = $this->pdo->getConnection();
+            $stmt = $conn->prepare($sql);
+            if ($stmt === false) { return false; }
+            $result = $stmt->execute($params);
+            return $result !== false;
+        }
+        catch (PDOException $e)
+        {
+            throw new Exception("PDO exception caught while creating stripe transaction: " . $e->getMessage(), 0, $e);
+        }
+    }
+
+    public function getCartByStripeSessionId(string $sessionId) : ?vCart
+    {
+        $sql = "SELECT ".static::$columnsInCartView." FROM v_cart WHERE stripe_session_id = ? LIMIT 1;";
+        $params = [$sessionId];
+
+        try
+        {
+            $conn = $this->pdo->getConnection();
+            $stmt = $conn->prepare($sql);
+            if ($stmt === false)
+            {
+                return null;
+            }
+
+            $result = $stmt->execute($params);
+            if ($result === false)
+            {
+                return null;
+            }
+
+            $row = $stmt->fetch();
+            if ($row === false)
+            {
+                return null;
+            }
+
+            $cart = static::cartToView($row);
+
+            $cartItems = $this->getCartProductsViews($cart);
+            $cart->cartProducts = $cartItems;
+
+            return $cart;
+        }
+        catch (PDOException $e)
+        {
+            throw new Exception("PDO exception caught while getting cart by stripe session id : " . $e->getMessage(), 0, $e);
+        }
+        catch (Exception $e)
+        {
+            throw new Exception("Exception caught while getting cart by stripe session id : " . $e->getMessage(), 0, $e);
+        }
     }
 }
 

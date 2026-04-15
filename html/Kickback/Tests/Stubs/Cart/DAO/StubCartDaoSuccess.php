@@ -41,6 +41,21 @@ class StubCartDAOSuccess implements CartDAO
     {
         return true;
     }
+
+    public function setStripeSessionId(vRecordId $cartId, string $sessionId) : bool
+    {
+        return true;
+    }
+
+    public function createStripeTransaction(vRecordId $cartId, string $stripeTransactionId) : bool
+    {
+        return true;
+    }
+
+    public function getCartByStripeSessionId(string $sessionId) : ?vCart
+    {
+        return null;
+    }
 }
 
 ?>

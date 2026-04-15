@@ -42,6 +42,21 @@ class StubCartDAOFail implements CartDAO
     {
         return null;
     }
+
+    public function setStripeSessionId(vRecordId $cartId, string $sessionId) : bool
+    {
+        return false;
+    }
+
+    public function createStripeTransaction(vRecordId $cartId, string $stripeTransactionId) : bool
+    {
+        return false;
+    }
+
+    public function getCartByStripeSessionId(string $sessionId) : ?vCart
+    {
+        return null;
+    }
 }
 
 ?>

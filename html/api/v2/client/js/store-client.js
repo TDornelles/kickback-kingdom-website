@@ -278,6 +278,118 @@ class StoreClient {
         }
     }
 
+    /**
+     * Initiate checkout for the cart. Returns either a Stripe redirect URL
+     * (for USD purchases) or a success result (for loot-only purchases).
+     * @param {string|Object} storeLocatorOrCart - Store locator string or cart object
+     * @returns {Promise<Object>} API response with {requiresPayment, redirectUrl} or {requiresPayment, success}
+     */
+    static async initiateCheckout(storeLocatorOrCart){
+        const storeLocator = typeof storeLocatorOrCart === 'string'
+            ? storeLocatorOrCart
+            : storeLocatorOrCart?.store?.locator;
+
+        if (!storeLocator) {
+            throw new Error('Store Locator is required');
+        }
+
+        const bodyData = {
+            "storeLocator": storeLocator,
+        };
+
+        try {
+            const response = await fetch(`/api/v2/server/payments/initiate-checkout`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(bodyData)
+            });
+
+            const data = await response.text();
+            let jsonData;
+
+            try {
+                jsonData = JSON.parse(data);
+            } catch (parseError) {
+                throw new Error('Invalid JSON response from server');
+            }
+
+            if (!response.ok) {
+                if(response.status == 403 && jsonData.data === false)
+                {
+                    throw new Error(jsonData.message);
+                }
+
+                throw new Error(jsonData.message || `HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            if (!jsonData.success) {
+                throw new Error(jsonData.message || `Failed to initiate checkout`);
+            }
+
+            return jsonData;
+
+        } catch (error) {
+            console.error(`Store.initiateCheckout failed:`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get the checkout/payment status for a cart.
+     * @param {string|Object} storeLocatorOrCart - Store locator string or cart object
+     * @returns {Promise<Object>} API response with {status, checkedOut, sessionId}
+     */
+    static async getCheckoutStatus(storeLocatorOrCart){
+        const storeLocator = typeof storeLocatorOrCart === 'string'
+            ? storeLocatorOrCart
+            : storeLocatorOrCart?.store?.locator;
+
+        if (!storeLocator) {
+            throw new Error('Store Locator is required');
+        }
+
+        const bodyData = {
+            "storeLocator": storeLocator,
+        };
+
+        try {
+            const response = await fetch(`/api/v2/server/payments/checkout-status`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(bodyData)
+            });
+
+            const data = await response.text();
+            let jsonData;
+
+            try {
+                jsonData = JSON.parse(data);
+            } catch (parseError) {
+                throw new Error('Invalid JSON response from server');
+            }
+
+            if (!response.ok) {
+                throw new Error(jsonData.message || `HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            if (!jsonData.success) {
+                throw new Error(jsonData.message || `Failed to get checkout status`);
+            }
+
+            return jsonData;
+
+        } catch (error) {
+            console.error(`Store.getCheckoutStatus failed:`, error);
+            throw error;
+        }
+    }
+
     static async checkoutCart(storeLocatorOrCart){
         const storeLocator = typeof storeLocatorOrCart === 'string'
             ? storeLocatorOrCart
