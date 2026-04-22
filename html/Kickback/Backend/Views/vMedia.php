@@ -31,6 +31,10 @@ class vMedia extends vRecordId
             $this->_valid = false;
         }
     }
+    private function isDefaultMediaPath(string $path) : bool
+    {
+        return ($this->crand == 221) || ($path === 'items/221.png');
+    }
 
     public function getFullPath() : string
     {
@@ -41,13 +45,19 @@ class vMedia extends vRecordId
     {
         $this->url = $fullPath;
         $this->mediaPath = str_replace("/assets/media/", '', $fullPath);
+
+        $this->_valid = !$this->isDefaultMediaPath($this->mediaPath);
     }
+
 
     public function setMediaPath(string $path) : void
     {
         $this->mediaPath = $path;
         $this->url = $this->getFullPath();
+
+        $this->_valid = !$this->isDefaultMediaPath($path);
     }
+
     
     public static function fromUrl(string $url): vMedia {
         $media = new vMedia();

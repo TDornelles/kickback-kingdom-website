@@ -28,7 +28,8 @@ interface IMockPHPException__ConfigAccessors
     public function             message(string|\Closure|null $msg = null) : string;
     public function                file() : string;
     public function                line() : int;
-    public function        set_location(string  $file,  int $line) : void;
+    /** @param int<0,max> $line */
+    public function        set_location(string  $file,  string $func,  int $line) : void;
     public function                code(?int    $new_value = null) : int;
     public function caller_context_file(?string $new_value = null) : string;
     public function caller_context_func(?string $new_value = null) : string;
@@ -100,15 +101,9 @@ class MockPHPException implements IMockPHPException
     public function getPrevious() : ?IMockPHPException { return $this->previous_; }
 
     /** @return int */
-    public function getCode() : int    { return $this->code_; }
-
-    public function getLine() : int {
-        return $this->line();
-    }
-
-    public function getFile() : string {
-        return $this->file();
-    }
+    public function getCode() : int    { return $this->code_pure(); }
+    public function getLine() : int    { return $this->line(); }
+    public function getFile() : string { return $this->file(); }
 
     /** @return kkdebug_backtrace_a */
     public function getTrace() : array { return $this->trace_; }
@@ -118,14 +113,17 @@ class MockPHPException implements IMockPHPException
     }
 
     /**
-    * @param      ?string   $path
-    * @param-out  string    $path
-    * @param      ?int      $line
-    * @param-out  int       $line
+    * @param      ?string    $path
+    * @param-out  string     $path
+    * @param      ?string    $func
+    * @param-out  string     $func
+    * @param      ?int       $line
+    * @param-out  int<0,max> $line
     */
-    private function infer_file_and_line_into(?string &$path, ?int &$line) : void {
+    private function infer_location_into(?string &$path, ?string &$func, ?int &$line) : void {
         if(\count($this->trace_) < 2) {
             $path = '{unknown file}';
+            $func = '{unknown function}';
             $line = 0;
             return;
         }

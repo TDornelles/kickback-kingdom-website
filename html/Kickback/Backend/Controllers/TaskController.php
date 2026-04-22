@@ -54,6 +54,8 @@ class TaskController
             $task->rewardItem->iconBig->setMediaPath($row['item_large_image']);
         }
 
+        $task->rewardItem->applyMediaFallbacks();
+
         $task->rewardCount = isset($row['reward_count']) ? (int)$row['reward_count'] : 1;
 
         $task->calculateExpiration();

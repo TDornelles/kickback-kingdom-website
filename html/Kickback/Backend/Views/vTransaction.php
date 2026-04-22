@@ -6,32 +6,28 @@ namespace Kickback\Backend\Views;
 
 class vTransaction extends vRecordId
 {
-    public ?string $description;
     public bool $complete;
     public bool $void;
-    public array $price;
+    public string $description;
+    public string $type;
+    public vAccount $firstAccount;
+    public vAccount $secondAccount;
 
-    public function __construct(
-        string $ctime = '', 
-        int $crand = -1, 
-        ?string $description = null, 
-        bool $complete = false, 
-        bool $void = false, 
-        array $price = [])
+    /**
+     * Access $transactionComponets through functions in order to allow type-checking when adding components.
+     * Only vTransactionComponents should be in the array
+     */
+    private array $transactionComponents = [];
+
+    
+    public function getComponents() : array
     {
-        parent::__construct($ctime, $crand);
-
-        $this->description = $description;
-        $this->complete = $complete;
-        $this->void = $void;
-        $this->price = $price;
+        return $this->transactionComponents;
     }
 
-    private function priceJsonToObjectArray(string $priceJson)
+    public function addComponent(vTransactionComponent $component) : void
     {
-        $array = json_decode($priceJson);
-
-        $price = new vPriceComponent();
+        array_push($this->transactionComponents, $component);
     }
 }
 

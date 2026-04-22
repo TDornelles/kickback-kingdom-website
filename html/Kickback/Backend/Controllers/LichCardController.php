@@ -39,7 +39,7 @@ class LichCardController
                 inner join item i on i.id = deckbox.item_id
 
                 WHERE 
-                l.container_loot_id = ? AND l.account_id = 46 and i.item_category = 2
+                l.container_loot_id = ? and i.item_category = 2
                 GROUP BY l.item_id;";
 
                 
@@ -912,13 +912,13 @@ class LichCardController
                 $item = new vItem('', $row['item_id']);
                 $lichCard->item = $item;
             } else {
-                $response = self::linkLichCardToNewItem($lichCard);
+                $response = self::linkvLichCardToNewItem($lichCard);
                 if ($response->success) {
                     $item = new vItem('', $response->data->crand);
                     $lichCard->item = $item;
                 }
                 else{
-                    
+
                     throw new \Exception("Failed to insert item for Lich Card: " . $response->message);
                 }
             }

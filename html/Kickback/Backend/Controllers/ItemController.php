@@ -7,6 +7,8 @@ use Exception;
 use Kickback\Backend\Views\vItem;
 use Kickback\Backend\Views\vMedia;
 use Kickback\Backend\Views\vRecordId;
+use Kickback\Backend\Views\vAbility;
+use Kickback\Backend\Views\vCollection;
 use Kickback\Backend\Models\Response;
 use Kickback\Services\Database;
 use Kickback\Backend\Views\vAccount;
@@ -18,6 +20,287 @@ use Kickback\Backend\Models\ItemCategory;
 
 class ItemController
 {
+    /** @var array<int, array<vAbility>> */
+    private static array $abilityCache = [];
+
+    public static function getAllItems(bool $excludeExistingUniques = false): Response
+    {
+        $conn = Database::getConnection();
+
+        $sql = "SELECT * FROM v_item_info vi";
+
+        if ($excludeExistingUniques) {
+            $sql = "SELECT i.* FROM kickbackdb.v_item_info i " .
+                "LEFT JOIN loot l ON i.Id = l.item_id " .
+                "WHERE ((`type` IN (3, 5) OR (`type` = 4 AND l.Id IS NULL)) " .
+                "AND (i.Id NOT IN (15, 16, 17, 18))) " .
+                "GROUP BY i.Id";
+        }
+
+        $sql .= " ORDER BY name";
+
+        $stmt = $conn->prepare($sql);
+
+        if (!$stmt) {
+            return new Response(false, "Failed to load items: " . $conn->error);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $items = [];
+        while ($row = $result->fetch_assoc()) {
+            $itemId = new vRecordId(
+                $row['DateCreated'] ?? ($row['ctime'] ?? ''),
+                isset($row['Id']) ? (int)$row['Id'] : (int)($row['item_id'] ?? 0)
+            );
+            $items[] = self::row_to_vItem($row, $itemId);
+        }
+
+        $stmt->close();
+
+        self::hydrateItemAbilities($items);
+
+        return new Response(true, "Items retrieved successfully", $items);
+    }
+
+    public static function getItemTable(): Response
+    {
+        $conn = Database::getConnection();
+
+        $sql = "SELECT
+                i.Id,
+                i.name,
+                i.`desc`,
+                i.`type`,
+                i.rarity,
+                i.media_id_large,
+                i.media_id_small,
+                i.media_id_back,
+                CONCAT(ml.Directory, '/', ml.Id, '.', ml.extension) AS media_path_large,
+                CONCAT(ms.Directory, '/', ms.Id, '.', ms.extension) AS media_path_small,
+                CONCAT(mb.Directory, '/', mb.Id, '.', mb.extension) AS media_path_back,
+                i.nominated_by_id,
+                i.collection_id,
+                i.equipable,
+                i.equipment_slot,
+                i.redeemable,
+                i.useable,
+                i.is_container,
+                i.container_size,
+                i.container_item_category,
+                i.item_category,
+                i.is_fungible
+            FROM item i
+            LEFT JOIN Media ml ON i.media_id_large = ml.Id
+            LEFT JOIN Media ms ON i.media_id_small = ms.Id
+            LEFT JOIN Media mb ON i.media_id_back = mb.Id
+            ORDER BY i.name";
+
+        $stmt = $conn->prepare($sql);
+
+        if (!$stmt) {
+            return new Response(false, "Failed to load items: " . $conn->error);
+        }
+
+        if (!$stmt->execute()) {
+            return new Response(false, "Failed to load items: " . $stmt->error);
+        }
+
+        $result = $stmt->get_result();
+        $items = [];
+
+        while ($row = $result->fetch_assoc()) {
+            $itemId = new vRecordId('', (int)$row['Id']);
+            $item = self::row_to_vItem($row, $itemId);
+
+            $item->mediaIdSmall = array_key_exists('media_id_small', $row) && $row['media_id_small'] !== null
+                ? (int)$row['media_id_small']
+                : null;
+            $item->mediaIdLarge = array_key_exists('media_id_large', $row) && $row['media_id_large'] !== null
+                ? (int)$row['media_id_large']
+                : null;
+            $item->mediaIdBack = array_key_exists('media_id_back', $row) && $row['media_id_back'] !== null
+                ? (int)$row['media_id_back']
+                : null;
+            $item->mediaPathSmall = $row['media_path_small'] ?? null;
+            $item->mediaPathLarge = $row['media_path_large'] ?? null;
+            $item->mediaPathBack = $row['media_path_back'] ?? null;
+
+            if (array_key_exists('media_id_small', $row) && $row['media_id_small'] !== null) {
+                $item->iconSmall->crand = (int)$row['media_id_small'];
+            }
+            if (array_key_exists('media_path_small', $row) && $row['media_path_small'] !== null) {
+                $item->iconSmall->setMediaPath($row['media_path_small']);
+            }
+
+            if (array_key_exists('media_id_large', $row) && $row['media_id_large'] !== null) {
+                $item->iconBig->crand = (int)$row['media_id_large'];
+            }
+            if (array_key_exists('media_path_large', $row) && $row['media_path_large'] !== null) {
+                $item->iconBig->setMediaPath($row['media_path_large']);
+            }
+
+            if (array_key_exists('media_id_back', $row) && $row['media_id_back'] !== null) {
+                $item->iconBack->crand = (int)$row['media_id_back'];
+            }
+            if (array_key_exists('media_path_back', $row) && $row['media_path_back'] !== null) {
+                $item->iconBack->setMediaPath($row['media_path_back']);
+            }
+
+            // Ensure all media fields have sensible fallbacks so the admin UI can display previews
+            $item->applyMediaFallbacks();
+
+            $items[] = $item;
+        }
+
+        $stmt->close();
+
+        self::hydrateItemAbilities($items);
+
+        return new Response(true, "Items retrieved successfully", $items);
+    }
+
+    /**
+     * Fetch abilities associated with the provided item ids.
+     *
+     * @param array<int> $itemIds
+     */
+    public static function getItemAbilities(array $itemIds): Response
+    {
+        $ids = array_values(array_unique(array_map('intval', array_filter($itemIds, fn($id) => (int)$id > 0))));
+
+        if (empty($ids)) {
+            return new Response(true, 'No items provided.', []);
+        }
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $types = str_repeat('i', count($ids));
+
+        $conn = Database::getConnection();
+        $sql = "SELECT ia.item_id, a.Id AS ability_id, a.name, a.icon, a.`desc`,
+                a.prestige_gain, a.prestige_multiplier, a.exp_gain, a.exp_multiplier,
+                a.level_gain, a.level_multiplier, a.title_change
+            FROM item_ability ia
+            JOIN ability a ON ia.ability_id = a.Id
+            WHERE ia.item_id IN ({$placeholders})
+            ORDER BY a.name";
+
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            return new Response(false, 'Failed to load item abilities: ' . $conn->error);
+        }
+
+        $stmt->bind_param($types, ...$ids);
+
+        if (!$stmt->execute()) {
+            return new Response(false, 'Failed to load item abilities: ' . $stmt->error);
+        }
+
+        $result = $stmt->get_result();
+        $abilityMap = [];
+
+        while ($row = $result->fetch_assoc()) {
+            $itemId = (int)$row['item_id'];
+            $ability = new vAbility('', (int)$row['ability_id']);
+            $ability->name = (string)($row['name'] ?? '');
+            $ability->icon = trim((string)($row['icon'] ?? ''));
+            $ability->description = (string)($row['desc'] ?? '');
+            $ability->prestigeGain = (int)($row['prestige_gain'] ?? 0);
+            $ability->prestigeMultiplier = (float)($row['prestige_multiplier'] ?? 0.0);
+            $ability->expGain = (int)($row['exp_gain'] ?? 0);
+            $ability->expMultiplier = (float)($row['exp_multiplier'] ?? 0.0);
+            $ability->levelGain = (int)($row['level_gain'] ?? 0);
+            $ability->levelMultiplier = (float)($row['level_multiplier'] ?? 0.0);
+            $ability->titleChange = trim((string)($row['title_change'] ?? ''));
+            $abilityMap[$itemId][] = $ability;
+        }
+
+        $stmt->close();
+
+        return new Response(true, 'Item abilities retrieved successfully.', $abilityMap);
+    }
+
+    /**
+     * Update the abilities associated with an item by replacing existing rows.
+     *
+     * @param array<int> $abilityIds
+     */
+    public static function updateItemAbilities(vRecordId $itemId, array $abilityIds): Response
+    {
+        if ($itemId->crand <= 0) {
+            return new Response(false, 'A valid item id must be provided when assigning abilities.');
+        }
+
+        $normalizedIds = array_values(array_unique(array_map('intval', array_filter($abilityIds, fn($id) => (int)$id > 0))));
+
+        $conn = Database::getConnection();
+
+        // Validate ability ids exist
+        if (!empty($normalizedIds)) {
+            $placeholders = implode(',', array_fill(0, count($normalizedIds), '?'));
+            $types = str_repeat('i', count($normalizedIds));
+            $validateStmt = $conn->prepare("SELECT COUNT(*) AS count FROM ability WHERE Id IN ({$placeholders})");
+            if (!$validateStmt) {
+                return new Response(false, 'Failed to validate abilities: ' . $conn->error);
+            }
+
+            $validateStmt->bind_param($types, ...$normalizedIds);
+            if (!$validateStmt->execute()) {
+                return new Response(false, 'Failed to validate abilities: ' . $validateStmt->error);
+            }
+
+            $countRow = $validateStmt->get_result()->fetch_assoc();
+            $validateStmt->close();
+
+            if ((int)($countRow['count'] ?? 0) !== count($normalizedIds)) {
+                return new Response(false, 'One or more selected abilities are invalid.');
+            }
+        }
+
+        $conn->begin_transaction();
+
+        $deleteStmt = $conn->prepare('DELETE FROM item_ability WHERE item_id = ?');
+        if (!$deleteStmt) {
+            $conn->rollback();
+            return new Response(false, 'Failed to prepare ability removal: ' . $conn->error);
+        }
+
+        $deleteStmt->bind_param('i', $itemId->crand);
+        if (!$deleteStmt->execute()) {
+            $conn->rollback();
+            return new Response(false, 'Failed to clear existing abilities: ' . $deleteStmt->error);
+        }
+
+        if (!empty($normalizedIds)) {
+            $insertStmt = $conn->prepare('INSERT INTO item_ability (item_id, ability_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE ability_id = ability_id');
+            if (!$insertStmt) {
+                $conn->rollback();
+                return new Response(false, 'Failed to prepare ability assignment: ' . $conn->error);
+            }
+
+            foreach ($normalizedIds as $abilityId) {
+                $insertStmt->bind_param('ii', $itemId->crand, $abilityId);
+                if (!$insertStmt->execute()) {
+                    $insertStmt->close();
+                    $conn->rollback();
+                    return new Response(false, 'Failed to assign abilities: ' . $insertStmt->error);
+                }
+            }
+
+            $insertStmt->close();
+        }
+
+        $conn->commit();
+
+        $abilityCount = count($normalizedIds);
+        $message = $abilityCount > 0
+            ? "Attached {$abilityCount} " . ($abilityCount === 1 ? 'ability' : 'abilities') . ' to the item.'
+            : 'Removed all abilities from the item.';
+
+        return new Response(true, $message, $normalizedIds);
+    }
+
     public static function insertItem(Item $item): Response {
         $conn = Database::getConnection();
     
@@ -68,7 +351,7 @@ class ItemController
             $mediaIdBack = $item->mediaBack->crand;
         }
         $stmt->bind_param(
-            'iiiiissiiiiiiiiiii',
+            'iiiiissiiisiiiiiii',
             $typeValue,
             $rarityValue,
             $item->mediaLarge->crand,
@@ -97,6 +380,137 @@ class ItemController
         $stmt->close();
     
         return new Response(true, "Item inserted successfully.", new vRecordId('', (int)$insertedId));
+    }
+
+    public static function updateItem(Item $item): Response {
+        $conn = Database::getConnection();
+
+        $requiresUniqueLootCheck = $item->type === ItemType::Unique || $item->rarity === ItemRarity::Unique;
+
+        if ($requiresUniqueLootCheck) {
+            $lootCountStmt = $conn->prepare('SELECT COUNT(*) AS loot_count FROM loot WHERE item_id = ?');
+            if (!$lootCountStmt) {
+                return new Response(false, 'Failed to validate item uniqueness: ' . $conn->error);
+            }
+
+            $lootCountStmt->bind_param('i', $item->crand);
+            if (!$lootCountStmt->execute()) {
+                $error = $lootCountStmt->error;
+                $lootCountStmt->close();
+                return new Response(false, 'Failed to validate item uniqueness: ' . $error);
+            }
+
+            $lootCountRow = $lootCountStmt->get_result()->fetch_assoc();
+            $lootCountStmt->close();
+
+            $lootCount = (int)($lootCountRow['loot_count'] ?? 0);
+
+            if ($lootCount > 1) {
+                return new Response(false, "Cannot mark this item as unique because {$lootCount} loot records already exist for it.");
+            }
+        }
+
+        $sql = "
+            UPDATE item
+            SET
+                type = ?,
+                rarity = ?,
+                media_id_large = ?,
+                media_id_small = ?,
+                media_id_back = ?,
+                `desc` = ?,
+                `name` = ?,
+                nominated_by_id = ?,
+                collection_id = ?,
+                equipable = ?,
+                equipment_slot = ?,
+                redeemable = ?,
+                useable = ?,
+                is_container = ?,
+                container_size = ?,
+                container_item_category = ?,
+                item_category = ?,
+                is_fungible = ?
+            WHERE Id = ?
+        ";
+
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            return new Response(false, "Failed to prepare item update: " . $conn->error);
+        }
+
+        $equipmentSlot = $item->equipmentSlot?->value;
+        $nominatedById = $item->nominatedBy?->crand;
+        $collectionId  = $item->collection?->crand;
+        $containerItemCategory = $item->containerItemCategory?->value;
+        $itemCategory  = $item->itemCategory?->value;
+
+        $typeValue   = $item->type->value;
+        $rarityValue = $item->rarity->value;
+
+        $mediaIdBack = $item->mediaLarge->crand;
+
+        $isFungible = $item->fungible ?? false;
+
+        if ($item->mediaBack != null)
+        {
+            $mediaIdBack = $item->mediaBack->crand;
+        }
+
+        $stmt->bind_param(
+            'iiiiissiiisiiiiiiii',
+            $typeValue,
+            $rarityValue,
+            $item->mediaLarge->crand,
+            $item->mediaSmall->crand,
+            $mediaIdBack,
+            $item->desc,
+            $item->name,
+            $nominatedById,
+            $collectionId,
+            $item->equipable,
+            $equipmentSlot,
+            $item->redeemable,
+            $item->useable,
+            $item->isContainer,
+            $item->containerSize,
+            $containerItemCategory,
+            $itemCategory,
+            $isFungible,
+            $item->crand
+        );
+
+        if (!$stmt->execute()) {
+            return new Response(false, "Failed to update item: " . $stmt->error);
+        }
+
+        $stmt->close();
+
+        return new Response(true, "Item updated successfully.", new vRecordId('', (int)$item->crand));
+    }
+
+    public static function deleteItem(vRecordId $itemId): Response {
+        $conn = Database::getConnection();
+
+        $sql = "DELETE FROM item WHERE Id = ?";
+
+        $stmt = $conn->prepare($sql);
+
+        if (!$stmt) {
+            return new Response(false, "Failed to prepare item delete: " . $conn->error);
+        }
+
+        $stmt->bind_param('i', $itemId->crand);
+
+        if (!$stmt->execute()) {
+            return new Response(false, "Failed to delete item: " . $stmt->error);
+        }
+
+        $affected = $stmt->affected_rows;
+        $stmt->close();
+
+        $message = $affected > 0 ? 'Item deleted successfully.' : 'No item was deleted.';
+        return new Response($affected > 0, $message, null);
     }
     
 
@@ -159,11 +573,14 @@ class ItemController
         else
         {
             $row = mysqli_fetch_assoc($result);
-    
+
             // Free the statement
             mysqli_stmt_close($stmt);
-            
-            return (new Response(true, "Item information.",  self::row_to_vItem($row, $item_id) ));
+
+            $item = self::row_to_vItem($row, $item_id);
+            self::hydrateItemAbilities([$item]);
+
+            return (new Response(true, "Item information.",  $item ));
         }
     }
 
@@ -222,6 +639,8 @@ class ItemController
 
                 array_push($items, $item);
             }
+
+            self::hydrateItemAbilities($items);
 
             $resp->success = true;
             $resp->message = "items returned with name : $name";
@@ -301,7 +720,9 @@ class ItemController
         if (array_key_exists("nominated_by_id",$row) && $row["nominated_by_id"] != null)
         {
             $nominatedBy = new vAccount('', $row["nominated_by_id"]);
-            $nominatedBy->username = $row["nominated_by"];
+            if (array_key_exists("nominated_by", $row)) {
+                $nominatedBy->username = $row["nominated_by"];
+            }
             $item->nominatedBy = $nominatedBy;
         }
 
@@ -388,13 +809,60 @@ class ItemController
             $category = (int)$row["container_item_category"];
             $item->containerItemCategory = ItemCategory::tryFrom($category);
         }
-    
+
         if (array_key_exists("item_category", $row) && $row["item_category"] !== null) {
             $category = (int)$row["item_category"];
             $item->itemCategory = ItemCategory::tryFrom($category);
         }
 
+        if (array_key_exists("collection_id", $row) && $row["collection_id"] !== null) {
+            $item->collection = new vCollection('', (int)$row["collection_id"]);
+        }
+
+        $item->applyMediaFallbacks();
+
+        if (array_key_exists($item->crand, self::$abilityCache)) {
+            $item->abilities = self::$abilityCache[$item->crand];
+        }
+
         return $item;
+    }
+
+    /**
+     * Populate the abilities property for each provided item, hydrating them in batches where possible.
+     *
+     * @param array<vItem> $items
+     */
+    public static function hydrateItemAbilities(array $items): void
+    {
+        $missingIds = [];
+
+        foreach ($items as $item) {
+            if ($item->crand > 0 && !array_key_exists($item->crand, self::$abilityCache)) {
+                $missingIds[] = $item->crand;
+            }
+        }
+
+        if (!empty($missingIds)) {
+            $abilityResp = self::getItemAbilities($missingIds);
+            if ($abilityResp->success && is_array($abilityResp->data)) {
+                foreach ($abilityResp->data as $itemId => $abilities) {
+                    self::$abilityCache[(int)$itemId] = $abilities;
+                }
+            }
+
+            foreach ($missingIds as $id) {
+                if (!array_key_exists($id, self::$abilityCache)) {
+                    self::$abilityCache[$id] = [];
+                }
+            }
+        }
+
+        foreach ($items as $item) {
+            $item->abilities = $item->crand > 0
+                ? (self::$abilityCache[$item->crand] ?? [])
+                : [];
+        }
     }
 
 }

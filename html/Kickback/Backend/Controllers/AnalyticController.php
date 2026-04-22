@@ -365,7 +365,7 @@ class AnalyticController
             FROM 
                 kickbackdb.v_analytic_accounts_growth_retention_monthly 
             WHERE 
-                month = ?
+                month = CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci
             LIMIT 1;
         ";
     

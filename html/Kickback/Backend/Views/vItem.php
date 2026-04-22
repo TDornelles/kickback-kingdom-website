@@ -7,6 +7,8 @@ use Kickback\Backend\Views\vRecordId;
 use Kickback\Backend\Views\vMedia;
 use Kickback\Backend\Views\vQuest;
 use Kickback\Backend\Views\vAccount;
+use Kickback\Backend\Views\vCollection;
+use Kickback\Backend\Views\vAbility;
 use Kickback\Backend\Models\ItemType;
 use Kickback\Backend\Models\ItemRarity;
 use Kickback\Backend\Models\ItemEquipmentSlot;
@@ -19,6 +21,13 @@ class vItem extends vRecordId
     public vMedia $iconSmall;
     public vMedia $iconBig;
     public vMedia $iconBack;
+    public vMedia $icon;
+    public ?int $mediaIdSmall = null;
+    public ?int $mediaIdLarge = null;
+    public ?int $mediaIdBack = null;
+    public ?string $mediaPathSmall = null;
+    public ?string $mediaPathLarge = null;
+    public ?string $mediaPathBack = null;
     public ?vAccount $nominatedBy = null;
     public ItemType $type;
     public ItemRarity $rarity;
@@ -34,6 +43,10 @@ class vItem extends vRecordId
     public int $containerSize; // -1 = infinite
     public ?ItemCategory $containerItemCategory = null;
     public ?ItemCategory $itemCategory = null;
+    public ?vCollection $collection = null;
+
+    /** @var array<vAbility> */
+    public array $abilities;
 
     public bool $isFungible;
 
@@ -48,6 +61,8 @@ class vItem extends vRecordId
         $this->description = '';
         $this->iconSmall = vMedia::defaultIcon();
         $this->iconBig = vMedia::defaultIcon();
+        $this->iconBack = vMedia::defaultIcon();
+        $this->icon = vMedia::defaultIcon();
         $this->type = ItemType::Standard;
         $this->rarity = ItemRarity::Common;
         $this->dateCreated = new vDateTime();
@@ -56,11 +71,48 @@ class vItem extends vRecordId
         $this->useable = false;
         $this->isContainer = false;
         $this->containerSize = -1;
+        $this->abilities = [];
         $this->auxData = [];
     }
 
     public function isWritOfPassage() : bool {
         return $this->crand == 14;
+    }
+
+    public function applyMediaFallbacks() : void {
+        $iconSmallValid = $this->iconSmall->isValid();
+        $iconBigValid = $this->iconBig->isValid();
+        $iconBackValid = $this->iconBack->isValid();
+
+        if (!$iconSmallValid && $iconBigValid) {
+            $this->iconSmall = $this->iconBig;
+            $iconSmallValid = true;
+        }
+
+        if (!$iconBigValid && $iconSmallValid) {
+            $this->iconBig = $this->iconSmall;
+            $iconBigValid = true;
+        }
+
+        if (!$iconBackValid) {
+            if ($iconBigValid) {
+                $this->iconBack = $this->iconBig;
+                $iconBackValid = true;
+            } elseif ($iconSmallValid) {
+                $this->iconBack = $this->iconSmall;
+                $iconBackValid = true;
+            }
+        }
+
+        if ($iconSmallValid) {
+            $this->icon = $this->iconSmall;
+        } elseif ($iconBigValid) {
+            $this->icon = $this->iconBig;
+        } elseif ($iconBackValid) {
+            $this->icon = $this->iconBack;
+        } else {
+            $this->icon = vMedia::defaultIcon();
+        }
     }
 }
 

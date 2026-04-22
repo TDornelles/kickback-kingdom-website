@@ -6,7 +6,7 @@ namespace Kickback\Backend\Models;
 
 use Kickback\Backend\Views\vRecordId;
 
-class Store extends recordId
+class Store extends RecordId
 {
     public string $name;
     public string $locator;

@@ -4,6 +4,7 @@ namespace Kickback\Services;
 use Exception;
 use Kickback\Backend\Controllers\AccountController;
 use Kickback\Backend\Controllers\StoreController;
+
 use Kickback\Backend\Models\Enums\CurrencyCode;
 use Kickback\Backend\Models\Response;
 use Kickback\Backend\Views\vAccount;
@@ -12,6 +13,7 @@ use Kickback\Backend\Views\vCartItem;
 use Kickback\Backend\Views\vItem;
 use Kickback\Backend\Views\vMedia;
 use Kickback\Backend\Views\vPrice;
+use Kickback\Backend\Views\vPriceComponent;
 use Kickback\Backend\Views\vProduct;
 use Kickback\Backend\Views\vRecordId;
 use Kickback\Backend\Views\vStore;
@@ -19,6 +21,7 @@ use Kickback\Backend\Views\vTransaction;
 use Kickback\Common\Primitives\Obj;
 use Kickback\Services\ApiV2\Endpoint;
 use LogicException;
+use stdClass;
 
 class StoreService
 {
@@ -64,15 +67,23 @@ class StoreService
 
         if(empty($body))
         {
-            $resp->message = "Product cannot be empty"; 
+            $resp->message = "Body cannot be empty"; 
+            return 400;
+        }
+
+        if(empty($body->cartProduct))
+        {
+            $resp->message = "cartProduct cannot be empty";
             return 400;
         }
 
         StoreService::initialize();
 
-        $cartProduct = static::vCartItemFromJson($body);
+        $cartProduct = (object)$body->cartProduct;
 
-        if(StoreController::doesCartProductBelongToAccount($account, $cartProduct))
+        $cartProduct = static::vCartItemFromJson((object)$cartProduct);
+
+        if(!StoreController::doesCartProductBelongToAccount($account, $cartProduct))
         {
             $resp->message = "Cart Product does not belong to account";
             return 403;
@@ -382,21 +393,10 @@ class StoreService
 
         $body = json_decode($request_contents_json, true);
 
-        if(!key_exists("cart", $body))
-        {
-            $resp->message = "Request body must contain the key : 'cart'";
-            return 400;
-        }
 
-        if(!key_exists("productId", $body))
+        if(!key_exists("productLocator", $body))
         {
-            $resp->message = "Request body must contain the key : 'productId'";
-            return 400;
-        }
-
-        if(empty($body["cart"]))
-        {
-            $resp->message = "Cart cannot be empty"; 
+            $resp->message = "Request body must contain the key : 'productLocator'";
             return 400;
         }
 
@@ -405,22 +405,15 @@ class StoreService
             $resp->message = "ProductLocator cannot be empty"; 
             return 400;
         }
-
-        $cart = (object)$body["cart"];
         $productLocator = $body["productLocator"];
 
 
         StoreService::initialize();
 
-        $cart = static::vCartFromJson($cart);
-
-        if($cart->account->equals($account));
-        {
-            $resp->message = "Cart does not belong to account";
-            return 403;
-        }
+        
 
         $productResp = StoreController::getProductByLocator($productLocator);
+        
 
         if(!$productResp->success)
         {
@@ -428,6 +421,26 @@ class StoreService
             return 400;
         }
 
+        $product = $productResp->data;
+
+        $cartResp = StoreController::getCartForAccount($account, $product->store);
+
+        if(!$cartResp->success)
+        {
+            $resp->message = "Failed to retrieve cart for account for product's store";
+            return 500;
+        }
+
+        $cart = $cartResp->data;
+
+        if(!$cart->account->equals($account))
+        {
+            $resp->message = "Cart does not belong to account";
+            $resp->data = ["forbiddenAccount"=>$account, "cartAccount"=>$cart->account];
+            return 403;
+        }
+
+    
         $addProductToCartResp = StoreController::addProductToCart($productResp->data, $cart);
 
         if(!$addProductToCartResp->success)
@@ -473,21 +486,9 @@ class StoreService
 
         $body = json_decode($request_contents_json, true);
 
-        if(!key_exists("cart", $body))
-        {
-            $resp->message = "Request body must contain the key : 'cart'";
-            return 400;
-        }
-
         if(!key_exists("productId", $body))
         {
             $resp->message = "Request body must contain the key : 'productId'";
-            return 400;
-        }
-
-        if(empty($body["cart"]))
-        {
-            $resp->message = "Cart cannot be empty"; 
             return 400;
         }
 
@@ -497,19 +498,37 @@ class StoreService
             return 400;
         }
 
-        $cart = (object)$body["cart"];
         $productId = (object)$body["productId"];
 
 
         StoreService::initialize();
 
-        $product = new vRecordId($productId->ctime, $productId->crand);
+        $productId = new vRecordId($productId->ctime, $productId->crand);
+        $productResp = StoreController::getProductById($productId);
 
-        $cart = static::vCartFromJson($cart);
-
-        if($cart->account->equals($account))
+        if(!$productResp->success)
         {
-            $resp->message = "Cart does not belong to account";
+            $resp->message = "Failed to get product by id to add it to cart";
+            return 500;
+        }
+
+        $product = $productResp->data;
+
+        $cartResp = StoreController::getCartForAccount($account, $product->store);
+
+        if(!$cartResp->success)
+        {
+            $resp->message = "Failed to retreive cart for account for product's store";
+            return 500;
+        }
+
+        $cart = $cartResp->data;
+
+        if(!$cart->account->equals($account))
+        {
+            $resp->message = "Cart does not belong to account"; 
+            $resp->data = ["forbiddenAccount"=>$account, "cartAccount"=>$cart->account];
+
             return 403;
         }
 
@@ -636,18 +655,6 @@ class StoreService
 
         $body = json_decode($request_contents_json, true);
 
-        if(!key_exists("cart", $body))
-        {
-            $resp->message = "Request body must contain the key : 'cart'";
-            return 400;
-        }
-
-        if(empty($body["cart"]))
-        {
-            $resp->message = "Cart cannot be empty"; 
-            return 400;
-        }
-
         if(!key_exists("couponCode", $body))
         {
             $resp->message = "Request body must contain the key : 'couponCode'";
@@ -660,13 +667,11 @@ class StoreService
             return 400;
         }
 
-
-        $cart = (object)$body["cart"];
-        $coupnCode = $body["couponCode"];
+        $couponCode = $body["couponCode"];
 
         StoreService::initialize();
 
-        $couponResp = StoreController::getCouponByCode($coupnCode);
+        $couponResp = StoreController::getCouponByCode($couponCode);
 
         if(!$couponResp->success)
         {
@@ -674,15 +679,26 @@ class StoreService
             return 400;
         }
 
-        $vCart = static::vCartFromJson($cart);
+        $coupon = $couponResp->data;
 
-        if($cart->account->equals($account))
+        $cartResp = StoreController::getCartForAccount($account, $coupon->storeId);
+
+        if(!$cartResp->success)
+        {
+            $resp->message = "Failed to retreive cart";
+            return 500;
+        }
+
+        $cart = $cartResp->data;
+
+        if(!$cart->account->equals($account))
         {
             $resp->message = "Cart does not belong to account";
+            $resp->data = ["forbiddenAccount"=>$account, "cartAccount"=>$cart->account];
             return 403;
         }
 
-        $applyCouponResp = StoreController::tryApplyCouponToCart($vCart, $couponResp->data);
+        $applyCouponResp = StoreController::tryApplyCouponToCart($cart, $couponResp->data);
 
         if(!$applyCouponResp->success)
         {
@@ -750,9 +766,16 @@ class StoreService
 
         $vCart = static::vCartFromJson($cart);
 
-        if($vCart->account->equals($account))
+        if(!$vCart->account->equals($account))
         {
             $resp->message = "Cart does not belong to account";
+            $resp->data = ["forbiddenAccount"=>$account, "cartAccount"=>$cart->account];
+            return 403;
+        }
+
+        if($vCart->account->equals($vCart->store->owner))
+        {
+            $resp->message = "Cannot checkout cart for a store you own";
             return 403;
         }
 
@@ -760,7 +783,14 @@ class StoreService
 
         if(!$checkoutCartResp->success)
         {
-            $resp->message = "Failed to checkout cart";
+            if(!is_null($checkoutCartResp->data) && $checkoutCartResp->data == false)
+            {
+                $resp->message = "You don't have the required loot to checkout these products!";
+                $resp->data = false;
+                return 403;
+            }
+
+            $resp->message = "Failed to checkout cart : $checkoutCartResp->message";
             return 500;
         }
 
@@ -783,7 +813,7 @@ class StoreService
 
         $account = (object)$cart->account;
         $vCart->account->username = $account->username;
-        $vCart->account->ctime = $account->ctime;
+        $vCart->account->ctime = "";
         $vCart->account->crand = $account->crand;
 
         $store = (object)$cart->store;
@@ -792,7 +822,7 @@ class StoreService
         $vCart->store->ctime = $store->ctime;
         $vCart->store->crand = $store->crand;
             $owner = (object)$store->owner;
-            $storeOwner = new vAccount($owner->ctime, $owner->crand);
+            $storeOwner = new vAccount("", $owner->crand);
         $vCart->store->owner = $storeOwner;
 
         $vCart->checkedOut = $cart->checkedOut;
@@ -801,13 +831,12 @@ class StoreService
         $vCart->ctime = $cart->ctime;
         $vCart->crand = $cart->crand;
 
-        $transaction = (object)$cart->transaction;
+        /*$transaction = (object)$cart->transaction;
         $vTransaction = new vTransaction();
             $vTransaction->description = $transaction->description;
             $vTransaction->complete = $transaction->complete;
             $vTransaction->void = $transaction->void;
-            $vTransaction->price = $transaction->price;
-        $vCart->transaction = $vTransaction;
+        $vCart->transaction = $vTransaction;*/
 
         $vCart->cartProducts = [];
 
@@ -816,7 +845,32 @@ class StoreService
             array_push($vCart->cartProducts, static::vCartItemFromJson((object)$product));
         }
 
+        $vCart->totals = static::vCartToTotatlsFromJson($cart);
+
         return $vCart;
+    }
+
+    private static function vCartToTotatlsFromJson(object $cart) : array
+    {
+        $totals = $cart->totals;
+
+        $objTotals = [];
+
+        foreach($totals as $total)
+        {
+            $item = static::vItemFromJson((object)$total["item"]);
+            $currencyCode = is_null($total["currencyCode"]) ? null : CurrencyCode::from($total["currencyCode"]);
+
+            $objTotal = new vPriceComponent();
+
+            $objTotal->amount = $total["amount"];
+            $objTotal->currencyCode = $currencyCode;
+            $objTotal->item = $item;
+
+            array_push($objTotals, $objTotal);
+        }
+
+        return $objTotals;
     }
 
     private static function vCartItemFromJson(object $cartItem) : vCartItem
@@ -824,15 +878,16 @@ class StoreService
         $vCartItem = new vCartItem();
 
             $product = (object)$cartItem->product;
+            $objCart = (object)$cartItem->cart;
 
             $price = static::vPriceComponentArrayFromJson($product->price);
 
-                $vProduct = new vProduct($cartItem->product->ctime, $cartItem->product->crand);
+                $vProduct = new vProduct($product->ctime, $product->crand);
                 $vProduct->price = $price;
-                $vProduct->stock = $cartItem->product->stock;
-                $vProduct->locator = $cartItem->product->locator;
-                $vProduct->name = $cartItem->product->name;
-                $vProduct->description = $cartItem->product->description;
+                $vProduct->stock = $product->stock;
+                $vProduct->locator = $product->locator;
+                $vProduct->name = $product->name;
+                $vProduct->description = $product->description;
 
                 $mediaSmall = (object)$product->mediaSmall;
                 $vProduct->mediaSmall = static::vMediaFromJson_FullURL($mediaSmall->url);
@@ -843,8 +898,8 @@ class StoreService
             $vCartItem->product = $vProduct;
 
                 $cart = new vCart();
-                $cart->ctime = $cartItem->cart->ctime;
-                $cart->crand = $cartItem->crand;
+                $cart->ctime = $objCart->ctime;
+                $cart->crand = $objCart->crand;
             $vCartItem->cart = $cart;
             
             $vCartItem->ctime = $cartItem->ctime;
@@ -879,7 +934,7 @@ class StoreService
 
         foreach($price as $priceComponent)
         {
-            array_push($vPrice, static::vPriceFromJson($priceComponent));
+            array_push($vPrice, static::vPriceFromJson((object)$priceComponent));
         }
 
         return $vPrice;
@@ -890,7 +945,7 @@ class StoreService
         $vPriceComponent = new vPriceComponent();
 
         $vPriceComponent->amount = $priceComponent->amount;
-        $vPriceComponent->item = is_null($priceComponent->item) ? null : static::vItemFromJson($priceComponent->item);
+        $vPriceComponent->item = is_null($priceComponent->item) ? null : static::vItemFromJson((object)$priceComponent->item);
         $vPriceComponent->currencyCode = is_null($priceComponent->currencyCode) ? null : CurrencyCode::from($priceComponent->currencyCode);
 
         return $vPriceComponent;
@@ -903,10 +958,22 @@ class StoreService
         $vItem->name = $item->name;
         $vItem->description = $item->description;
 
-        $vItem->iconSmall = static::vMediaFromJson_FullURL($item->iconSmall->url);
-        $vItem->iconBig = static::vMediaFromJson_FullURL($item->iconBig->url);
-        $vItem->iconBack = static::vMediaFromJson_FullURL($item->iconBack->url);
+        if($item->iconSmall instanceof stdClass)
+        {
+            $vItem->iconSmall = static::vMediaFromJson_FullURL($item->iconSmall->url);
+            $vItem->iconBig = static::vMediaFromJson_FullURL($item->iconBig->url);
+            $vItem->iconBack = static::vMediaFromJson_FullURL($item->iconBack->url);
+        }
+        else
+        {
+            $vItem->iconSmall = static::vMediaFromJson_FullURL($item->iconSmall["url"]);
+            $vItem->iconBig = static::vMediaFromJson_FullURL($item->iconBig["url"]);
+            $vItem->iconBack = static::vMediaFromJson_FullURL($item->iconBack["url"]);
+        }
+
         $vItem->fungible = $item->fungible;
+
+        $vItem->applyMediaFallbacks();
 
         return $vItem;
     }

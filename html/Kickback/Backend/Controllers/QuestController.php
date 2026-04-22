@@ -23,8 +23,12 @@ use Kickback\Backend\Models\ItemRarity;
 use Kickback\Backend\Views\vTournament;
 use Kickback\Backend\Views\vQuestApplicant;
 use Kickback\Backend\Views\vRaffle;
+use Kickback\Backend\Views\vQuestReviewSummary;
+use Kickback\Backend\Views\vQuestReviewDetail;
 use Kickback\Backend\Controllers\AccountController;
 use Kickback\Backend\Controllers\DiscordController;
+use Kickback\Backend\Controllers\SocialMediaController;
+use Kickback\Backend\Controllers\TournamentController;
 use Kickback\Common\Primitives\Str;
 
 class QuestController
@@ -201,6 +205,44 @@ class QuestController
         {
             return new Response(true, "TBA Quests", []);
         }
+    }
+
+
+    public static function queryHostedFutureQuests(vRecordId $hostId): Response
+    {
+        return self::queryHostedQuests($hostId, true);
+    }
+
+    public static function queryHostedPastQuests(vRecordId $hostId): Response
+    {
+        return self::queryHostedQuests($hostId, false);
+    }
+
+    private static function queryHostedQuests(vRecordId $hostId, bool $future): Response
+    {
+        $conn = Database::getConnection();
+
+        if ($future) {
+            $sql = "SELECT * FROM v_quest_info WHERE (host_id = ? OR host_id_2 = ?) AND end_date > CURRENT_TIMESTAMP AND published = 1 ORDER BY end_date ASC";
+        } else {
+            $sql = "SELECT * FROM v_quest_info WHERE (host_id = ? OR host_id_2 = ?) AND end_date <= CURRENT_TIMESTAMP AND published = 1 ORDER BY end_date DESC";
+        }
+
+        $stmt = $conn->prepare($sql);
+        if ($stmt === false) {
+            return new Response(false, "Failed to prepare query", null);
+        }
+
+        $stmt->bind_param('ii', $hostId->crand, $hostId->crand);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $quests = [];
+        while ($row = $result->fetch_assoc()) {
+            $quests[] = self::row_to_vQuest($row);
+        }
+
+        return new Response(true, "Hosted quests loaded.", $quests);
     }
 
     /**
@@ -425,6 +467,94 @@ class QuestController
         }
 
         return new Response(true, "Quest Applicants", $applicants);
+    }
+
+    /**
+    * Fetch applicants for multiple quests in a single query.
+    *
+    * @param array<int> $questIds
+    * @return array<int, array<vQuestApplicant>> keyed by quest id
+    */
+    public static function queryQuestApplicantsForQuests(array $questIds): array
+    {
+        if (empty($questIds)) {
+            return [];
+        }
+
+        $conn = Database::getConnection();
+
+        $placeholders = implode(',', array_fill(0, count($questIds), '?'));
+        $sql = "select
+        `account`.*,
+        `quest_applicants`.`accepted` AS `accepted`,
+        `quest_applicants`.`participated` AS `participated`,
+        `quest_applicants`.`quest_id` AS `quest_id`,
+        `quest_applicants`.`seed_score` AS `seed_score`,
+        CASE
+        WHEN `quest_applicants`.`seed_score` > 0
+        THEN RANK() OVER (
+            PARTITION BY `quest_applicants`.`quest_id`
+            ORDER BY
+                `quest_applicants`.`seed_score` DESC,
+                `account`.`Id` DESC
+        )
+        ELSE RANK() OVER (
+            PARTITION BY `quest_applicants`.`quest_id`
+            ORDER BY
+                CASE WHEN `v_game_rank`.`rank` IS NULL THEN 1 ELSE 0 END ASC,
+                `v_game_rank`.`rank` ASC,
+                `account`.`Id` DESC
+        )
+        END AS `seed`,
+        `v_game_rank`.`rank` AS `rank`
+      from
+        (
+          (
+            (
+              (
+                `quest_applicants`
+                join `v_account_info` `account` on(
+                  `quest_applicants`.`account_id` = `account`.`Id`
+                )
+              )
+              left join `quest` on(
+                `quest_applicants`.`quest_id` = `quest`.`Id`
+              )
+            )
+            left join `tournament` on(
+              `quest`.`tournament_id` = `tournament`.`Id`
+            )
+          )
+          left join `v_game_elo_rank_info` `v_game_rank` on(
+            `v_game_rank`.`account_id` = `account`.`Id`
+            and `v_game_rank`.`game_id` = `tournament`.`game_id`
+          )
+        )
+      where quest_applicants.quest_id IN ($placeholders)
+      ORDER BY quest_applicants.quest_id ASC, seed ASC, exp DESC, prestige DESC";
+
+        $stmt = $conn->prepare($sql);
+        if ($stmt === false) {
+            return [];
+        }
+
+        $types = str_repeat('i', count($questIds));
+        // @phpstan-ignore-next-line
+        $stmt->bind_param($types, ...$questIds);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result === false) {
+            return [];
+        }
+
+        $byQuest = [];
+        while ($row = $result->fetch_assoc()) {
+            $qid = (int)$row['quest_id'];
+            $byQuest[$qid][] = self::row_to_vQuestApplicant($row);
+        }
+
+        return $byQuest;
     }
 
     public static function getTotalUnusedRaffleTickets(vAccount $account) : Response {
@@ -715,12 +845,21 @@ class QuestController
         }
 
         $conn = Database::getConnection();
+        
+
         // Predefined standard reward IDs
         $standardRewardIds = [3, 4, 15];
+
+        // Seasonal participation rewards (e.g., Candy Cane at Christmas)
+        $seasonalRewardIds = SeasonController::getSeasonalParticipationRewardItemIds();
+
+        // Merge base rewards + seasonal rewards
+        $rewardIds = array_merge($standardRewardIds, $seasonalRewardIds);
+
         $success = true;
         $errorMessages = [];
 
-        foreach ($standardRewardIds as $rewardId) {
+        foreach ($rewardIds as $rewardId) {
             $sql = "INSERT INTO quest_reward (quest_id, item_id, category, participation) VALUES (?, ?, 'Participation',1)";
             
             $stmt = mysqli_prepare($conn, $sql);
@@ -787,10 +926,37 @@ class QuestController
         $questName = $data["edit-quest-options-title"];
         $questLocator = $data["edit-quest-options-locator"];
         $questHostId2 = $data["edit-quest-options-host-2-id"];
-        $questSummary = $data["edit-quest-options-summary"];
+        $questSummary = (string)$data["edit-quest-options-summary"];
         $hasADate = isset($data["edit-quest-options-has-a-date"]);
-        $dateTime = $data["edit-quest-options-datetime"];
-        $playStyle = $data["edit-quest-options-style"];
+        $dateTimeRaw  = $data["edit-quest-options-datetime"] ?? null;
+
+        $end_date = null;
+
+        if ($hasADate && !Str::empty($dateTimeRaw)) {
+            try {
+                // This handles '2025-12-06 02:09:00Z', ISO strings, etc.
+                $vdt = new vDateTime($dateTimeRaw);
+                $end_date = $vdt->dbValue; // Always 'Y-m-d H:i:s' with no Z
+            } catch (\Throwable $e) {
+                return new Response(false, "Invalid quest end date/time format.", null);
+            }
+        }
+
+
+        $playStyle = (int)$data["edit-quest-options-style"];
+        $rankedOption = $data["edit-quest-options-ranked-type"] ?? 'match';
+        $validRankedOptions = ['match', 'tournament', 'bracket'];
+        if (!in_array($rankedOption, $validRankedOptions, true)) {
+            $rankedOption = 'match';
+        }
+
+        $rankedGameIdValue = null;
+        if (array_key_exists('edit-quest-options-ranked-game', $data)) {
+            $candidateGameId = trim((string)$data['edit-quest-options-ranked-game']);
+            if ($candidateGameId !== '') {
+                $rankedGameIdValue = (int)$candidateGameId;
+            }
+        }
         if ( array_key_exists('edit-quest-options-questline', $data) && isset($data["edit-quest-options-questline"]) ) {
             $questLineId = $data["edit-quest-options-questline"];
             $questLineIdValue = intval($questLineId) === 0 ? null : intval($questLineId);
@@ -815,20 +981,114 @@ class QuestController
             return (new Response(false, "Error updating quest. You do not have permission to edit this quest.", null));
         }
 
+        $existingTournamentId = $quest->isTournament() ? $quest->tournament->crand : null;
+        $tournamentIdValue = null;
+
+        $questHasBegun = false;
+        if ($quest->hasEndDate()) {
+            $questEndDate = $quest->nullableEndDate();
+            if ($questEndDate instanceof vDateTime) {
+                $questHasBegun = $questEndDate->isSameOrBefore(vDateTime::now());
+            }
+        }
+
+        $canEditRankedOptions = !($quest->reviewStatus->isPublished() && $questHasBegun);
+
+        if (!$canEditRankedOptions) {
+            if ($quest->isTournament()) {
+                $rankedOption = $quest->tournament->hasBracket() ? 'bracket' : 'tournament';
+                if ($quest->tournament->game !== null) {
+                    $rankedGameIdValue = (int)$quest->tournament->game->crand;
+                }
+                $tournamentIdValue = $existingTournamentId;
+            } else {
+                $rankedOption = 'match';
+                $rankedGameIdValue = null;
+            }
+            $playStyle = $quest->playStyle->value;
+        }
+
+        $isRankedStyle = ($playStyle === PlayStyle::Ranked->value);
+
+        if ($canEditRankedOptions && $isRankedStyle && ($rankedOption === 'tournament' || $rankedOption === 'bracket')) {
+            if ($rankedGameIdValue === null || $rankedGameIdValue <= 0) {
+                return (new Response(false, "Please select a game for this ranked tournament.", null));
+            }
+
+            $tournamentName = substr($questName, 0, 255);
+            $summarySource = Str::empty($questSummary) ? $questName : $questSummary;
+            $tournamentDesc = substr((string)$summarySource, 0, 255);
+            $hasBracket = ($rankedOption === 'bracket') ? 1 : 0;
+
+            if ($existingTournamentId !== null) {
+                $stmtTournament = $conn->prepare("UPDATE tournament SET game_id = ?, Name = ?, `Desc` = ?, hasBracket = ? WHERE Id = ?");
+                if (!$stmtTournament) {
+                    return (new Response(false, "Failed to prepare tournament update statement.", null));
+                }
+
+                $stmtTournament->bind_param('issii', $rankedGameIdValue, $tournamentName, $tournamentDesc, $hasBracket, $existingTournamentId);
+                if (!$stmtTournament->execute()) {
+                    $error = $stmtTournament->error;
+                    $stmtTournament->close();
+                    return (new Response(false, "Failed to update tournament information: " . $error, null));
+                }
+
+                $stmtTournament->close();
+                $tournamentIdValue = $existingTournamentId;
+            } else {
+                $stmtTournament = $conn->prepare("INSERT INTO tournament (game_id, Name, `Desc`, hasBracket) VALUES (?, ?, ?, ?)");
+                if (!$stmtTournament) {
+                    return (new Response(false, "Failed to prepare tournament creation statement.", null));
+                }
+
+                $stmtTournament->bind_param('issi', $rankedGameIdValue, $tournamentName, $tournamentDesc, $hasBracket);
+                if (!$stmtTournament->execute()) {
+                    $error = $stmtTournament->error;
+                    $stmtTournament->close();
+                    return (new Response(false, "Failed to create tournament: " . $error, null));
+                }
+
+                $tournamentIdValue = (int)$conn->insert_id;
+                $stmtTournament->close();
+            }
+        } elseif ($canEditRankedOptions) {
+            if ($existingTournamentId !== null) {
+                $stmtDeleteTournament = $conn->prepare("DELETE FROM tournament WHERE Id = ?");
+                if (!$stmtDeleteTournament) {
+                    return (new Response(false, "Failed to prepare tournament deletion statement.", null));
+                }
+
+                $stmtDeleteTournament->bind_param('i', $existingTournamentId);
+                if (!$stmtDeleteTournament->execute()) {
+                    $error = $stmtDeleteTournament->error;
+                    $stmtDeleteTournament->close();
+                    return (new Response(false, "Failed to delete tournament: " . $error, null));
+                }
+
+                $stmtDeleteTournament->close();
+            }
+        } else {
+            if ($quest->isTournament()) {
+                $tournamentIdValue = $existingTournamentId;
+            }
+        }
+
         // Prepare the update statement
-        $query = "UPDATE quest SET name = ?, locator = ?, host_id_2 = ?, summary = ?, end_date = ?, play_style = ?, quest_line_id = ?, `published` = 0, `being_reviewed` = 0 WHERE Id = ?";
+        $query = "UPDATE quest SET name = ?, locator = ?, host_id_2 = ?, summary = ?, end_date = ?, play_style = ?, quest_line_id = ?, tournament_id = ?, `published` = 0, `being_reviewed` = 0 WHERE Id = ?";
         $stmt = mysqli_prepare($conn, $query);
 
         // Determine the value for host_id_2 and end_date
         $host_id_2 = Str::empty($questHostId2) ? NULL : $questHostId2;
-        $end_date = $hasADate && !Str::empty($dateTime) ? $dateTime : NULL;
+        //$end_date = $hasADate && !Str::empty($dateTime) ? $dateTime : NULL;
+
+        $tournamentIdParam = $tournamentIdValue;
 
         //$date = $data["edit-quest-options-datetime-date"];
         //$time = $data["edit-quest-options-datetime-time"];
         //$end_date = $hasADate && !Str::empty($date) && !Str::empty($time) ? $date . ' ' . $time . ":00": NULL;
 
         // Bind the parameters
-        mysqli_stmt_bind_param($stmt, 'ssissiii', $questName, $questLocator, $host_id_2, $questSummary, $end_date, $playStyle, $questLineIdValue, $questId->crand);
+        mysqli_stmt_bind_param($stmt, 'ssissiiii', $questName, $questLocator, $host_id_2, $questSummary, $end_date, $playStyle, $questLineIdValue, $tournamentIdParam, $questId->crand);
 
         // Execute the statement
         $success = mysqli_stmt_execute($stmt);
@@ -1029,6 +1289,10 @@ class QuestController
         {
             $quest->tournament = new vTournament('', $row["tournament_id"]);
             $quest->tournament->hasBracket((bool)$row["hasBracket"]==1);
+            $tournamentResp = TournamentController::queryTournamentById($quest->tournament);
+            if ($tournamentResp->success && $tournamentResp->data instanceof vTournament) {
+                $quest->tournament = $tournamentResp->data;
+            }
         }
 
         if ($row["end_date"] != null)
@@ -1146,6 +1410,8 @@ class QuestController
 
         $item->iconBack = $item->iconBig;
 
+        $item->applyMediaFallbacks();
+
         return $questReward;
     }
 
@@ -1156,6 +1422,8 @@ class QuestController
 
         $questApplicant->seed = $row["seed"];
         $questApplicant->rank = (int)($row["rank"] ?? -1);
+        $questApplicant->accepted = boolval($row["accepted"] ?? false);
+        $questApplicant->participated = boolval($row["participated"] ?? false);
         return $questApplicant;
     }
 
@@ -1227,6 +1495,133 @@ class QuestController
         }
 
         return (new Response(true, "New quest created.", $quest));
+    }
+
+    public static function cloneQuest(vRecordId $questId) : Response
+    {
+        $conn = Database::getConnection();
+
+        if (!self::queryQuestByIdInto($questId, $originalQuest)) {
+            return new Response(false, "Could not find quest with that ID; failed to clone quest.", null);
+        }
+
+        if (!$originalQuest->canEdit()) {
+            return new Response(false, "You do not have permissions to clone this quest.", null);
+        }
+
+        $stmt = $conn->prepare("SELECT * FROM quest WHERE Id = ?");
+        if (!$stmt) {
+            return new Response(false, "Failed to prepare quest lookup for cloning.", null);
+        }
+
+        $stmt->bind_param('i', $questId->crand);
+        if (!$stmt->execute()) {
+            $stmt->close();
+            return new Response(false, "Failed to load quest details for cloning.", null);
+        }
+
+        $result = $stmt->get_result();
+        $originalRow = $result->fetch_assoc();
+        $stmt->close();
+
+        if (!$originalRow) {
+            return new Response(false, "Could not load quest details for cloning.", null);
+        }
+
+        $conn->begin_transaction();
+
+        try {
+            $newLocator = self::generateCloneLocator($originalRow['locator'] ?? '');
+            $newTitle = self::generateCloneName($originalRow['name'] ?? '');
+
+            $newContentId = self::cloneQuestContent($conn, $originalRow['content_id'] ?? null);
+            $newTournamentId = self::cloneQuestTournament($conn, $originalRow['tournament_id'] ?? null);
+            $newRaffleId = self::cloneQuestRaffle($conn, $originalRow['raffle_id'] ?? null);
+
+            $desc = $originalRow['desc'] ?? null;
+            $endDate = $originalRow['end_date'] ?? null;
+            if (isset($endDate) && $endDate === '0000-00-00 00:00:00') {
+                $endDate = null;
+            }
+
+            $imageId = isset($originalRow['image_id']) ? (int)$originalRow['image_id'] : null;
+            $reqApply = isset($originalRow['req_apply']) ? (int)$originalRow['req_apply'] : 0;
+            $maxAccounts = isset($originalRow['max_accounts']) ? (int)$originalRow['max_accounts'] : 0;
+            $hostId = isset($originalRow['host_id']) ? (int)$originalRow['host_id'] : (Session::getCurrentAccount()?->crand ?? 0);
+            $applicationInfo = $originalRow['application_information'] ?? null;
+            $showTwitch = isset($originalRow['show_twitch']) ? (int)$originalRow['show_twitch'] : 0;
+            $hostId2 = isset($originalRow['host_id_2']) ? (int)$originalRow['host_id_2'] : null;
+            $summary = $originalRow['summary'] ?? null;
+            $playStyle = isset($originalRow['play_style']) ? (int)$originalRow['play_style'] : 0;
+            $questLineId = isset($originalRow['quest_line_id']) ? (int)$originalRow['quest_line_id'] : null;
+            if ($questLineId === 0) {
+                $questLineId = null;
+            }
+            $imageIdIcon = isset($originalRow['image_id_icon']) ? (int)$originalRow['image_id_icon'] : null;
+            $imageIdMobile = isset($originalRow['image_id_mobile']) ? (int)$originalRow['image_id_mobile'] : null;
+
+            $stmtInsert = $conn->prepare(
+                "INSERT INTO quest (name, `desc`, tournament_id, end_date, image_id, raffle_id, req_apply, max_accounts, locator, host_id, application_information, show_twitch, published, host_id_2, summary, play_style, quest_line_id, finished, image_id_icon, content_id, image_id_mobile, being_reviewed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            );
+
+            if (!$stmtInsert) {
+                throw new \RuntimeException('Failed to prepare cloned quest insert.');
+            }
+
+            $published = 0;
+            $finished = 0;
+            $beingReviewed = 0;
+
+            $stmtInsert->bind_param(
+                'ssisiiiisisiiisiiiiiii',
+                $newTitle,
+                $desc,
+                $newTournamentId,
+                $endDate,
+                $imageId,
+                $newRaffleId,
+                $reqApply,
+                $maxAccounts,
+                $newLocator,
+                $hostId,
+                $applicationInfo,
+                $showTwitch,
+                $published,
+                $hostId2,
+                $summary,
+                $playStyle,
+                $questLineId,
+                $finished,
+                $imageIdIcon,
+                $newContentId,
+                $imageIdMobile,
+                $beingReviewed
+            );
+
+            if (!$stmtInsert->execute()) {
+                $stmtInsert->close();
+                throw new \RuntimeException('Failed to insert cloned quest.');
+            }
+
+            $newQuestId = (int)$conn->insert_id;
+            $stmtInsert->close();
+
+            self::cloneQuestRewards($conn, (int)$originalRow['Id'], $newQuestId);
+
+            $conn->commit();
+
+            $data = [
+                'questId' => $newQuestId,
+                'locator' => $newLocator,
+                'title' => $newTitle,
+            ];
+
+            return new Response(true, "Quest cloned successfully.", $data);
+        } catch (\Throwable $th) {
+            $conn->rollback();
+            error_log('Quest clone failed: ' . $th->getMessage());
+            return new Response(false, "Failed to clone quest.", null);
+        }
     }
 
     public static function insert(Quest $quest) : Response
@@ -1329,9 +1724,970 @@ class QuestController
         $stmt->bind_result($count);
         $stmt->fetch();
         $stmt->close();
-    
+
         return (int)$count;
     }
-    
+
+    public static function queryQuestReviewsByHostAsResponse(vRecordId $hostId): Response
+    {
+        $conn = Database::getConnection();
+        $stmt = $conn->prepare(
+            "SELECT q.Id AS quest_id, q.name, q.locator, q.end_date, q.imagePath_icon, q.imagePath, qa.host_rating, qa.quest_rating, qa.feedback " .
+            "FROM quest_applicants qa " .
+            "JOIN v_quest_info q ON qa.quest_id = q.Id " .
+            "WHERE (q.host_id = ? OR q.host_id_2 = ?) AND qa.host_rating IS NOT NULL " .
+            "ORDER BY q.end_date DESC"
+        );
+        if ($stmt === false) {
+            return new Response(false, "Failed to prepare query", null);
+        }
+
+        $stmt->bind_param('ii', $hostId->crand, $hostId->crand);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $questRatings = [];
+        while ($row = $result->fetch_assoc()) {
+            $questId = (int)$row['quest_id'];
+            $hostRating = (int)$row['host_rating'];
+            $questRating = (int)$row['quest_rating'];
+            $hasComment = trim((string)$row['feedback']) !== '';
+
+            if (!isset($questRatings[$questId])) {
+                $questRatings[$questId] = [
+                    'questId' => $questId,
+                    'questTitle' => $row['name'],
+                    'questLocator' => $row['locator'],
+                    'questEndDate' => $row['end_date'],
+                    'questIcon' => $row['imagePath_icon'],
+                    'questBanner' => $row['imagePath'],
+                    'hostRatingSum' => $hostRating,
+                    'questRatingSum' => $questRating,
+                    'count' => 1,
+                    'hasComments' => $hasComment,
+                ];
+            } else {
+                $questRatings[$questId]['hostRatingSum'] += $hostRating;
+                $questRatings[$questId]['questRatingSum'] += $questRating;
+                $questRatings[$questId]['count']++;
+                if ($hasComment) {
+                    $questRatings[$questId]['hasComments'] = true;
+                }
+            }
+        }
+
+        $averages = [];
+        foreach ($questRatings as $data) {
+            $icon = new vMedia();
+            $icon->setMediaPath($data['questIcon']);
+            $banner = new vMedia();
+            $banner->setMediaPath($data['questBanner']);
+            $summary = new vQuestReviewSummary();
+            $summary->questId = $data['questId'];
+            $summary->questTitle = $data['questTitle'];
+            $summary->questLocator = $data['questLocator'];
+            $summary->questEndDate = $data['questEndDate'];
+            $summary->questIcon = $icon->getFullPath();
+            $summary->questBanner = $banner->getFullPath();
+            $summary->avgHostRating = $data['hostRatingSum'] / $data['count'];
+            $summary->avgQuestRating = $data['questRatingSum'] / $data['count'];
+            $summary->hasComments = $data['hasComments'];
+            $averages[] = $summary;
+        }
+
+        return new Response(true, "Quest review averages loaded.", $averages);
+    }
+
+    public static function queryHostQuestHistoryAsResponse(vRecordId $hostId): Response
+    {
+        $conn = Database::getConnection();
+        $stmt = $conn->prepare(
+            "SELECT q.Id AS quest_id, q.name, q.locator, q.end_date, " .
+            "AVG(qa.host_rating) AS avg_host_rating, AVG(qa.quest_rating) AS avg_quest_rating, " .
+            "SUM(CASE WHEN qa.participated = 1 THEN 1 ELSE 0 END) AS participants " .
+            "FROM v_quest_info q " .
+            "LEFT JOIN quest_applicants qa ON qa.quest_id = q.Id " .
+            "WHERE (q.host_id = ? OR q.host_id_2 = ?) AND q.end_date < CURRENT_DATE " .
+            "GROUP BY q.Id, q.name, q.locator, q.end_date " .
+            "ORDER BY q.end_date DESC"
+        );
+        if ($stmt === false) {
+            return new Response(false, "Failed to prepare query", null);
+        }
+
+        $stmt->bind_param('ii', $hostId->crand, $hostId->crand);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result === false) {
+            return new Response(false, "Failed to execute query", null);
+        }
+
+        $quests = [];
+        while ($row = $result->fetch_assoc()) {
+            $quests[] = [
+                'questId' => (int)$row['quest_id'],
+                'questTitle' => $row['name'],
+                'questLocator' => $row['locator'],
+                'endDate' => $row['end_date'],
+                'participants' => (int)$row['participants'],
+                'avgHostRating' => isset($row['avg_host_rating']) ? (float)$row['avg_host_rating'] : null,
+                'avgQuestRating' => isset($row['avg_quest_rating']) ? (float)$row['avg_quest_rating'] : null,
+            ];
+        }
+
+        return new Response(true, "Quest history loaded.", $quests);
+    }
+
+    /**
+     * @param array<vQuestApplicant>|null $applicants
+     * @deprecated Use queryQuestReviewDetailsForQuests() for bulk queries.
+     */
+    public static function queryQuestReviewDetailsAsResponse(vQuest $quest, ?array $applicants = null): Response
+    {
+        $conn = Database::getConnection();
+
+        // If applicants were not preloaded, fetch both applicants and reviews in a single query
+        if ($applicants === null) {
+            $stmt = $conn->prepare(
+                "SELECT qa.account_id, acc.Username AS username, acc.avatar_media, qa.host_rating, qa.quest_rating, qa.feedback AS text
+                 FROM quest_applicants qa
+                 JOIN v_account_info acc ON qa.account_id = acc.Id
+                 WHERE qa.quest_id = ? AND qa.participated = 1"
+            );
+            if ($stmt === false) {
+                return new Response(false, 'Failed to prepare query', null);
+            }
+
+            $stmt->bind_param('i', $quest->crand);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            $details = [];
+            while ($row = $result->fetch_assoc()) {
+                $id = (int)$row['account_id'];
+                if ($id === $quest->host1->crand || (isset($quest->host2) && $id === $quest->host2->crand)) {
+                    continue;
+                }
+
+                $avatar = null;
+                if (!empty($row['avatar_media'])) {
+                    $media = new vMedia();
+                    $media->setMediaPath($row['avatar_media']);
+                    $avatar = $media->getFullPath();
+                }
+
+                $detail = new vQuestReviewDetail();
+                $detail->accountId = $id;
+                $detail->username = $row['username'];
+                $detail->avatar = $avatar;
+                $detail->hostRating = isset($row['host_rating']) ? (int)$row['host_rating'] : null;
+                $detail->questRating = isset($row['quest_rating']) ? (int)$row['quest_rating'] : null;
+                $detail->message = $row['text'] ?? null;
+                $details[] = $detail;
+            }
+
+            return new Response(true, 'Quest review details loaded.', $details);
+        }
+
+        // Applicants were provided, fetch only review data
+        $stmt = $conn->prepare(
+            'SELECT account_id, host_rating, quest_rating, feedback AS text FROM quest_applicants WHERE quest_id = ? AND participated = 1'
+        );
+        if ($stmt === false) {
+            return new Response(false, 'Failed to prepare query', null);
+        }
+
+        $stmt->bind_param('i', $quest->crand);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        $reviews = [];
+        while ($row = $result->fetch_assoc()) {
+            $reviews[(int)$row['account_id']] = [
+                'hostRating' => isset($row['host_rating']) ? (int)$row['host_rating'] : null,
+                'questRating' => isset($row['quest_rating']) ? (int)$row['quest_rating'] : null,
+                'message' => $row['text'] ?? null,
+            ];
+        }
+
+        $details = [];
+        foreach ($applicants as $applicant) {
+            if (!$applicant->participated) {
+                continue;
+            }
+
+            $account = $applicant->account;
+            $id = $account->crand;
+            if ($id === $quest->host1->crand || (isset($quest->host2) && $id === $quest->host2->crand)) {
+                continue;
+            }
+
+            $avatar = $account->avatar ? $account->avatar->getFullPath() : null;
+            $detail = new vQuestReviewDetail();
+            $detail->accountId = $id;
+            $detail->username = $account->username;
+            $detail->avatar = $avatar;
+            if (isset($reviews[$id])) {
+                $detail->hostRating = $reviews[$id]['hostRating'];
+                $detail->questRating = $reviews[$id]['questRating'];
+                $detail->message = $reviews[$id]['message'];
+            } else {
+                $detail->hostRating = null;
+                $detail->questRating = null;
+                $detail->message = null;
+            }
+            $details[] = $detail;
+        }
+
+        return new Response(true, 'Quest review details loaded.', $details);
+    }
+
+    /**
+     * Fetch review details for multiple quests in a single query.
+     *
+     * @param array<int> $questIds
+     * @return array<int, array<vQuestReviewDetail>> keyed by quest id
+     */
+    public static function queryQuestReviewDetailsForQuests(array $questIds): array
+    {
+        if (empty($questIds)) {
+            return [];
+        }
+
+        $conn = Database::getConnection();
+        $placeholders = implode(',', array_fill(0, count($questIds), '?'));
+        $sql = "SELECT qa.quest_id, qa.account_id, acc.Username AS username, acc.avatar_media, qa.host_rating, qa.quest_rating, qa.feedback AS text, q.host_id, q.host_id_2 " .
+            "FROM quest_applicants qa " .
+            "JOIN v_account_info acc ON qa.account_id = acc.Id " .
+            "JOIN quest q ON qa.quest_id = q.Id " .
+            "WHERE qa.quest_id IN ($placeholders) AND qa.participated = 1";
+
+        $stmt = $conn->prepare($sql);
+        if ($stmt === false) {
+            return [];
+        }
+
+        $types = str_repeat('i', count($questIds));
+        // @phpstan-ignore-next-line
+        $stmt->bind_param($types, ...$questIds);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result === false) {
+            return [];
+        }
+
+        $byQuest = [];
+        while ($row = $result->fetch_assoc()) {
+            $qid = (int)$row['quest_id'];
+            $accountId = (int)$row['account_id'];
+            $host1 = (int)$row['host_id'];
+            $host2 = isset($row['host_id_2']) ? (int)$row['host_id_2'] : null;
+            if ($accountId === $host1 || ($host2 !== null && $accountId === $host2)) {
+                continue;
+            }
+
+            $avatar = null;
+            if (!empty($row['avatar_media'])) {
+                $media = new vMedia();
+                $media->setMediaPath($row['avatar_media']);
+                $avatar = $media->getFullPath();
+            }
+
+            $detail = new vQuestReviewDetail();
+            $detail->accountId = $accountId;
+            $detail->username = $row['username'];
+            $detail->avatar = $avatar;
+            $detail->hostRating = isset($row['host_rating']) ? (int)$row['host_rating'] : null;
+            $detail->questRating = isset($row['quest_rating']) ? (int)$row['quest_rating'] : null;
+            $detail->message = $row['text'] ?? null;
+
+            $byQuest[$qid][] = $detail;
+        }
+
+        return $byQuest;
+    }
+
+    public static function getParticipationByDate(?vRecordId $hostId = null, ?int $month = null, ?int $year = null): Response
+    {
+        $conn = Database::getConnection();
+        $sql = "SELECT DATE(q.end_date) AS day, COUNT(*) AS participants "
+            . "FROM quest_applicants qa "
+            . "JOIN quest q ON qa.quest_id = q.Id "
+            . "WHERE qa.participated = 1 AND q.raffle_id IS NULL";
+
+        $types = '';
+        $params = [];
+
+        if ($hostId !== null) {
+            $sql .= " AND (q.host_id = ? OR q.host_id_2 = ?)";
+            $types .= 'ii';
+            $params[] = $hostId->crand;
+            $params[] = $hostId->crand;
+        }
+
+        if ($month !== null) {
+            $sql .= " AND MONTH(q.end_date) = ?";
+            $types .= 'i';
+            $params[] = $month;
+        }
+
+        if ($year !== null) {
+            $sql .= " AND YEAR(q.end_date) = ?";
+            $types .= 'i';
+            $params[] = $year;
+        }
+
+        $sql .= " GROUP BY DATE(q.end_date) ORDER BY day";
+
+        $stmt = $conn->prepare($sql);
+        if ($stmt === false) {
+            return new Response(false, "Failed to prepare query", null);
+        }
+
+        if (!empty($params)) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result === false) {
+            return new Response(false, "Failed to execute query", null);
+        }
+
+        $counts = [];
+        while ($row = $result->fetch_assoc()) {
+            $counts[] = [
+                'date' => $row['day'],
+                'participants' => (int)$row['participants'],
+            ];
+        }
+
+        return new Response(true, "Participation counts loaded.", $counts);
+    }
+
+    public static function getParticipationAveragesByWeekday(?vRecordId $hostId = null): Response
+    {
+        $conn = Database::getConnection();
+        $sql = "SELECT weekday, AVG(participants) AS avg_participants FROM ("
+            . "SELECT DAYOFWEEK(q.end_date) AS weekday, COUNT(*) AS participants "
+            . "FROM quest_applicants qa "
+            . "JOIN quest q ON qa.quest_id = q.Id "
+            . "WHERE qa.participated = 1 AND q.raffle_id IS NULL";
+
+        if ($hostId !== null) {
+            $sql .= " AND (q.host_id = ? OR q.host_id_2 = ?)";
+        }
+
+        $sql .= " GROUP BY q.Id" .
+            ") sub GROUP BY weekday ORDER BY weekday";
+
+        $stmt = $conn->prepare($sql);
+        if ($stmt === false) {
+            return new Response(false, "Failed to prepare query", null);
+        }
+
+        if ($hostId !== null) {
+            $stmt->bind_param('ii', $hostId->crand, $hostId->crand);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result === false) {
+            return new Response(false, "Failed to execute query", null);
+        }
+
+        $averages = [];
+        $dayNames = [1 => 'Sunday', 2 => 'Monday', 3 => 'Tuesday', 4 => 'Wednesday', 5 => 'Thursday', 6 => 'Friday', 7 => 'Saturday'];
+        while ($row = $result->fetch_assoc()) {
+            $day = (int)$row['weekday'];
+            $averages[] = [
+                'weekday' => $dayNames[$day] ?? (string)$day,
+                'avgParticipants' => (float)$row['avg_participants'],
+            ];
+        }
+
+        return new Response(true, "Average participation by weekday loaded.", $averages);
+    }
+
+    public static function getParticipationAveragesByHour(?vRecordId $hostId = null): Response
+    {
+        $conn = Database::getConnection();
+        $sql = "SELECT hour, AVG(participants) AS avg_participants FROM ("
+            . "SELECT HOUR(q.end_date) AS hour, COUNT(*) AS participants "
+            . "FROM quest_applicants qa "
+            . "JOIN quest q ON qa.quest_id = q.Id "
+            . "WHERE qa.participated = 1 AND q.raffle_id IS NULL";
+
+        if ($hostId !== null) {
+            $sql .= " AND (q.host_id = ? OR q.host_id_2 = ?)";
+        }
+
+        $sql .= " GROUP BY q.Id"
+            . ") sub GROUP BY hour ORDER BY hour";
+
+        $stmt = $conn->prepare($sql);
+        if ($stmt === false) {
+            return new Response(false, "Failed to prepare query", null);
+        }
+
+        if ($hostId !== null) {
+            $stmt->bind_param('ii', $hostId->crand, $hostId->crand);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result === false) {
+            return new Response(false, "Failed to execute query", null);
+        }
+
+        $averages = [];
+        while ($row = $result->fetch_assoc()) {
+            $averages[] = [
+                'hour' => (int)$row['hour'],
+                'avgParticipants' => (float)$row['avg_participants'],
+            ];
+        }
+
+        return new Response(true, "Average participation by hour loaded.", $averages);
+    }
+
+    public static function queryHostStatsForAccounts(array $accountIds): array
+    {
+        if (empty($accountIds)) {
+            return [];
+        }
+
+        $conn = Database::getConnection();
+        $placeholders = implode(',', array_fill(0, count($accountIds), '?'));
+        $sql = "SELECT h.host_id AS host_id, COUNT(DISTINCT h.quest_id) AS questsHosted, " .
+            "AVG(qa.host_rating) AS avgHostRating, AVG(qa.quest_rating) AS avgQuestRating " .
+            "FROM (" .
+            "  SELECT q.Id AS quest_id, q.host_id AS host_id FROM v_quest_info q WHERE q.published = 1 AND q.host_id IN ($placeholders) " .
+            "  UNION ALL " .
+            "  SELECT q.Id AS quest_id, q.host_id_2 AS host_id FROM v_quest_info q WHERE q.published = 1 AND q.host_id_2 IN ($placeholders) " .
+            ") h " .
+            "LEFT JOIN quest_applicants qa ON qa.quest_id = h.quest_id " .
+            "GROUP BY h.host_id";
+
+        $stmt = $conn->prepare($sql);
+        if ($stmt === false) {
+            return [];
+        }
+
+        $params = array_merge($accountIds, $accountIds);
+        $types = str_repeat('i', count($params));
+        // @phpstan-ignore-next-line
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result === false) {
+            return [];
+        }
+
+        $stats = [];
+        while ($row = $result->fetch_assoc()) {
+            $hostId = (int)$row['host_id'];
+            $stats[$hostId] = [
+                'questsHosted' => (int)$row['questsHosted'],
+                'avgHostRating' => isset($row['avgHostRating']) ? (float)$row['avgHostRating'] : 0.0,
+                'avgQuestRating' => isset($row['avgQuestRating']) ? (float)$row['avgQuestRating'] : 0.0,
+            ];
+        }
+
+        return $stats;
+    }
+
+    public static function markReviewAsViewed(vRecordId $applicantId, vRecordId $accountId): Response
+    {
+        
+        return new Response(false, "Claiming Host Rewards isn't available yet.");
+        
+        $conn = Database::getConnection();
+        $qaId = $applicantId->crand;
+        $accountIdVal = $accountId->crand;
+
+        $stmt = $conn->prepare(
+            'SELECT q.host_id, q.host_id_2, qa.host_viewed, qa.host_2_viewed, qa.host_rating, qa.quest_rating
+             FROM quest_applicants qa
+             JOIN quest q ON qa.quest_id = q.Id
+             WHERE qa.Id = ?'
+        );
+        if ($stmt === false) {
+            return new Response(false, 'Failed to prepare query.', null);
+        }
+
+        $stmt->bind_param('i', $qaId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        if (!$row) {
+            return new Response(false, 'Review not found.', null);
+        }
+
+        $host1 = (int)$row['host_id'];
+        $host2 = isset($row['host_id_2']) ? (int)$row['host_id_2'] : null;
+        $hostRating = isset($row['host_rating']) ? (float)$row['host_rating'] : null;
+        $questRating = isset($row['quest_rating']) ? (float)$row['quest_rating'] : null;
+
+        if ($accountIdVal === $host1) {
+            if ((int)$row['host_viewed'] === 1) {
+                return new Response(false, 'Review already viewed.', null);
+            }
+            $update = $conn->prepare('UPDATE quest_applicants SET host_viewed = 1 WHERE Id = ?');
+            if ($update === false) {
+                return new Response(false, 'Failed to prepare update.', null);
+            }
+            $update->bind_param('i', $qaId);
+            $update->execute();
+            if ($update->affected_rows > 0) {
+                self::grantHostReward($accountId, $hostRating, $questRating);
+                return new Response(true, 'Review marked as viewed.', null);
+            }
+            return new Response(false, 'No review updated.', null);
+        } elseif ($host2 !== null && $accountIdVal === $host2) {
+            if ((int)$row['host_2_viewed'] === 1) {
+                return new Response(false, 'Review already viewed.', null);
+            }
+            $update = $conn->prepare('UPDATE quest_applicants SET host_2_viewed = 1 WHERE Id = ?');
+            if ($update === false) {
+                return new Response(false, 'Failed to prepare update.', null);
+            }
+            $update->bind_param('i', $qaId);
+            $update->execute();
+            if ($update->affected_rows > 0) {
+                self::grantHostReward($accountId, $hostRating, $questRating);
+                return new Response(true, 'Review marked as viewed.', null);
+            }
+            return new Response(false, 'No review updated.', null);
+        }
+
+        return new Response(false, 'Only quest hosts can mark reviews as viewed.', null);
+    }
+
+    public static function claimAllReviews(vRecordId $accountId): Response
+    {
+        $conn = Database::getConnection();
+        $accountIdVal = $accountId->crand;
+
+        $sql = 'SELECT qa.Id
+                FROM quest_applicants qa
+                JOIN quest q ON qa.quest_id = q.Id
+                WHERE ((q.host_id = ? AND qa.host_viewed = 0) OR (q.host_id_2 = ? AND qa.host_2_viewed = 0))
+                  AND (qa.host_rating IS NOT NULL OR qa.quest_rating IS NOT NULL OR qa.feedback IS NOT NULL)';
+        $stmt = $conn->prepare($sql);
+        if ($stmt === false) {
+            return new Response(false, "Failed to prepare query.", null);
+        }
+
+        $stmt->bind_param('ii', $accountIdVal, $accountIdVal);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result === false) {
+            return new Response(false, "Failed to execute query.", null);
+        }
+
+        $claimed = 0;
+        while ($row = $result->fetch_assoc()) {
+            $resp = self::markReviewAsViewed(new vRecordId('', (int)$row['Id']), $accountId);
+            if ($resp->success) {
+                $claimed++;
+            }
+        }
+
+        return new Response(true, 'Claimed reviews.', ['claimed' => $claimed]);
+    }
+
+    private static function cloneQuestContent(\mysqli $conn, $contentId) : ?int
+    {
+        $contentId = isset($contentId) ? (int)$contentId : 0;
+        if ($contentId <= 0) {
+            return null;
+        }
+
+        $stmt = $conn->prepare("SELECT summary FROM content WHERE Id = ?");
+        if (!$stmt) {
+            throw new \RuntimeException('Failed to prepare content lookup for cloning.');
+        }
+        $stmt->bind_param('i', $contentId);
+        if (!$stmt->execute()) {
+            $stmt->close();
+            throw new \RuntimeException('Failed to execute content lookup for cloning.');
+        }
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $stmt->close();
+
+        if (!$row) {
+            return null;
+        }
+
+        $summary = $row['summary'];
+
+        $stmtInsertContent = $conn->prepare("INSERT INTO content (summary) VALUES (?)");
+        if (!$stmtInsertContent) {
+            throw new \RuntimeException('Failed to prepare content insert for cloning.');
+        }
+        $stmtInsertContent->bind_param('s', $summary);
+        if (!$stmtInsertContent->execute()) {
+            $stmtInsertContent->close();
+            throw new \RuntimeException('Failed to insert cloned content.');
+        }
+        $newContentId = (int)$conn->insert_id;
+        $stmtInsertContent->close();
+
+        $stmtDetails = $conn->prepare("SELECT Id, content_type_id, `order` FROM content_detail WHERE content_id = ? ORDER BY `order`, Id");
+        if (!$stmtDetails) {
+            throw new \RuntimeException('Failed to prepare content detail lookup for cloning.');
+        }
+        $stmtDetails->bind_param('i', $contentId);
+        if (!$stmtDetails->execute()) {
+            $stmtDetails->close();
+            throw new \RuntimeException('Failed to execute content detail lookup for cloning.');
+        }
+        $detailResult = $stmtDetails->get_result();
+
+        while ($detailRow = $detailResult->fetch_assoc()) {
+            $contentTypeId = (int)$detailRow['content_type_id'];
+            $order = isset($detailRow['order']) ? (int)$detailRow['order'] : 0;
+
+            $stmtInsertDetail = $conn->prepare("INSERT INTO content_detail (content_id, content_type_id, `order`) VALUES (?, ?, ?)");
+            if (!$stmtInsertDetail) {
+                $stmtDetails->close();
+                throw new \RuntimeException('Failed to prepare content detail insert for cloning.');
+            }
+            $stmtInsertDetail->bind_param('iii', $newContentId, $contentTypeId, $order);
+            if (!$stmtInsertDetail->execute()) {
+                $stmtInsertDetail->close();
+                $stmtDetails->close();
+                throw new \RuntimeException('Failed to insert cloned content detail.');
+            }
+            $newDetailId = (int)$conn->insert_id;
+            $stmtInsertDetail->close();
+
+            $stmtDetailData = $conn->prepare("SELECT data, data_order, media_id FROM content_detail_data WHERE content_detail_id = ? ORDER BY data_order, Id");
+            if (!$stmtDetailData) {
+                $stmtDetails->close();
+                throw new \RuntimeException('Failed to prepare content detail data lookup for cloning.');
+            }
+            $oldDetailId = (int)$detailRow['Id'];
+            $stmtDetailData->bind_param('i', $oldDetailId);
+            if (!$stmtDetailData->execute()) {
+                $stmtDetailData->close();
+                $stmtDetails->close();
+                throw new \RuntimeException('Failed to execute content detail data lookup for cloning.');
+            }
+            $dataResult = $stmtDetailData->get_result();
+
+            while ($dataRow = $dataResult->fetch_assoc()) {
+                $data = $dataRow['data'];
+                $dataOrder = isset($dataRow['data_order']) ? (int)$dataRow['data_order'] : null;
+                $mediaId = isset($dataRow['media_id']) ? (int)$dataRow['media_id'] : null;
+
+                $stmtInsertData = $conn->prepare("INSERT INTO content_detail_data (content_detail_id, data, data_order, media_id) VALUES (?, ?, ?, ?)");
+                if (!$stmtInsertData) {
+                    $stmtDetailData->close();
+                    $stmtDetails->close();
+                    throw new \RuntimeException('Failed to prepare content detail data insert for cloning.');
+                }
+                $stmtInsertData->bind_param('isii', $newDetailId, $data, $dataOrder, $mediaId);
+                if (!$stmtInsertData->execute()) {
+                    $stmtInsertData->close();
+                    $stmtDetailData->close();
+                    $stmtDetails->close();
+                    throw new \RuntimeException('Failed to insert cloned content detail data.');
+                }
+                $stmtInsertData->close();
+            }
+            $stmtDetailData->close();
+        }
+
+        $stmtDetails->close();
+
+        return $newContentId;
+    }
+
+    private static function cloneQuestTournament(\mysqli $conn, $tournamentId) : ?int
+    {
+        $tournamentId = isset($tournamentId) ? (int)$tournamentId : 0;
+        if ($tournamentId <= 0) {
+            return null;
+        }
+
+        $stmt = $conn->prepare("SELECT game_id, Name, `Desc`, `Date`, hasBracket FROM tournament WHERE Id = ?");
+        if (!$stmt) {
+            throw new \RuntimeException('Failed to prepare tournament lookup for cloning.');
+        }
+        $stmt->bind_param('i', $tournamentId);
+        if (!$stmt->execute()) {
+            $stmt->close();
+            throw new \RuntimeException('Failed to execute tournament lookup for cloning.');
+        }
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $stmt->close();
+
+        if (!$row) {
+            return null;
+        }
+
+        $gameId = (int)$row['game_id'];
+        $name = $row['Name'];
+        $desc = $row['Desc'];
+        $date = $row['Date'];
+        $hasBracket = isset($row['hasBracket']) ? (int)$row['hasBracket'] : 0;
+
+        $stmtInsert = $conn->prepare("INSERT INTO tournament (game_id, Name, `Desc`, `Date`, hasBracket) VALUES (?, ?, ?, ?, ?)");
+        if (!$stmtInsert) {
+            throw new \RuntimeException('Failed to prepare tournament insert for cloning.');
+        }
+        $stmtInsert->bind_param('isssi', $gameId, $name, $desc, $date, $hasBracket);
+        if (!$stmtInsert->execute()) {
+            $stmtInsert->close();
+            throw new \RuntimeException('Failed to insert cloned tournament.');
+        }
+        $newTournamentId = (int)$conn->insert_id;
+        $stmtInsert->close();
+
+        return $newTournamentId;
+    }
+
+    private static function cloneQuestRaffle(\mysqli $conn, $raffleId) : ?int
+    {
+        $raffleId = isset($raffleId) ? (int)$raffleId : 0;
+        if ($raffleId <= 0) {
+            return null;
+        }
+
+        $stmtCheck = $conn->prepare("SELECT Id FROM raffle WHERE Id = ?");
+        if (!$stmtCheck) {
+            throw new \RuntimeException('Failed to prepare raffle lookup for cloning.');
+        }
+        $stmtCheck->bind_param('i', $raffleId);
+        if (!$stmtCheck->execute()) {
+            $stmtCheck->close();
+            throw new \RuntimeException('Failed to execute raffle lookup for cloning.');
+        }
+        $result = $stmtCheck->get_result();
+        $row = $result->fetch_assoc();
+        $stmtCheck->close();
+
+        if (!$row) {
+            return null;
+        }
+
+        $stmtInsert = $conn->prepare("INSERT INTO raffle (winner_submission_id) VALUES (NULL)");
+        if (!$stmtInsert) {
+            throw new \RuntimeException('Failed to prepare raffle insert for cloning.');
+        }
+        if (!$stmtInsert->execute()) {
+            $stmtInsert->close();
+            throw new \RuntimeException('Failed to insert cloned raffle.');
+        }
+        $newRaffleId = (int)$conn->insert_id;
+        $stmtInsert->close();
+
+        return $newRaffleId;
+    }
+
+    private static function cloneQuestRewards(\mysqli $conn, int $sourceQuestId, int $targetQuestId) : void
+    {
+        $stmt = $conn->prepare("SELECT badge_id, rarity, item_id, category, participation FROM quest_reward WHERE quest_id = ?");
+        if (!$stmt) {
+            throw new \RuntimeException('Failed to prepare quest reward lookup for cloning.');
+        }
+        $stmt->bind_param('i', $sourceQuestId);
+        if (!$stmt->execute()) {
+            $stmt->close();
+            throw new \RuntimeException('Failed to execute quest reward lookup for cloning.');
+        }
+        $result = $stmt->get_result();
+
+        while ($row = $result->fetch_assoc()) {
+            $badgeId = isset($row['badge_id']) ? (int)$row['badge_id'] : null;
+            $rarity = isset($row['rarity']) ? (int)$row['rarity'] : null;
+            $itemId = isset($row['item_id']) ? (int)$row['item_id'] : null;
+            $category = $row['category'];
+            $participation = isset($row['participation']) ? (int)$row['participation'] : 0;
+
+            $stmtInsert = $conn->prepare("INSERT INTO quest_reward (quest_id, badge_id, rarity, item_id, category, participation) VALUES (?, ?, ?, ?, ?, ?)");
+            if (!$stmtInsert) {
+                $stmt->close();
+                throw new \RuntimeException('Failed to prepare quest reward insert for cloning.');
+            }
+            $stmtInsert->bind_param('iiiisi', $targetQuestId, $badgeId, $rarity, $itemId, $category, $participation);
+            if (!$stmtInsert->execute()) {
+                $stmtInsert->close();
+                $stmt->close();
+                throw new \RuntimeException('Failed to insert cloned quest reward.');
+            }
+            $stmtInsert->close();
+        }
+
+        $stmt->close();
+    }
+
+    private static function generateCloneLocator(string $locator) : string
+    {
+        $maxLength = 255;
+        $base = trim($locator);
+        if ($base === '') {
+            $base = 'quest';
+        }
+
+        if (preg_match('/-copy(?:-(\d+))?$/', $base)) {
+            $base = preg_replace('/-copy(?:-(\d+))?$/', '', $base);
+        }
+
+        $base = rtrim($base, '-');
+        if ($base === '') {
+            $base = 'quest';
+        }
+
+        $suffix = '-copy';
+        $candidate = self::buildLocatorCandidate($base, $suffix, $maxLength);
+        $counter = 2;
+        $tmp = null;
+        while (self::queryQuestByLocatorInto($candidate, $tmp)) {
+            $candidate = self::buildLocatorCandidate($base, $suffix . '-' . $counter, $maxLength);
+            $counter++;
+            $tmp = null;
+        }
+
+        return $candidate;
+    }
+
+    private static function buildLocatorCandidate(string $base, string $suffix, int $maxLength) : string
+    {
+        $available = $maxLength - strlen($suffix);
+        if ($available <= 0) {
+            return substr($suffix, max(0, strlen($suffix) - $maxLength));
+        }
+
+        $trimmedBase = substr($base, 0, $available);
+        $trimmed = rtrim($trimmedBase, '-');
+        if ($trimmed === '') {
+            $trimmed = $trimmedBase;
+        }
+
+        return $trimmed . $suffix;
+    }
+
+    private static function generateCloneName(string $name) : string
+    {
+        $trimmed = trim($name);
+        if ($trimmed === '') {
+            $trimmed = 'Quest';
+        }
+
+        if (preg_match('/\(Copy(?: (\d+))?\)$/i', $trimmed, $matches)) {
+            $base = preg_replace('/\s*\(Copy(?: (\d+))?\)$/i', '', $trimmed);
+            $number = isset($matches[1]) ? ((int)$matches[1] + 1) : 2;
+            $newName = $base . ' (Copy ' . $number . ')';
+        } else {
+            $newName = $trimmed . ' (Copy)';
+        }
+
+        if (strlen($newName) > 255) {
+            $newName = substr($newName, 0, 255);
+        }
+
+        return $newName;
+    }
+
+    private static function grantHostReward(vRecordId $accountId, ?float $hostRating, ?float $questRating): void
+    {
+        $ratings = [];
+        if ($hostRating !== null) {
+            $ratings[] = $hostRating;
+        }
+        if ($questRating !== null) {
+            $ratings[] = $questRating;
+        }
+        if (count($ratings) === 0) {
+            return;
+        }
+        $avg = array_sum($ratings) / count($ratings);
+        $tokens = 0;
+        if ($avg >= 4.5) {
+            $tokens = 3;
+        } elseif ($avg >= 4.0) {
+            $tokens = 2;
+        } elseif ($avg >= 3.0) {
+            $tokens = 1;
+        }
+        for ($i = 0; $i < $tokens; $i++) {
+            LootController::givePrestigeToken($accountId);
+        }
+    }
+
+    public static function queryReviewInbox(vRecordId $hostId): Response
+    {
+        $conn = Database::getConnection();
+        $host = $hostId->crand;
+
+        $sql = 'SELECT qa.Id,
+                       q.name AS title,
+                       q.locator,
+                       q.imagePath_icon,
+                       q.end_date,
+                       acc.Username AS username,
+                       qa.host_rating,
+                       qa.quest_rating,
+                       qa.feedback,
+                       IF(q.host_id = ?, qa.host_viewed, qa.host_2_viewed) AS viewed,
+                       (qa.host_rating IS NOT NULL OR qa.quest_rating IS NOT NULL OR qa.feedback IS NOT NULL) AS has_review
+                FROM quest_applicants qa
+                JOIN v_quest_info q ON qa.quest_id = q.Id
+                JOIN v_account_info acc ON qa.account_id = acc.Id
+                WHERE qa.participated = 1
+                  AND (q.host_id = ? OR q.host_id_2 = ?)
+                  AND qa.account_id <> q.host_id
+                  AND (q.host_id_2 IS NULL OR qa.account_id <> q.host_id_2)
+                  AND ((q.host_id = ? AND IFNULL(qa.host_viewed, 0) = 0)
+                       OR (q.host_id_2 = ? AND IFNULL(qa.host_2_viewed, 0) = 0))';
+        $stmt = $conn->prepare($sql);
+        if ($stmt === false) {
+            return new Response(false, 'Failed to prepare query.', null);
+        }
+
+        $stmt->bind_param('iiiii', $host, $host, $host, $host, $host);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result === false) {
+            return new Response(false, 'Failed to execute query.', null);
+        }
+
+        $reviews = [];
+        while ($row = $result->fetch_assoc()) {
+            $icon = new vMedia();
+            if (!is_null($row['imagePath_icon'])) {
+                $icon->setMediaPath($row['imagePath_icon']);
+            } else {
+                $icon = vMedia::defaultIcon();
+            }
+            $endDate = new vDateTime($row['end_date']);
+            $reviews[] = [
+                'id' => (int)$row['Id'],
+                'questTitle' => $row['title'],
+                'questLocator' => $row['locator'],
+                'questIcon' => $icon->getFullPath(),
+                'username' => $row['username'],
+                'questEndDate' => [
+                    'formattedBasic' => $endDate->formattedBasic,
+                    'formattedDetailed' => $endDate->formattedDetailed,
+                    'valueString' => $endDate->valueString,
+                    'dbValue' => $endDate->dbValue,
+                ],
+                'hostRating' => isset($row['host_rating']) ? (int)$row['host_rating'] : null,
+                'questRating' => isset($row['quest_rating']) ? (int)$row['quest_rating'] : null,
+                'feedback' => $row['feedback'],
+                'viewed' => (int)$row['viewed'] === 1,
+                'hasReview' => (int)$row['has_review'] === 1,
+            ];
+        }
+
+        return new Response(true, 'Review inbox loaded.', $reviews);
+    }
+
 }
 ?>

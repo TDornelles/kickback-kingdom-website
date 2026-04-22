@@ -5,23 +5,34 @@ namespace Kickback\Backend\Controllers;
 
 use Kickback\Common\Utility\IDCrypt;
 
-use Kickback\Backend\Models\Account;
 use Kickback\Backend\Views\vAccount;
 use Kickback\Backend\Views\vRecordId;
 use Kickback\Backend\Views\vMedia;
-use Kickback\Backend\Views\vMatchStats;
-use Kickback\Backend\Models\Response;
-use Kickback\Services\Database;
-use Kickback\Services\Session;
-use Kickback\Backend\Controllers\LootController;
-use Kickback\Backend\Config\ServiceCredentials;
 use Kickback\Backend\Views\vRaffle;
 use Kickback\Backend\Views\vGameStats;
+use Kickback\Backend\Views\vAbility;
 use Kickback\Backend\Controllers\DiscordController;
+use Kickback\Backend\Views\vMatchStats;
+
+use Kickback\Backend\Models\Response;
+use Kickback\Backend\Models\Account;
+
+use Kickback\Services\Database;
+use Kickback\Services\Session;
+
+use Kickback\Backend\Controllers\LootController;
+use Kickback\Backend\Controllers\SocialMediaController;
 use Kickback\Common\Primitives\Str;
+
+use Kickback\Backend\Config\ServiceCredentials;
+
+use Exception;
 
 class AccountController
 {
+    /** @var array<int, string> */
+    private static array $titleOverrideCache = [];
+
     public static function getAccountsByGame(vRecordId $gameId) : Response {
         $conn = Database::getConnection();
 
@@ -134,6 +145,42 @@ class AccountController
         
             return (new Response(true, $account->username."'s information.",  $account ));
         }
+    }
+
+    public static function getAccountCount() : Response {
+        $conn = Database::getConnection();
+
+        $result = $conn->query("SELECT COUNT(*) AS total FROM account");
+        if (!$result) {
+            return new Response(false, "Failed to retrieve account count: " . $conn->error);
+        }
+
+        $row = $result->fetch_assoc();
+        $count = (int)($row['total'] ?? 0);
+
+        $result->free();
+        $conn->close();
+
+        return new Response(true, "Account count", $count);
+    }
+
+    public static function getAllAccountIds() : Response {
+        $conn = Database::getConnection();
+
+        $result = $conn->query("SELECT Id FROM account");
+        if (!$result) {
+            return new Response(false, "Failed to retrieve account ids: " . $conn->error);
+        }
+
+        $accountIds = [];
+        while ($row = $result->fetch_assoc()) {
+            $accountIds[] = (int)($row['Id'] ?? 0);
+        }
+
+        $result->free();
+        $conn->close();
+
+        return new Response(true, "Account ids", $accountIds);
     }
 
     public static function getAccountInventory(vRecordId $recordId) : Response {
@@ -467,7 +514,7 @@ class AccountController
         $conn = Database::getConnection();
 
         $mainQuery = "SELECT v_account_info.*" . 
-        ($hasSearchTerm ? ", MATCH(Username, FirstName, LastName, Email) AGAINST (?) AS relevancy_score" : "") . "
+        ($hasSearchTerm ? ", (Username LIKE ? OR MATCH(Username, FirstName, LastName, Email) AGAINST (? IN BOOLEAN MODE)) AS relevancy_score" : "") . "
         FROM v_account_info
         $joinQuery
         $whereClause
@@ -506,10 +553,13 @@ class AccountController
         $hasSearchTerm = false;
         if (trim($searchTerm) !== "") {
             $hasSearchTerm = true;
-            $fulltextTerm = "+" . trim($searchTerm) . "*";
-            $filterConditions[] = "MATCH(Username, FirstName, LastName, Email) AGAINST (? IN BOOLEAN MODE)";
+            $trimmed = trim($searchTerm);
+            $fulltextTerm = "+" . $trimmed . "*";
+            $likeTerm = '%' . $trimmed . '%';
+            $filterConditions[] = "(Username LIKE ? OR MATCH(Username, FirstName, LastName, Email) AGAINST (? IN BOOLEAN MODE))";
+            $filterParams[] = $likeTerm;
             $filterParams[] = $fulltextTerm;
-            $paramTypes .= "s";
+            $paramTypes .= "ss";
         }
     
         $joinData = self::buildJoinsAndConditions($filters);
@@ -520,7 +570,8 @@ class AccountController
         $countTypes = $paramTypes . $joinData['paramTypes'];
 
         $whereClause = ' WHERE ' . implode(' AND ', $filterConditions);
-    
+                
+
         $count = self::executeCountQuery($joinQuery, $whereClause, $countParams, $countTypes);
         
         $mainParams = array_merge(
@@ -531,6 +582,9 @@ class AccountController
         );
         $mainTypes = $paramTypes . $paramTypes . $joinData['paramTypes'].'ii';
     
+        //return new Response(false, "", $mainParams);
+        //return new Response(false, "", $mainTypes);
+        //return new Response(false, "SELECT COUNT(*) AS total FROM v_account_info $joinQuery $whereClause");
         $accountItems = self::executeMainQuery($joinQuery, $whereClause, $mainParams, $mainTypes, $itemsPerPage, $offset, $hasSearchTerm);
     
         $newAccountItems = array_map(fn($row) => self::row_to_vAccount($row, true), $accountItems);
@@ -541,7 +595,138 @@ class AccountController
         ]);
     }
 
+    /**
+     * @return list<vAbility>
+     */
+    private static function getEquippedAbilitiesForAccount(vAccount $account): array
+    {
+        $conn = Database::getConnection();
+        $equipmentStmt = $conn->prepare(
+            'SELECT avatar_loot_id, player_card_border_loot_id, banner_loot_id, background_loot_id, charm_loot_id, companion_loot_id
+            FROM account_equipment WHERE account_id = ?'
+        );
+
+        if (!$equipmentStmt) {
+            error_log($conn->error);
+            return [];
+        }
+
+        $equipmentStmt->bind_param('i', $account->crand);
+
+        if (!$equipmentStmt->execute()) {
+            error_log($equipmentStmt->error);
+            $equipmentStmt->close();
+            return [];
+        }
+
+        $equipmentRow = $equipmentStmt->get_result()->fetch_assoc();
+        $equipmentStmt->close();
+
+        if (!$equipmentRow) {
+            return [];
+        }
+
+        $lootIds = array_map(
+            'intval',
+            array_filter([
+                $equipmentRow['avatar_loot_id'] ?? null,
+                $equipmentRow['player_card_border_loot_id'] ?? null,
+                $equipmentRow['banner_loot_id'] ?? null,
+                $equipmentRow['background_loot_id'] ?? null,
+                $equipmentRow['charm_loot_id'] ?? null,
+                $equipmentRow['companion_loot_id'] ?? null,
+            ], fn($id) => $id !== null && (int)$id > 0)
+        );
+
+        if (empty($lootIds)) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($lootIds), '?'));
+        $types = str_repeat('i', count($lootIds));
+
+        $lootStmt = $conn->prepare("SELECT Id, item_id FROM loot WHERE Id IN ({$placeholders})");
+        if (!$lootStmt) {
+            error_log($conn->error);
+            return [];
+        }
+
+        $lootStmt->bind_param($types, ...$lootIds);
+
+        if (!$lootStmt->execute()) {
+            error_log($lootStmt->error);
+            $lootStmt->close();
+            return [];
+        }
+
+        $lootResult = $lootStmt->get_result();
+        $lootToItem = [];
+
+        while ($row = $lootResult->fetch_assoc()) {
+            $lootToItem[(int)$row['Id']] = (int)$row['item_id'];
+        }
+
+        $lootStmt->close();
+
+        if (empty($lootToItem)) {
+            return [];
+        }
+
+        $itemIds = array_values(array_unique(array_values($lootToItem)));
+        $abilityResp = ItemController::getItemAbilities($itemIds);
+
+        if (!$abilityResp->success || !is_array($abilityResp->data)) {
+            return [];
+        }
+
+        $abilityMap = $abilityResp->data;
+        $equippedAbilities = [];
+
+        foreach ($lootIds as $lootId) {
+            $itemId = $lootToItem[$lootId] ?? null;
+            $itemAbilities = $itemId !== null && isset($abilityMap[$itemId]) ? $abilityMap[$itemId] : [];
+
+            if (is_array($itemAbilities)) {
+                foreach ($itemAbilities as $ability) {
+                    if ($ability instanceof vAbility) {
+                        $equippedAbilities[] = $ability;
+                    }
+                }
+            }
+        }
+
+        return $equippedAbilities;
+    }
+
+    private static function getEquipmentTitleOverride(vAccount $account): ?string
+    {
+        $accountId = $account->crand;
+
+        if (array_key_exists($accountId, self::$titleOverrideCache)) {
+            $cached = self::$titleOverrideCache[$accountId];
+            return $cached !== '' ? $cached : null;
+        }
+
+        $equippedAbilities = self::getEquippedAbilitiesForAccount($account);
+
+        foreach ($equippedAbilities as $ability) {
+            $titleChange = trim($ability->titleChange ?? '');
+            if ($titleChange !== '') {
+                self::$titleOverrideCache[$accountId] = $titleChange;
+                return $titleChange;
+            }
+        }
+
+        self::$titleOverrideCache[$accountId] = '';
+        return null;
+    }
+
     public static function getAccountTitle(vAccount $account) : string {
+        $abilityTitleOverride = self::getEquipmentTitleOverride($account);
+        if ($abilityTitleOverride !== null) {
+            return $abilityTitleOverride;
+        }
+
         $level = $account->level;
         $prestige = $account->prestige;
         // Define the list of titles for evil and good prestige
@@ -900,16 +1085,24 @@ class AccountController
                 ["Error in UpsertAccountEquipment(...) when preparing SQL query. (mysqli_prepare)"]);
         }
 
+        $equipmentAccountId = intval($equipmentData['equipment-account-id']);
+        $equipmentAvatar = ($equipmentData['equipment-avatar'] ?? '') === '' ? null : intval($equipmentData['equipment-avatar']);
+        $equipmentPcCard = ($equipmentData['equipment-pc-card'] ?? '') === '' ? null : intval($equipmentData['equipment-pc-card']);
+        $equipmentBanner = ($equipmentData['equipment-banner'] ?? '') === '' ? null : intval($equipmentData['equipment-banner']);
+        $equipmentBackground = ($equipmentData['equipment-background'] ?? '') === '' ? null : intval($equipmentData['equipment-background']);
+        $equipmentCharm = ($equipmentData['equipment-charm'] ?? '') === '' ? null : intval($equipmentData['equipment-charm']);
+        $equipmentPet = ($equipmentData['equipment-pet'] ?? '') === '' ? null : intval($equipmentData['equipment-pet']);
+
         // Bind the variables to the SQL statement
         $success = $stmt->bind_param(
             "iiiiiii",
-            $equipmentData['equipment-account-id'],
-            $equipmentData['equipment-avatar'],
-            $equipmentData['equipment-pc-card'],
-            $equipmentData['equipment-banner'],
-            $equipmentData['equipment-background'],
-            $equipmentData['equipment-charm'],
-            $equipmentData['equipment-pet']);
+            $equipmentAccountId,
+            $equipmentAvatar,
+            $equipmentPcCard,
+            $equipmentBanner,
+            $equipmentBackground,
+            $equipmentCharm,
+            $equipmentPet);
 
         if (false === $success) {
             error_log($stmt->error);
@@ -1263,7 +1456,7 @@ class AccountController
                 return (new Response(false, 'The host of the quest you are joining ran out of Writs of Passage. Please contact '.$quest->host1->username.'.', null));
             }
 
-            $writ_item_id = $writ['next_item_id'];
+            $writ_item_id = (string)$writ['next_item_id'];
             assert(is_string($writ_item_id));
         }
 

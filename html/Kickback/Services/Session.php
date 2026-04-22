@@ -7,6 +7,7 @@ use Kickback\Backend\Config\ServiceCredentials;
 use Kickback\Backend\Models\Response;
 use Kickback\Backend\Views\vSessionInformation;
 use Kickback\Backend\Controllers\AccountController;
+use Kickback\Backend\Controllers\ItemController;
 use Kickback\Backend\Controllers\NotificationController;
 use Kickback\Backend\Views\vAccount;
 use Kickback\Common\Version;
@@ -194,6 +195,7 @@ class Session {
     {
         $info = new vSessionInformation();
 
+        $info->account = null;
         $info->chestsJSON = "[]";
         $info->chests = [];
         $info->notifications = [];
@@ -226,6 +228,7 @@ class Session {
         }
 
         self::setCurrentAccount($account);
+        $info->account = $accountResp->data;
         $chestsResp = AccountController::getAccountChests($account);
         // @phpstan-ignore assign.propertyType
         $info->chests = $chestsResp->data;
@@ -242,6 +245,113 @@ class Session {
         $info->notificationsJSON = $notisJSON;
 
         return new Response(true, "Session information",$info);
+    }
+
+    /**
+     * Retrieve all abilities (including duplicates) from the equipment currently worn by the active session account.
+     */
+    public static function getEquippedAbilities(): Response
+    {
+        if (!self::isLoggedIn()) {
+            return new Response(false, 'You must be logged in to view equipped abilities.', []);
+        }
+
+        $account = self::getCurrentAccount();
+        if ($account === null) {
+            return new Response(false, 'Unable to determine the current account for this session.', []);
+        }
+
+        $conn = Database::getConnection();
+
+        $equipmentStmt = $conn->prepare(
+            'SELECT avatar_loot_id, player_card_border_loot_id, banner_loot_id, background_loot_id, charm_loot_id, companion_loot_id
+            FROM account_equipment WHERE account_id = ?'
+        );
+
+        if (!$equipmentStmt) {
+            return new Response(false, 'Failed to load equipped items: ' . $conn->error);
+        }
+
+        $equipmentStmt->bind_param('i', $account->crand);
+
+        if (!$equipmentStmt->execute()) {
+            $equipmentStmt->close();
+            return new Response(false, 'Failed to load equipped items: ' . $equipmentStmt->error);
+        }
+
+        $equipmentRow = $equipmentStmt->get_result()->fetch_assoc();
+        $equipmentStmt->close();
+
+        if (!$equipmentRow) {
+            return new Response(true, 'No equipped items were found for this account.', []);
+        }
+
+        $lootIds = array_map(
+            'intval',
+            array_filter([
+                $equipmentRow['avatar_loot_id'] ?? null,
+                $equipmentRow['player_card_border_loot_id'] ?? null,
+                $equipmentRow['banner_loot_id'] ?? null,
+                $equipmentRow['background_loot_id'] ?? null,
+                $equipmentRow['charm_loot_id'] ?? null,
+                $equipmentRow['companion_loot_id'] ?? null,
+            ], fn($id) => $id !== null && (int)$id > 0)
+        );
+
+        if (empty($lootIds)) {
+            return new Response(true, 'No equipped items to gather abilities from.', []);
+        }
+
+        $placeholders = implode(',', array_fill(0, count($lootIds), '?'));
+        $types = str_repeat('i', count($lootIds));
+
+        $lootStmt = $conn->prepare("SELECT Id, item_id FROM loot WHERE Id IN ({$placeholders})");
+        if (!$lootStmt) {
+            return new Response(false, 'Failed to resolve equipped loot into items: ' . $conn->error);
+        }
+
+        $lootStmt->bind_param($types, ...$lootIds);
+
+        if (!$lootStmt->execute()) {
+            $lootStmt->close();
+            return new Response(false, 'Failed to resolve equipped loot into items: ' . $lootStmt->error);
+        }
+
+        $lootResult = $lootStmt->get_result();
+        $lootToItem = [];
+
+        while ($row = $lootResult->fetch_assoc()) {
+            $lootToItem[(int)$row['Id']] = (int)$row['item_id'];
+        }
+
+        $lootStmt->close();
+
+        if (empty($lootToItem)) {
+            return new Response(true, 'Equipped items could not be resolved to loot.', []);
+        }
+
+        $itemIds = array_values(array_unique(array_values($lootToItem)));
+        $abilityResp = ItemController::getItemAbilities($itemIds);
+
+        if (!$abilityResp->success) {
+            return $abilityResp;
+        }
+
+        $abilityMap = is_array($abilityResp->data) ? $abilityResp->data : [];
+        $equippedAbilities = [];
+
+        foreach ($lootIds as $lootId) {
+            $itemId = $lootToItem[$lootId] ?? null;
+            $itemAbilities = $itemId !== null && isset($abilityMap[$itemId]) ? $abilityMap[$itemId] : [];
+
+            if (is_array($itemAbilities)) {
+                foreach ($itemAbilities as $ability) {
+                    $equippedAbilities[] = $ability;
+                }
+            }
+        }
+
+        return new Response(true, 'Equipped abilities retrieved successfully.', $equippedAbilities);
     }
 
     public static function isAdmin() : bool
@@ -373,6 +483,9 @@ class Session {
 
     public static function setSessionData(string $key, mixed $value) : void {
         $_SESSION[$key] = $value;
+        if ($key === 'vAccount') {
+            self::$currentAccount = $value instanceof vAccount ? $value : null;
+        }
     }
 
     public static function sessionDataInt(string $key) : ?int {
@@ -392,6 +505,9 @@ class Session {
     public static function removeSessionData(string $key) : void {
         if (isset($_SESSION[$key])) {
             unset($_SESSION[$key]);
+            if ($key === 'vAccount') {
+                self::$currentAccount = null;
+            }
         }
     }
 

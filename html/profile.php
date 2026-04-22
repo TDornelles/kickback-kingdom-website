@@ -149,6 +149,175 @@ $itemInformationJSON = json_encode($itemInfos);
 $itemStackInformationJSON = json_encode($accountInventory);
 $activeTab = 'active';
 $activeTabPage = 'active show';
+
+$emptySlotPath = 'http://localhost/assets/media/menu/empty_slot.jpg';
+
+$equippedAvatarLootId = '';
+$equippedAvatarIconPath = $emptySlotPath;
+$equippedPcCardLootId = '';
+$equippedPcCardPath = null;
+$equippedBannerLootId = '';
+$defaultDesktopBannerPath = '/assets/images/kk-1.jpg';
+$defaultMobileBannerPath = '/assets/images/kk-2.jpg';
+$equippedBannerPath = $defaultDesktopBannerPath;
+$equippedBannerMobilePath = $defaultMobileBannerPath;
+
+$equippedBackgroundLootId = '';
+$equippedBackgroundPath = null;
+
+$equippedCharmLootId = '';
+$equippedCharmPath = null;
+
+$equippedPetLootId = '';
+$equippedPetPath = null;
+
+$equippedAvatarPreviewPath = $emptySlotPath;
+$equippedPcCardPreviewPath = $emptySlotPath;
+$equippedBannerPreviewPath = $emptySlotPath;
+$equippedBackgroundPreviewPath = $emptySlotPath;
+$equippedCharmPreviewPath = $emptySlotPath;
+$equippedPetPreviewPath = $emptySlotPath;
+
+if (isset($profile) && isset($profile->avatar)) {
+    $equippedAvatarIconPath = $profile->avatar->getFullPath();
+}
+
+if (isset($profile) && isset($profile->playerCardBorder)) {
+    $equippedPcCardPath = $profile->playerCardBorder->getFullPath();
+}
+
+if (isset($profile) && isset($profile->banner)) {
+    $equippedBannerPath = $profile->banner->getFullPath();
+    $equippedBannerMobilePath = $profile->banner->getFullPath();
+}
+
+if (isset($profile) && isset($profile->background)) {
+    $equippedBackgroundPath = $profile->background->getFullPath();
+}
+
+if (isset($profile) && isset($profile->charm)) {
+    $equippedCharmPath = $profile->charm->getFullPath();
+}
+
+if (isset($profile) && isset($profile->companion)) {
+    $equippedPetPath = $profile->companion->getFullPath();
+}
+
+foreach ($accountInventory as $accountInventoryItemStack) {
+    if ($accountInventoryItemStack->item->equipable && $accountInventoryItemStack->item->equipmentSlot == ItemEquipmentSlot::AVATAR) {
+        if ($accountInventoryItemStack->item->iconSmall->getFullPath() === $equippedAvatarIconPath) {
+            if (isset($accountInventoryItemStack->nextLootId)) {
+                $equippedAvatarLootId = $accountInventoryItemStack->nextLootId->crand;
+            } elseif (isset($accountInventoryItemStack->itemLootId)) {
+                $equippedAvatarLootId = $accountInventoryItemStack->itemLootId->crand;
+            }
+            break;
+        }
+    }
+}
+
+foreach ($accountInventory as $accountInventoryItemStack) {
+    if ($accountInventoryItemStack->item->equipable && $accountInventoryItemStack->item->equipmentSlot == ItemEquipmentSlot::PC_BORDER) {
+        $pcBorderMediaPaths = array_filter([
+            $accountInventoryItemStack->item->iconBack?->getFullPath(),
+            $accountInventoryItemStack->item->iconBig?->getFullPath(),
+            $accountInventoryItemStack->item->iconSmall->getFullPath(),
+        ]);
+
+        if ($equippedPcCardPath !== null && in_array($equippedPcCardPath, $pcBorderMediaPaths, true)) {
+            if (isset($accountInventoryItemStack->nextLootId)) {
+                $equippedPcCardLootId = $accountInventoryItemStack->nextLootId->crand;
+            } elseif (isset($accountInventoryItemStack->itemLootId)) {
+                $equippedPcCardLootId = $accountInventoryItemStack->itemLootId->crand;
+            }
+            break;
+        }
+    }
+}
+
+foreach ($accountInventory as $accountInventoryItemStack) {
+    if ($accountInventoryItemStack->item->equipable && $accountInventoryItemStack->item->equipmentSlot == ItemEquipmentSlot::BANNER) {
+        $bannerMediaPaths = [
+            $accountInventoryItemStack->item->iconBig->getFullPath(),
+            $accountInventoryItemStack->item->iconSmall->getFullPath(),
+            $accountInventoryItemStack->item->iconBack->getFullPath(),
+        ];
+
+        if (in_array($equippedBannerPath, $bannerMediaPaths, true)) {
+            if (isset($accountInventoryItemStack->nextLootId)) {
+                $equippedBannerLootId = $accountInventoryItemStack->nextLootId->crand;
+            } elseif (isset($accountInventoryItemStack->itemLootId)) {
+                $equippedBannerLootId = $accountInventoryItemStack->itemLootId->crand;
+            }
+            break;
+        }
+    }
+}
+
+foreach ($accountInventory as $accountInventoryItemStack) {
+    if ($accountInventoryItemStack->item->equipable && $accountInventoryItemStack->item->equipmentSlot == ItemEquipmentSlot::BACKGROUND) {
+        $backgroundMediaPaths = array_filter([
+            $accountInventoryItemStack->item->iconBack?->getFullPath(),
+            $accountInventoryItemStack->item->iconBig?->getFullPath(),
+            $accountInventoryItemStack->item->iconSmall->getFullPath(),
+        ]);
+
+        if ($equippedBackgroundPath !== null && in_array($equippedBackgroundPath, $backgroundMediaPaths, true)) {
+            if (isset($accountInventoryItemStack->nextLootId)) {
+                $equippedBackgroundLootId = $accountInventoryItemStack->nextLootId->crand;
+            } elseif (isset($accountInventoryItemStack->itemLootId)) {
+                $equippedBackgroundLootId = $accountInventoryItemStack->itemLootId->crand;
+            }
+            break;
+        }
+    }
+}
+
+$equippedCharmItemMediaPaths = array_filter([$equippedCharmPath]);
+foreach ($accountInventory as $accountInventoryItemStack) {
+    if ($accountInventoryItemStack->item->equipable && $accountInventoryItemStack->item->equipmentSlot == ItemEquipmentSlot::CHARM) {
+        $charmMediaPaths = array_filter([
+            $accountInventoryItemStack->item->iconBack?->getFullPath(),
+            $accountInventoryItemStack->item->iconBig?->getFullPath(),
+            $accountInventoryItemStack->item->iconSmall->getFullPath(),
+        ]);
+
+        if ($equippedCharmPath !== null && array_intersect($equippedCharmItemMediaPaths, $charmMediaPaths)) {
+            if (isset($accountInventoryItemStack->nextLootId)) {
+                $equippedCharmLootId = $accountInventoryItemStack->nextLootId->crand;
+            } elseif (isset($accountInventoryItemStack->itemLootId)) {
+                $equippedCharmLootId = $accountInventoryItemStack->itemLootId->crand;
+            }
+            break;
+        }
+    }
+}
+
+foreach ($accountInventory as $accountInventoryItemStack) {
+    if ($accountInventoryItemStack->item->equipable && $accountInventoryItemStack->item->equipmentSlot == ItemEquipmentSlot::PET) {
+        $petMediaPaths = array_filter([
+            $accountInventoryItemStack->item->iconBack?->getFullPath(),
+            $accountInventoryItemStack->item->iconBig?->getFullPath(),
+            $accountInventoryItemStack->item->iconSmall->getFullPath(),
+        ]);
+
+        if ($equippedPetPath !== null && in_array($equippedPetPath, $petMediaPaths, true)) {
+            if (isset($accountInventoryItemStack->nextLootId)) {
+                $equippedPetLootId = $accountInventoryItemStack->nextLootId->crand;
+            } elseif (isset($accountInventoryItemStack->itemLootId)) {
+                $equippedPetLootId = $accountInventoryItemStack->itemLootId->crand;
+            }
+            break;
+        }
+    }
+}
+
+$equippedAvatarPreviewPath = $equippedAvatarLootId === '' ? $emptySlotPath : $equippedAvatarIconPath;
+$equippedPcCardPreviewPath = $equippedPcCardLootId === '' ? $emptySlotPath : ($equippedPcCardPath ?? $emptySlotPath);
+$equippedBannerPreviewPath = $equippedBannerLootId === '' ? $emptySlotPath : $equippedBannerPath;
+$equippedBackgroundPreviewPath = $equippedBackgroundLootId === '' ? $emptySlotPath : ($equippedBackgroundPath ?? $emptySlotPath);
+$equippedCharmPreviewPath = $equippedCharmLootId === '' ? $emptySlotPath : ($equippedCharmPath ?? $emptySlotPath);
+$equippedPetPreviewPath = $equippedPetLootId === '' ? $emptySlotPath : ($equippedPetPath ?? $emptySlotPath);
 ?>
 
 <!DOCTYPE html>
@@ -157,7 +326,7 @@ $activeTabPage = 'active show';
 
 <?php require("php-components/base-page-head.php"); ?>
 
-<body class="bg-body-secondary container p-0">
+<body class="bg-body-secondary container p-0" <?php if ($equippedBackgroundPath !== null) { ?>style="background-image: url('<?= htmlspecialchars($equippedBackgroundPath); ?>') !important;"<?php } ?>>
     
     <?php 
     
@@ -169,11 +338,11 @@ $activeTabPage = 'active show';
     <div>
         <!--TOP BANNER-->
         <div class="d-none d-md-block w-100 ratio" style="--bs-aspect-ratio: 26%; margin-top: 56px">
-            <img src="/assets/images/kk-1.jpg" class="" />
+            <img src="<?= htmlspecialchars($equippedBannerPath); ?>" class="object-fit-cover w-100 h-100" />
             <img class="img-fluid img-thumbnail" src="<?= $profile->profilePictureURL(); ?>" style="width: auto;height: 90%;top: 5%;left: 5%;">
         </div>
         <div class="d-block d-md-none w-100 ratio" style="margin-top: 56px; --bs-aspect-ratio: 46.3%;">
-            <img src="/assets/images/kk-2.jpg" />
+            <img src="<?= htmlspecialchars($equippedBannerMobilePath); ?>" class="object-fit-cover w-100 h-100" />
             <img class="img-fluid img-thumbnail" src="<?= $profile->profilePictureURL(); ?>" style="width: auto;height: 90%;top: 5%;left: 5%;">
         </div>
     </div>
@@ -209,12 +378,12 @@ $activeTabPage = 'active show';
     <form method="POST">
             
         <input id="equipment-account-id" type="hidden" name="equipment-account-id" required="" value="<?php echo $profile->crand; ?>"/>
-        <input id="equipment-avatar" type="hidden" name="equipment-avatar" required=""/>
-        <input id="equipment-pc-card" type="hidden" name="equipment-pc-card" required=""/>
-        <input id="equipment-banner" type="hidden" name="equipment-banner" required=""/>
-        <input id="equipment-background" type="hidden" name="equipment-background" required=""/>
-        <input id="equipment-charm" type="hidden" name="equipment-charm" required=""/>
-        <input id="equipment-pet" type="hidden" name="equipment-pet" required=""/>
+        <input id="equipment-avatar" type="hidden" name="equipment-avatar" required="" value="<?= htmlspecialchars((string)$equippedAvatarLootId); ?>"/>
+        <input id="equipment-pc-card" type="hidden" name="equipment-pc-card" required="" value="<?= htmlspecialchars((string)$equippedPcCardLootId); ?>"/>
+        <input id="equipment-banner" type="hidden" name="equipment-banner" required="" value="<?= htmlspecialchars((string)$equippedBannerLootId); ?>"/>
+        <input id="equipment-background" type="hidden" name="equipment-background" required="" value="<?= htmlspecialchars((string)$equippedBackgroundLootId); ?>"/>
+        <input id="equipment-charm" type="hidden" name="equipment-charm" required="" value="<?= htmlspecialchars((string)$equippedCharmLootId); ?>"/>
+        <input id="equipment-pet" type="hidden" name="equipment-pet" required="" value="<?= htmlspecialchars((string)$equippedPetLootId); ?>"/>
 
         <div class="modal fade" id="equipmentModal" tabindex="-1" aria-labelledby="equipmentModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-xl modal-dialog-centered">
@@ -230,13 +399,16 @@ $activeTabPage = 'active show';
                                     
                                     <div class="row g-0">
                                         <div class="col-4">
-                                            <button type="button"  class="btn btn-dark p-0" data-bs-target="#selectAvatarModal" data-bs-toggle="modal"><img id="equipment-preview-avatar" src="/assets/media/menu/empty_slot.jpg" class="img-fluid"></button>
+                                            <button type="button"  class="btn btn-dark p-0" data-bs-target="#selectAvatarModal" data-bs-toggle="modal"><img id="equipment-preview-avatar" src="<?= htmlspecialchars($equippedAvatarPreviewPath); ?>" class="img-fluid"></button>
                                         </div>
                                         <div class="col-8">
-                                            
+
                                             <div class="card-header">Avatar</div>
                                             <div class="card-body pt-1">
                                                 <p class="card-text">This is how others will see you.</p>
+                                                <?php if ($isMyProfile) { ?>
+                                                <button type="button" class="btn btn-outline-danger btn-sm" data-unequip-slot="AVATAR" onclick="unequipSlot('AVATAR')">Unequip</button>
+                                                <?php } ?>
                                             </div>
                                         </div>
                                     </div>
@@ -247,31 +419,37 @@ $activeTabPage = 'active show';
                                     
                                     <div class="row g-0">
                                         <div class="col-4">
-                                            <button type="button" data-bs-target="#selectPCBorderModal" data-bs-toggle="modal" class="btn btn-dark p-0"><img src="/assets/media/menu/empty_slot.jpg" class="img-fluid"></button>
+                                            <button type="button" data-bs-target="#selectPCBorderModal" data-bs-toggle="modal" class="btn btn-dark p-0"><img id="equipment-preview-pc-card" src="<?= htmlspecialchars($equippedPcCardPreviewPath); ?>" class="img-fluid"></button>
                                         </div>
                                         <div class="col-8">
-                                            
+
                                             <div class="card-header">Player Card Border</div>
                                             <div class="card-body pt-1">
                                                 <p class="card-text">This is a border that will be on top of your player card.</p>
+                                                <?php if ($isMyProfile) { ?>
+                                                <button type="button" class="btn btn-outline-danger btn-sm" data-unequip-slot="PC_CARD" onclick="unequipSlot('PC_CARD')">Unequip</button>
+                                                <?php } ?>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                                
+
                             </div>
                             <div class="col-12 col-lg-6">
                                 <div class="card border-dark mb-3">
-                                    
+
                                     <div class="row g-0">
                                         <div class="col-4">
-                                            <button type="button" data-bs-target="#selectBannerModal" data-bs-toggle="modal" class="btn btn-dark p-0"><img src="/assets/media/menu/empty_slot.jpg" class="img-fluid"></button>
+                                            <button type="button" data-bs-target="#selectBannerModal" data-bs-toggle="modal" class="btn btn-dark p-0"><img id="equipment-preview-banner" src="<?= htmlspecialchars($equippedBannerPreviewPath); ?>" class="img-fluid object-fit-cover"></button>
                                         </div>
                                         <div class="col-8">
-                                            
+
                                             <div class="card-header">Banner</div>
                                             <div class="card-body pt-1">
                                                 <p class="card-text">This is what shows at the top of your profile page.</p>
+                                                <?php if ($isMyProfile) { ?>
+                                                <button type="button" class="btn btn-outline-danger btn-sm" data-unequip-slot="BANNER" onclick="unequipSlot('BANNER')">Unequip</button>
+                                                <?php } ?>
                                             </div>
                                         </div>
                                     </div>
@@ -283,13 +461,16 @@ $activeTabPage = 'active show';
                                     
                                     <div class="row g-0">
                                         <div class="col-4">
-                                            <button type="button" data-bs-target="#selectBackgroundModal" data-bs-toggle="modal" class="btn btn-dark p-0"><img src="/assets/media/menu/empty_slot.jpg" class="img-fluid"></button>
+                                            <button type="button" data-bs-target="#selectBackgroundModal" data-bs-toggle="modal" class="btn btn-dark p-0"><img id="equipment-preview-background" src="<?= htmlspecialchars($equippedBackgroundPreviewPath); ?>" class="img-fluid object-fit-cover"></button>
                                         </div>
                                         <div class="col-8">
-                                            
+
                                             <div class="card-header">Background</div>
                                             <div class="card-body pt-1">
                                                 <p class="card-text">This is the background of your profile page.</p>
+                                                <?php if ($isMyProfile) { ?>
+                                                <button type="button" class="btn btn-outline-danger btn-sm" data-unequip-slot="BACKGROUND" onclick="unequipSlot('BACKGROUND')">Unequip</button>
+                                                <?php } ?>
                                             </div>
                                         </div>
                                     </div>
@@ -297,16 +478,19 @@ $activeTabPage = 'active show';
                             </div>
                             <div class="col-12 col-lg-6">
                                 <div class="card border-dark mb-3">
-                                    
+
                                     <div class="row g-0">
                                         <div class="col-4">
-                                            <button type="button" data-bs-target="#selectCharmModal" data-bs-toggle="modal" class="btn btn-dark p-0"><img src="/assets/media/menu/empty_slot.jpg" class="img-fluid"></button>
+                                            <button type="button" data-bs-target="#selectCharmModal" data-bs-toggle="modal" class="btn btn-dark p-0"><img id="equipment-preview-charm" src="<?= htmlspecialchars($equippedCharmPreviewPath); ?>" class="img-fluid"></button>
                                         </div>
                                         <div class="col-8">
-                                            
+
                                             <div class="card-header">Charm</div>
                                             <div class="card-body pt-1">
                                                 <p class="card-text">Can effect your experiences in the kingdom</p>
+                                                <?php if ($isMyProfile) { ?>
+                                                <button type="button" class="btn btn-outline-danger btn-sm" data-unequip-slot="CHARM" onclick="unequipSlot('CHARM')">Unequip</button>
+                                                <?php } ?>
                                             </div>
                                         </div>
                                     </div>
@@ -314,16 +498,19 @@ $activeTabPage = 'active show';
                             </div>
                             <div class="col-12 col-lg-6">
                                 <div class="card border-dark mb-3">
-                                    
+
                                     <div class="row g-0">
                                         <div class="col-4">
-                                            <button type="button" data-bs-target="#selectPetModal" data-bs-toggle="modal" class="btn btn-dark p-0"><img src="/assets/media/menu/empty_slot.jpg" class="img-fluid"></button>
+                                            <button type="button" data-bs-target="#selectPetModal" data-bs-toggle="modal" class="btn btn-dark p-0"><img id="equipment-preview-pet" src="<?= htmlspecialchars($equippedPetPreviewPath); ?>" class="img-fluid"></button>
                                         </div>
                                         <div class="col-8">
-                                            
+
                                             <div class="card-header">Pet</div>
                                             <div class="card-body pt-1">
                                                 <p class="card-text">Can effect your experiences in the kingdom</p>
+                                                <?php if ($isMyProfile) { ?>
+                                                <button type="button" class="btn btn-outline-danger btn-sm" data-unequip-slot="PET" onclick="unequipSlot('PET')">Unequip</button>
+                                                <?php } ?>
                                             </div>
                                         </div>
                                     </div>
@@ -694,10 +881,10 @@ $activeTabPage = 'active show';
                 
                 
                 <?php 
-                
+
                 $activePageName = $profile->username;
                 require("php-components/base-page-breadcrumbs.php");
-                
+
                 ?>
                 <div class="row">
                     <div class="col-12">
@@ -961,6 +1148,24 @@ $activeTabPage = 'active show';
             }
         });
 
+        const emptySlotImagePath = <?= json_encode($emptySlotPath); ?>;
+        const equipmentInputMap = {
+            AVATAR: "#equipment-avatar",
+            PC_CARD: "#equipment-pc-card",
+            BANNER: "#equipment-banner",
+            BACKGROUND: "#equipment-background",
+            CHARM: "#equipment-charm",
+            PET: "#equipment-pet",
+        };
+        const equipmentPreviewMap = {
+            AVATAR: "#equipment-preview-avatar",
+            PC_CARD: "#equipment-preview-pc-card",
+            BANNER: "#equipment-preview-banner",
+            BACKGROUND: "#equipment-preview-background",
+            CHARM: "#equipment-preview-charm",
+            PET: "#equipment-preview-pet",
+        };
+
         function GetItemStackInformationById(id)
         {
             for (let index = 0; index < itemStackInformation.length; index++) {
@@ -971,6 +1176,38 @@ $activeTabPage = 'active show';
                 }
             }
             return null;
+        }
+
+        function updateUnequipButtons()
+        {
+            Object.entries(equipmentInputMap).forEach(([slot, selector]) => {
+                const button = document.querySelector(`[data-unequip-slot="${slot}"]`);
+                if (!button)
+                {
+                    return;
+                }
+
+                const hasValue = $(selector).val() !== "";
+                button.classList.toggle("d-none", !hasValue);
+            });
+        }
+
+        function unequipSlot(slot)
+        {
+            const inputSelector = equipmentInputMap[slot];
+            const previewSelector = equipmentPreviewMap[slot];
+
+            if (inputSelector !== undefined)
+            {
+                $(inputSelector).val("");
+            }
+
+            if (previewSelector !== undefined)
+            {
+                $(previewSelector).attr("src", emptySlotImagePath);
+            }
+
+            updateUnequipButtons();
         }
 
         function SelectInventoryItemStackEquipment(item_id)
@@ -1016,13 +1253,16 @@ $activeTabPage = 'active show';
                 $("#equipment-pet").val(stack.nextLootId.crand);
                 $("#equipment-preview-pet").attr("src",item.iconSmall.url);
             }
-            
-            <?php 
+
+            <?php
             }
 
             ?>
+            updateUnequipButtons();
             console.log(item);
         }
+
+        updateUnequipButtons();
 
     </script>
 </body>

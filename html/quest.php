@@ -200,6 +200,27 @@ foreach ($thisQuest->rewards as $questRewardsCategory) {
 }
 $itemInformationJSON = json_encode($itemInfos);
 
+$selectedRankedType = 'match';
+$selectedRankedGameId = '';
+if ($thisQuest->isTournament())
+{
+    $selectedRankedType = $thisQuest->tournament->hasBracket() ? 'bracket' : 'tournament';
+    if ($thisQuest->tournament->game !== null)
+    {
+        $selectedRankedGameId = (string)$thisQuest->tournament->game->crand;
+    }
+}
+
+$questHasBegun = false;
+if ($thisQuest->hasEndDate()) {
+    $questEndDate = $thisQuest->nullableEndDate();
+    if ($questEndDate instanceof vDateTime) {
+        $questHasBegun = $questEndDate->isSameOrBefore(vDateTime::now());
+    }
+}
+
+$rankedOptionsEditable = !($thisQuest->reviewStatus->isPublished() && $questHasBegun);
+
 ?>
 
 <!DOCTYPE html>
@@ -491,7 +512,7 @@ $itemInformationJSON = json_encode($itemInfos);
                         <form method="POST">
                             <input type="hidden" name="form_token" value="<?php echo $_SESSION['form_token']; ?>">
                             <input type="hidden" value="<?= $thisQuest->crand; ?>" name="edit-quest-id" />
-                            <div class="modal modal-lg fade" id="modalEditQuestRewards" tabindex="-1" aria-labelledby="modalEditQuestRewardsLabel" aria-hidden="true">
+                            <div class="modal modal-lg fade" id="modalEditQuestRewards" tabindex="-1" aria-labelledby="modalEditQuestRewardsLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
                                 <div class="modal-dialog modal-dialog-centered">
                                     <div class="modal-content">
                                         <div class="modal-header">
@@ -574,7 +595,7 @@ $itemInformationJSON = json_encode($itemInfos);
                             <input type="hidden" value="<?= $thisQuest->banner->crand; ?>" name="edit-quest-images-desktop-banner-id" id="edit-quest-images-desktop-banner-id"/>
                             <input type="hidden" value="<?= $thisQuest->bannerMobile->crand; ?>" name="edit-quest-images-mobile-banner-id" id="edit-quest-images-mobile-banner-id" />
                             <input type="hidden" value="<?= $thisQuest->icon->crand; ?>" name="edit-quest-images-icon-id" id="edit-quest-images-icon-id"/>
-                            <div class="modal modal-lg fade" id="modalEditQuestImages" tabindex="-1" aria-labelledby="modalEditQuestImagesLabel" aria-hidden="true">
+                            <div class="modal modal-lg fade" id="modalEditQuestImages" tabindex="-1" aria-labelledby="modalEditQuestImagesLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
                                 <div class="modal-dialog modal-dialog-centered">
                                     <div class="modal-content">
                                         <div class="modal-header">
@@ -616,7 +637,7 @@ $itemInformationJSON = json_encode($itemInfos);
                             <input type="hidden" name="form_token" value="<?php echo $_SESSION['form_token']; ?>">
                             <input type="hidden" value="<?= $thisQuest->crand; ?>" name="edit-quest-id" />
                             <input type="hidden" value="<?= $thisQuest->getHost2Id(); ?>" name="edit-quest-options-host-2-id" id="edit-quest-options-host-2-id"/>
-                            <div class="modal modal-lg fade" id="modalEditQuestOptions" tabindex="-1" aria-labelledby="modalEditQuestOptionsLabel" aria-hidden="true">
+                            <div class="modal modal-lg fade" id="modalEditQuestOptions" tabindex="-1" aria-labelledby="modalEditQuestOptionsLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
                                 <div class="modal-dialog modal-dialog-centered">
                                     <div class="modal-content">
                                         <div class="modal-header">
@@ -645,8 +666,9 @@ $itemInformationJSON = json_encode($itemInfos);
                                                     <label for="edit-quest-options-locator" class="form-label">Co-Host:</label>
                                                     <div class="input-group">
                                                         <span class="input-group-text"><i class="fa-solid fa-user-plus"></i></span>
-                                                        <input type="text" disabled class="form-control" value="<?= $thisQuest->getHost2Username(); ?>" />
-                                                        <button type="button" class="btn btn-primary" onclick="OpenSelectAccountModal('modalEditQuestOptions')">Select</button>
+                                                        <input type="text" disabled class="form-control" id="edit-quest-options-host-2-username" value="<?= $thisQuest->getHost2Username(); ?>" placeholder="No co-host selected" />
+                                                        <button type="button" class="btn btn-outline-secondary" onclick="SelectQuestCoHost('')">Clear</button>
+                                                        <button type="button" class="btn btn-primary" onclick="OpenSelectAccountModal('modalEditQuestOptions','SelectQuestCoHost')">Select</button>
                                                     </div>
                                                 </div>
                                                 <div class="col-lg-6 mb-3">
@@ -739,7 +761,7 @@ $itemInformationJSON = json_encode($itemInfos);
                                                                 <div class="col-md-6 mb-3">
                                                                     <div class="form-group">
                                                                         <label for="edit-quest-options-datetime-time"  class="form-label">Time:</label>
-                                                                        <input type="time" id="edit-quest-options-datetime-time" name="edit-quest-options-datetime-time" value="" data-utc-time="<?= vDateTime::getFormattedYmd($thisQuest->nullableEndDate()); ?>" onchange="OnDateTimeChangedForQuestOptions();" class="form-control">
+                                                                        <input type="time" id="edit-quest-options-datetime-time" name="edit-quest-options-datetime-time" value="<?= vDateTime::getFormattedHi($thisQuest->nullableEndDate()); ?>" data-utc-time="<?= vDateTime::getFormattedHi($thisQuest->nullableEndDate()); ?>" onchange="OnDateTimeChangedForQuestOptions();" class="form-control">
                                                                     </div>
                                                                 </div>
 
@@ -781,6 +803,8 @@ $itemInformationJSON = json_encode($itemInfos);
                                                                         return document.getElementById('edit-quest-options-style').value;
                                                                     }
 
+                                                                    const canEditRankedOptions = <?= $rankedOptionsEditable ? 'true' : 'false'; ?>;
+
                                                                     function OnQuestStyleChanged() {
                                                                             // First, hide all the descriptions
                                                                         for (let i = 0; i < 4; i++) {
@@ -805,15 +829,99 @@ $itemInformationJSON = json_encode($itemInfos);
                                                                     }
 
                                                                     function OnQuestOptionChanged() {
-                                                                        var bracketOptions = document.getElementById("quest-style-bracket-options");
-                                                                        bracketOptions.style.display = "none";
-
-                                                                        var selectedQuestStyle = GetSelectedQuestStyle();
-
-                                                                        let radioElement = document.getElementById('edit-quest-options-0-bracket');
-                                                                        if (radioElement.checked && selectedQuestStyle == '1') {
-                                                                            bracketOptions.style.display = "block";
+                                                                        const bracketOptions = document.getElementById("quest-style-bracket-options");
+                                                                        if (bracketOptions) {
+                                                                            bracketOptions.style.display = "none";
                                                                         }
+
+                                                                        const rankedGameSelect = document.getElementById('edit-quest-options-ranked-game');
+                                                                        if (rankedGameSelect) {
+                                                                            rankedGameSelect.disabled = true;
+                                                                            rankedGameSelect.required = false;
+                                                                        }
+
+                                                                        const selectedQuestStyle = GetSelectedQuestStyle();
+                                                                        if (selectedQuestStyle === '1') {
+                                                                            const rankedTypeElement = document.getElementById('edit-quest-options-ranked-type');
+                                                                            const rankedTypeValue = rankedTypeElement ? rankedTypeElement.value : 'match';
+
+                                                                            if (rankedGameSelect && canEditRankedOptions) {
+                                                                                rankedGameSelect.disabled = false;
+                                                                                if (rankedTypeValue !== 'match') {
+                                                                                    rankedGameSelect.required = true;
+                                                                                }
+                                                                            }
+
+                                                                            if (rankedTypeValue === 'bracket' && bracketOptions) {
+                                                                                bracketOptions.style.display = "block";
+                                                                            }
+                                                                        }
+                                                                    }
+
+                                                                    function SelectQuestCoHost(accountId) {
+                                                                        const coHostIdInput = document.getElementById('edit-quest-options-host-2-id');
+                                                                        const coHostNameInput = document.getElementById('edit-quest-options-host-2-username');
+
+                                                                        if (!coHostIdInput || !coHostNameInput) {
+                                                                            return;
+                                                                        }
+
+                                                                        const selectedId = accountId ?? '';
+                                                                        let normalizedId = selectedId === null ? '' : selectedId.toString().trim();
+                                                                        if (normalizedId === 'undefined' || normalizedId === 'null') {
+                                                                            normalizedId = '';
+                                                                        }
+                                                                        coHostIdInput.value = normalizedId;
+
+                                                                        let selectedUsername = '';
+
+                                                                        if (normalizedId !== '') {
+                                                                            if (typeof selectAccountResultsById !== 'undefined') {
+                                                                                const accountInfo = selectAccountResultsById[normalizedId];
+                                                                                if (accountInfo && accountInfo.username) {
+                                                                                    selectedUsername = accountInfo.username;
+                                                                                }
+                                                                            }
+
+                                                                            if (!selectedUsername) {
+                                                                                const clickableLayer = document.querySelector(`#modal-selectAccountSearchResults .clickable-layer[data-account-id="${normalizedId.replace(/"/g, '\"')}"]`);
+                                                                                if (clickableLayer && clickableLayer.dataset.username) {
+                                                                                    selectedUsername = decodeHtml(clickableLayer.dataset.username);
+                                                                                }
+                                                                            }
+                                                                        }
+
+                                                                        coHostNameInput.value = selectedUsername;
+
+                                                                        const selectModalElement = document.getElementById('selectAccountModal');
+                                                                        const modalWasOpen = selectModalElement && selectModalElement.classList.contains('show');
+
+                                                                        if (modalWasOpen && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                                                                            let selectModalInstance = bootstrap.Modal.getInstance(selectModalElement);
+                                                                            if (!selectModalInstance) {
+                                                                                selectModalInstance = new bootstrap.Modal(selectModalElement);
+                                                                            }
+                                                                            selectModalInstance.hide();
+
+                                                                            if (selectAccountModalCallerId && selectAccountModalCallerId !== -1) {
+                                                                                const previousModalElement = document.getElementById(selectAccountModalCallerId);
+                                                                                if (previousModalElement) {
+                                                                                    let previousModalInstance = bootstrap.Modal.getInstance(previousModalElement);
+                                                                                    if (!previousModalInstance) {
+                                                                                        previousModalInstance = new bootstrap.Modal(previousModalElement);
+                                                                                    }
+                                                                                    previousModalInstance.show();
+                                                                                }
+                                                                            }
+
+                                                                            selectAccountModalCallerId = -1;
+                                                                        }
+                                                                    }
+
+                                                                    function decodeHtml(value) {
+                                                                        const textarea = document.createElement('textarea');
+                                                                        textarea.innerHTML = value;
+                                                                        return textarea.value;
                                                                     }
 
                                                                     function toggleDateTimeVisibility() {
@@ -908,31 +1016,33 @@ $itemInformationJSON = json_encode($itemInfos);
                                                     <div class="card">
                                                         <div class="card-body">
                                                             <h5 class="card-title">Ranked Options</h5>
+                                                            <?php if (!$rankedOptionsEditable) { ?>
+                                                                <div class="alert alert-warning mb-3" role="alert">
+                                                                    Ranked settings are locked once a quest is published and has begun.
+                                                                </div>
+                                                            <?php } ?>
                                                             
                                                             <div class="row">
                                                                 <div class="col-12">
-                                                                    <div class="form-check">
-                                                                        <input class="form-check-input" type="radio" name="edit-quest-options-ranked" value="custom" id="edit-quest-options-0-custom" <?= ($thisQuest->isBracketTournament()?"":"checked"); ?> onchange="OnQuestOptionChanged();">
-                                                                        <label class="form-check-label" for="edit-quest-options-0-custom">
-                                                                            Custom Ranked Match (Must be explained in the quest information content)
-                                                                        </label>
-                                                                    </div>
-                                                                    <div class="form-check">
-                                                                        <input class="form-check-input" type="radio" name="edit-quest-options-ranked" value="bracket" id="edit-quest-options-0-bracket" <?= ($thisQuest->isBracketTournament()?"checked":""); ?> onchange="OnQuestOptionChanged();">
-                                                                        <label class="form-check-label" for="edit-quest-options-0-bracket">
-                                                                            Bracket Elimination Tournament
-                                                                        </label>
+                                                                    <div class="form-group mb-2">
+                                                                        <label class="form-label" for="edit-quest-options-ranked-type">Ranked Match Type</label>
+                                                                        <select class="form-select" name="edit-quest-options-ranked-type" id="edit-quest-options-ranked-type" onchange="OnQuestOptionChanged()"<?= $rankedOptionsEditable ? '' : ' disabled'; ?>>
+                                                                            <option value="match" <?= ($selectedRankedType === 'match' ? 'selected' : ''); ?>>Custom Ranked Match (No Tournament)</option>
+                                                                            <option value="tournament" <?= ($selectedRankedType === 'tournament' ? 'selected' : ''); ?>>Tournament With No Bracket (Rally Style)</option>
+                                                                            <option value="bracket" <?= ($selectedRankedType === 'bracket' ? 'selected' : ''); ?>>Tournament With A Bracket</option>
+                                                                        </select>
                                                                     </div>
                                                                     <div class="form-group mt-2">
                                                                         <div class="input-group">
                                                                             <span class="input-group-text"><i class="fa-solid fa-gamepad"></i></span>
-                                                                            <select class="form-select" name="edit-quest-options-ranked-game" id="edit-quest-options-ranked-game" aria-label="Default select example">
-                                                                                <option value="" selected>What game is being played?</option>
-                                                                                <?php 
+                                                                            <select class="form-select" name="edit-quest-options-ranked-game" id="edit-quest-options-ranked-game" aria-label="Default select example"<?= $rankedOptionsEditable ? '' : ' disabled'; ?>>
+                                                                                <option value="" <?= ($selectedRankedGameId === '' ? 'selected' : ''); ?>>What game is being played?</option>
+                                                                                <?php
                                                                                     if ($games !== null) {
-                                                                                        foreach($games as $game) {
+                                                                                        foreach ($games as $game) {
                                                                                             if ($game->canRank) { // Only display games that can be ranked
-                                                                                                echo '<option value="' . $game->crand . '">' . $game->name . '</option>';
+                                                                                                $isSelected = ($selectedRankedGameId === (string)$game->crand) ? ' selected' : '';
+                                                                                                echo '<option value="' . $game->crand . '"' . $isSelected . '>' . htmlspecialchars($game->name, ENT_QUOTES) . '</option>';
                                                                                             }
                                                                                         }
                                                                                     }
@@ -940,7 +1050,7 @@ $itemInformationJSON = json_encode($itemInfos);
                                                                                 ?>
                                                                             </select>
                                                                         </div>
-                                                                        <div class="form-text" id="basic-addon4">Want to recommend a new game for Kickback Kingdom? Click <a href="<?php echo Version::urlBetaPrefix(); ?>/games.php?request-new-game=1">HERE</a></div>
+                                                                        <div class="form-text" id="basic-addon4">Want to recommend a new game for Kickback Kingdom? Click <a href="<?php echo Version::urlBetaPrefix(); ?>/tickets/new-ticket.php?template=request-new-game&category=game_request">HERE</a></div>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -948,8 +1058,8 @@ $itemInformationJSON = json_encode($itemInfos);
                                                     </div>
                                                 </div>
                                             </div>
-                                            
-                                            <div class="row mb-3" id="quest-style-bracket-options">
+
+                                            <div class="row mb-3" id="quest-style-bracket-options" style="<?= ($selectedRankedType === 'bracket' && $thisQuest->playStyle == PlayStyle::Ranked ? '' : 'display: none;'); ?>">
                                                 <div class="col-12">
                                                     <div class="card">
                                                         <div class="card-body">
@@ -964,7 +1074,7 @@ $itemInformationJSON = json_encode($itemInfos);
                                                                         </label>
                                                                     </div>
                                                                     <div class="form-check">
-                                                                        <input class="form-check-input" type="radio" name="quest-style-bracket-options-elimination" value="double" id="quest-style-bracket-options-elimination-double" checked>
+                                                                        <input class="form-check-input" type="radio" name="quest-style-bracket-options-elimination" value="double" id="quest-style-bracket-options-elimination-double" checked<?= $rankedOptionsEditable ? '' : ' disabled'; ?>>
                                                                         <label class="form-check-label" for="quest-style-bracket-options-elimination-double">
                                                                             Double Elimination
                                                                         </label>
@@ -1016,7 +1126,7 @@ $itemInformationJSON = json_encode($itemInfos);
                         <form method="POST">
                             <input type="hidden" name="form_token" value="<?php echo $_SESSION['form_token']; ?>">
                             <input type="hidden" name="quest-id" value="<?= $thisQuest->crand; ?>" />
-                            <div class="modal modal-xl fade" id="modalQuestPublish" tabindex="-1" aria-labelledby="modalQuestPublishLabel" aria-hidden="true">
+                            <div class="modal modal-xl fade" id="modalQuestPublish" tabindex="-1" aria-labelledby="modalQuestPublishLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
                                 <div class="modal-dialog modal-dialog-centered">
                                     <div class="modal-content">
                                     <div class="modal-header">
@@ -1090,7 +1200,7 @@ $itemInformationJSON = json_encode($itemInfos);
                         <form method="POST">
                             <input type="hidden" name="form_token" value="<?= $_SESSION['form_token']; ?>">
                             <input type="hidden" name="quest-id" value="<?= $thisQuest->crand; ?>" />
-                            <div class="modal modal-xl fade" id="modalQuestApprove" tabindex="-1" aria-labelledby="modalQuestApproveLabel" aria-hidden="true">
+                            <div class="modal modal-xl fade" id="modalQuestApprove" tabindex="-1" aria-labelledby="modalQuestApproveLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
                                 <div class="modal-dialog modal-dialog-centered">
                                     <div class="modal-content">
                                         <div class="modal-header bg-success">
@@ -1121,7 +1231,7 @@ $itemInformationJSON = json_encode($itemInfos);
                         <form method="POST">
                             <input type="hidden" name="form_token" value="<?= $_SESSION['form_token']; ?>">
                             <input type="hidden" name="quest-id" value="<?= $thisQuest->crand; ?>" />
-                            <div class="modal modal-xl fade" id="modalQuestReject" tabindex="-1" aria-labelledby="modalQuestRejectLabel" aria-hidden="true">
+                            <div class="modal modal-xl fade" id="modalQuestReject" tabindex="-1" aria-labelledby="modalQuestRejectLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
                                 <div class="modal-dialog modal-dialog-centered">
                                     <div class="modal-content">
                                         <div class="modal-header bg-danger">

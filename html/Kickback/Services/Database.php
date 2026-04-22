@@ -11,6 +11,20 @@ class Database {
     private static ?\mysqli $conn = null;
 
     public static function getConnection(): \mysqli {
+        // If a connection exists but has been closed (for example, by other code
+        // calling \mysqli::close()), clear it so a fresh connection can be created.
+        if (self::$conn !== null) {
+            try {
+                if (!@self::$conn->ping()) {
+                    self::$conn = null;
+                }
+            } catch (\Throwable $e) {
+                // Certain operations on closed mysqli objects throw Errors instead of warnings.
+                // Reset the connection so a new one can be created safely.
+                self::$conn = null;
+            }
+        }
+
         if (self::$conn === null) {
             // Fetching credentials
             $servername = ServiceCredentials::get("sql_server_host");
@@ -23,9 +37,11 @@ class Database {
             assert(is_string($username));
             assert(is_string($password));
             assert(is_string($database));
+            mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
             // Attempting to establish a database connection
             self::$conn = new \mysqli($servername, $username, $password, $database);
+            
 
             // Error handling
             if (!is_null(self::$conn->connect_error)) {
@@ -33,10 +49,14 @@ class Database {
             }
             
              // Set charset and collation to ensure consistency
-             if (!self::$conn->set_charset("utf8mb4")) {
+            if (!self::$conn->set_charset("utf8mb4")) {
                 throw new \Exception("Error setting charset: " . self::$conn->error);
             }
             
+
+            /*if (!self::$conn->query("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci")) {
+                throw new \Exception("Error setting names/collation: " . self::$conn->error);
+            }*/
             // Set the collation to utf8mb4_unicode_ci for consistency
             if (!self::$conn->query("SET collation_connection = 'utf8mb4_unicode_ci'")) {
                 throw new \Exception("Error setting collation: " . self::$conn->error);

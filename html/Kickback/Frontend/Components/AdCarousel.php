@@ -7,7 +7,10 @@ use Kickback\Common\Primitives\Str;
 use Kickback\Backend\Controllers\QuestController;
 use Kickback\Backend\Controllers\TreasureHuntController;
 use Kickback\Backend\Views\vTreasureHuntEvent;
+use Kickback\Backend\Controllers\SeasonController;
 use Kickback\Common\Version;
+use Kickback\Services\Session;
+use Kickback\Backend\Views\vDateTime;
 
 class AdCarousel
 {
@@ -72,6 +75,27 @@ class AdCarousel
         // Only load the ad for the current page
         if (isset($pageAds[$currentPage])) {
             array_push($this->ads, $pageAds[$currentPage]);
+        }
+
+        if ($this->isJanuaryWindow()) {
+            $now = new vDateTime();
+            $atlasYear = $now->getYear() - 1;
+            $atlasArchivePath = "atlas-archive.php?year={$atlasYear}";
+            $atlasArchiveUrl = Version::urlBetaPrefix() . "/" . $atlasArchivePath;
+            $atlasArchiveLoginUrl = Version::urlBetaPrefix() . "/login.php?redirect=" . urlencode($atlasArchivePath);
+            $atlasArchiveCta = Session::isLoggedIn() ? $atlasArchiveUrl : $atlasArchiveLoginUrl;
+            $atlasArchiveCtaLabel = "View Atlas Archive";
+            array_push($this->ads, new CarouselAd(
+                "/assets/media/events/1843.png",
+                "/assets/media/events/1844.png",
+                "Atlas Archive {$atlasYear}",
+                "Step into your personal chronicle and relive every win, run, and memory from the previous year.",
+                $atlasArchiveCta,
+                null,
+                null,
+                7000,
+                $atlasArchiveCtaLabel
+            ));
         }
 
         try
@@ -161,14 +185,36 @@ class AdCarousel
 
     private function addDefaultAd(): void
     {
-        
-        array_push($this->ads, new CarouselAd(
-            "/assets/images/kk-1.jpg",
-            "/assets/images/kk-2.jpg",
-            "Welcome to Kickback Kingdom",
-            "The gaming realm where friendships are formed and scores are settled."
-        ));
+        // Ask the SeasonController what the current season config is
+        $seasonController = new SeasonController();
+        $config = $seasonController->getSeasonConfig(); // returns ['key', 'title', 'subtitle', 'images' => [...]]    
+
+        // Fallbacks in case something is missing
+        $image1 = $config['images'][0] ?? "/assets/images/kk-1.jpg";
+        $image2 = $config['images'][1] ?? "/assets/images/kk-2.jpg";
+
+        $title    = $config['title']    ?? "Welcome to Kickback Kingdom";
+        $subtitle = $config['subtitle'] ?? "The gaming realm where friendships are formed and scores are settled.";
+
+        $this->ads[] = new CarouselAd(
+            $image1,
+            $image2,
+            $title,
+            $subtitle
+        );
     }
+
+    private function isJanuaryWindow(): bool
+    {
+        try {
+            $today = new vDateTime(); // UTC "now"
+        } catch (\Throwable $e) {
+            return false;
+        }
+
+        return $today->getMonth() === 1;
+    }
+
 
     public function render(): string
     {

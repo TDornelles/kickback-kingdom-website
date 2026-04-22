@@ -12,7 +12,7 @@ if (isset($_GET["locator"])) {
     $locator = $_GET["locator"];
     
     // Fetch the Lich Set by its locator
-    $response = TreasureHuntController::getEventByLocator($locator);
+    $response = TreasureHuntController::queryEventByLocatorAsResponse($locator);
     
 
     // Lich Set details

@@ -36,7 +36,7 @@ class StoreTester
     {
         StoreController::runUnitTests();
         
-        //static::createBlankTestDatabase();
+        static::createBlankTestDatabase();
 
         //static::temp_populate_DB();
         
@@ -539,7 +539,7 @@ class StoreTester
 
             $getProductResp = StoreController::getProductById($product);
             if(!$getProductResp->success) throw new Exception("COMPONENT TEST FAILED : failed to get product after insertion : $getProductResp->message");
-            if(!($getProductResp->data->getVRecordId()->equals($product->getVRecordId()))) throw new Exception("COMPONENT TEST FAILED : product retreived was not the product inserted : $getProductResp->message");
+            if(!($getProductResp->data->equals($product))) throw new Exception("COMPONENT TEST FAILED : product retreived was not the product inserted : $getProductResp->message");
 
             $productRemovedResp = StoreController::removeProductById($product);
             if(!$productRemovedResp->success) throw new Exception("COMPONENT TEST FAILED : failed to removed product : $productRemovedResp->message");
@@ -1161,11 +1161,11 @@ class StoreTester
 
         for($i = 0; $i < count($price); $i++)
         {
-            $priceComponent = $price[$i];
+            $price = $price[$i];
 
             if($i !== 0) $priceValue .= " UNION ALL ";
 
-            $priceValue .= "(SELECT '$priceComponent->ctime' AS price_component_ctime, $priceComponent->crand as price_component_crand)";
+            $priceValue .= "(SELECT '$price->ctime' AS price_component_ctime, $price->crand as price_component_crand)";
 
         }
 
@@ -1191,7 +1191,7 @@ class StoreTester
 
         for($priceComponentIndex = 0; $priceComponentIndex < count($price); $priceComponentIndex++)
         {
-            $priceComponent = $price[$priceComponentIndex];
+            $price = $price[$priceComponentIndex];
 
             for($i = 0; $i < count($accountLootAmount); $i++)
             {
@@ -1199,9 +1199,9 @@ class StoreTester
 
                 $matchingPrice = null;
 
-                if($lootAmountRow["item_id"] === $priceComponent->item->crand)
+                if($lootAmountRow["item_id"] === $price->item->crand)
                 {
-                    $matchingPrice = $priceComponent;
+                    $matchingPrice = $price;
                 }
 
                 if(is_null($matchingPrice))
@@ -1476,7 +1476,7 @@ class StoreTester
         $price = new PriceComponent();
 
         $price->amount = $amount;
-        $price->itemId = $priceItem->getVRecordId();
+        $price->itemId = $priceItem;
 
         return $price;
     }
@@ -2005,7 +2005,7 @@ class StoreTester
         {
             $id = new recordId();
 
-            $raffleTicketId = static::returnMockPriceComponentObject("raffleticket")->itemId->getVRecordId();
+            $raffleTicketId = static::returnMockPriceComponentObject("raffleticket")->itemId;
 
             $valueClause .= "($id->crand, 1, 'raffle ticket', 'raffle ticket', $account->crand, $raffleTicketId->crand, -1, NOW(), 1, NULL, 1)";
 

@@ -39,7 +39,7 @@ if (!$loginResp->success) {
 }
 
 
-$eventResp = TreasureHuntController::getEventByLocator($huntLocator);
+$eventResp = TreasureHuntController::queryEventByLocatorAsResponse($huntLocator);
 if (!$eventResp->success) return $eventResp;
 
 $event = $eventResp->data;

@@ -28,7 +28,10 @@ use Kickback\Backend\Models\Trade;
 use Kickback\Backend\Models\CouponPriceComponentLink;
 
 use Kickback\Backend\Models\Enums\CurrencyCode;
+use Kickback\Backend\Models\ForeignRecordId;
 use Kickback\Backend\Models\ProductPriceComponentLink;
+use Kickback\Backend\Models\Transaction;
+use Kickback\Backend\Models\TransactionComponent;
 use Kickback\Backend\Views\vProductLootLink;
 use Kickback\Backend\Views\vAccount;
 use Kickback\Backend\Views\vCart;
@@ -38,6 +41,7 @@ use Kickback\Backend\Views\vCartProductLink;
 use Kickback\Backend\Views\vCartProductPriceComponentLink;
 use Kickback\Backend\Views\vCoupon;
 use Kickback\Backend\Views\vCouponAccountUse;
+use Kickback\Backend\Views\vDateTime;
 use Kickback\Backend\Views\vItem;
 use Kickback\Backend\Views\vLoot;
 use Kickback\Backend\Views\vLootReservation;
@@ -91,6 +95,13 @@ class StoreController
 
         try
         {
+
+            if($cart->account->equals($cart->store->owner))
+            {
+                $resp->message = "Cannot checkout cart for a store you own";
+                return $resp;
+            }
+
             //Does cart have items to transact
             if(count($cart->cartProducts) <= 0)
             {
@@ -109,7 +120,8 @@ class StoreController
 
             if(!$canAccountAffordItempriceResp->data) 
             {
-                $resp->message = "Account cannot afford item price to checkout cart : $canAccountAffordItempriceResp->message"; 
+                $resp->message = "Account cannot afford item price to checkout cart"; 
+                $resp->data = false;
                 return $resp; 
             }
 
@@ -149,42 +161,41 @@ class StoreController
                 return $resp;
             }
 
-            if($lovelacePriceComponentOfCart > 0)
-            {
-                //HAVE STRIPE CONTROLLER MAKE CALL TO STRIPE TO COMPLETE TRANSACTION AND HIT ENDPOINT TO THEN TRANSACT ITEMS IF SUCCESSFUL
-                //$stripeResp = StripeController::IsTransactionComplete($stripeTransactionId);
-            }
-            else
-            {
-                $transactCartResp = static::transactProductReservations($cart, $reserveProductsResp->data, $reserveLootResp->data); //Transact the successfully made reservations immediately
 
-                if($transactCartResp->success)
+            try
+            {
+                if($lovelacePriceComponentOfCart > 0)
                 {
-                    $resp->success = true;
-                    $resp->message = "Checked Out Cart";
-                    $resp->data = false; //do we still need to wait for stripe events?
+                    //HAVE STRIPE CONTROLLER MAKE CALL TO STRIPE TO COMPLETE TRANSACTION AND HIT ENDPOINT TO THEN TRANSACT ITEMS IF SUCCESSFUL
+                    //$stripeResp = StripeController::IsTransactionComplete($stripeTransactionId);
                 }
                 else
                 {
-                    $removeLootReservations = static::removeLootReservations($reserveLootResp->data);
+                    $transactCartResp = static::transactProductReservations($cart, $reserveProductsResp->data, $reserveLootResp->data); //Transact the successfully made reservations immediately
 
-                    if(!$removeLootReservations->success)
+                    if($transactCartResp->success)
                     {
-                        $cartId = new vRecordId($cart->ctime, $cart->crand);
-                        throw new Exception("Failed to remove loot reservations after transacting reservations failed in checkout. CartId : ".json_encode($cartId));
+                        $resp->success = true;
+                        $resp->message = "Checked Out Cart";
+                        $resp->data = false; //do we still need to wait for stripe events?
                     }
-
-                    $removeProductReservations = static::removeProductReservations($reserveProductsResp->data);
-
-                    if(!$removeProductReservations->success)
+                    else
                     {
-                        $cartId = new vRecordId($cart->ctime, $cart->crand);
-                        throw new Exception("Failed to remove product reservations after transacting reservations failed in checkout. CartId : ".json_encode($cartId));
-                    }
+                        static::undoReservations($cart, $reserveProductsResp->data, $reserveLootResp->data);
 
-                    $resp->message = "Failed to transact reservations during checkout. Reservations have been removed.";
+                        $resp->message = "Failed to transact reservations during checkout. Reservations have been removed.";
+                    }
                 }
             }
+            catch(Exception $e)
+            {
+                static::undoReservations($cart, $reserveProductsResp->data, $reserveLootResp->data);
+
+                $resp->message = "Failed to transact reservations during checkout. Reservations have been removed.";
+
+                throw new Exception ("Exception caught while transacting reservations. Reservations have been canceled : $e");
+            }
+            
         }
         catch(Exception $e)
         {
@@ -192,6 +203,69 @@ class StoreController
         }
 
         return $resp;
+    }
+
+    /**
+     * Public wrapper for reserving loot for cart totals.
+     * This exposes the internal checkout helper for DAO usage.
+     */
+    public static function reserveLootForPriceInCartPublic(vCart $cart) : Response
+    {
+        return static::reserveLootForPriceInCart($cart);
+    }
+
+    /**
+     * Public wrapper for removing product reservations.
+     */
+    public static function removeProductReservationsPublic(array $reservations) : Response
+    {
+        return static::removeProductReservations($reservations);
+    }
+
+    /**
+     * Public wrapper for calculating currency totals in a cart.
+     */
+    public static function returnCartLovelacePriceComponentPublic(vCart $cart) : int
+    {
+        return static::returnCartLovelacePriceComponent($cart);
+    }
+
+    /**
+     * Public wrapper for undoing product/loot reservations.
+     */
+    public static function undoReservationsPublic(vCart $cart, array $productReservations, array $lootReservations, ?array $productLootReservations = null) : void
+    {
+        static::undoReservations($cart, $productReservations, $lootReservations, $productLootReservations);
+    }
+
+    private static function undoReservations(vCart $cart, array $productReservations, array $lootReservations, ?array $productLootReservations = null) : void
+    {
+        $removeLootReservations = static::removeLootReservations($lootReservations);
+
+        if(!$removeLootReservations->success)
+        {
+            $cartId = new vRecordId($cart->ctime, $cart->crand);
+            throw new Exception("Failed to remove loot reservations after transacting reservations failed in checkout. CartId : ".json_encode($cartId));
+        }
+
+        $removeProductReservations = static::removeProductReservations($productReservations);
+
+        if(!$removeProductReservations->success)
+        {
+            $cartId = new vRecordId($cart->ctime, $cart->crand);
+            throw new Exception("Failed to remove product reservations after transacting reservations failed in checkout. CartId : ".json_encode($cartId));
+        }
+
+        if(!is_null($productLootReservations) && count($productLootReservations) != 0)
+        {
+            $removeLootReservations = static::removeLootReservations($productLootReservations);
+
+            if(!$removeLootReservations->success)
+            {
+                $cartId = new vRecordId($cart->ctime, $cart->crand);
+                throw new Exception("Failed to remove product loot reservations after transacting reservations failed in checkout. CartId : ".json_encode($cartId));
+            }
+        }
     }
 
     private static function removeLootReservations(array $reservations) : Response
@@ -317,16 +391,36 @@ class StoreController
 
         $conn = Database::getConnection();
 
+        $productLootReservations = [];
+
         try
         {
             //Get the actual loot records that will be transacted and reserve them
-            $productLootReservations = [];
+            
             $productLootsResp = static::materializeProductReservations($productReservations, $productLootReservations);
             $productLoots = $productLootsResp->data;
 
             $priceComponentLootsResp = static::materializePriceComponentReservations($priceComponentReservations);
             $priceComponentLoots = $priceComponentLootsResp->data;
- 
+        }
+        catch(Exception $e)
+        {
+            static::undoReservations($cart, $productReservations, $priceComponentReservations, $productLootReservations);
+            throw new Exception("Exception caught while materializing price components and product reservations : $e");
+        }
+
+        try
+        {
+            $transaction = static::createTransactionForCart($cart, $productLoots, $priceComponentLoots);
+        }
+        catch(Exception $e)
+        {
+            static::undoReservations($cart, $productReservations, $priceComponentReservations, $productLootReservations);
+            throw new Exception("Exception caught while creating transaction for cart during checkout. Reservations have been canceled : $e");
+        }
+        
+        try
+        {
             $conn->begin_transaction();
 
             //Product loot
@@ -352,6 +446,12 @@ class StoreController
             static::markUsesForCartCoupons($cart);
             static::markCouponCartProductLinksAsCheckedOut($cart);
 
+            //transactions
+            TransactionController::markTransactionAsComplete($transaction);
+
+            //sanity check
+            static::ensureLootsHaveTransacted($cart, $productLoots, $priceComponentLoots);
+
             $conn->commit();
 
             $resp->success = true;
@@ -360,11 +460,83 @@ class StoreController
         catch(Exception $e)
         {
             $conn->rollback();
-
+            static::undoReservations($cart, $productReservations, $priceComponentReservations, $productLootReservations);
+            TransactionController::markTransactionAsVoid($transaction);
+            
             throw new Exception("Exception caught while attempting to transact product reservations : $e");
         }
 
         return $resp;
+    }
+
+    /**
+     * Throws an exception if the loots provided are not in the excepted accounts inventories
+     */
+    private static function ensureLootsHaveTransacted(vCart $cart, array $productLoots, array $priceComponentLoots) : void
+    {
+        $accountThatShouldHaveProductLoots = $cart->account;
+        $accountThatShouldHavePriceComponentLoots = $cart->store->owner;
+
+        $params = [];
+        $selectTable = static::createSelectTableForEnsureLootsHaveTransacted($productLoots, $accountThatShouldHaveProductLoots, $params);
+        $sql = "SELECT * FROM ($selectTable) st LEFT JOIN loot l ON l.account_id = st.account_id AND l.id = st.loot_id WHERE l.id IS NULL";
+
+        $result = Database::executeSqlQuery($sql, $params);
+
+        /**
+         * if a row is returned it means that a loot was in the select table 
+         * that was not in the loot table and assigned to the account provided 
+         * to the select table creation function
+         */
+        if($result->num_rows > 0)
+        {
+            throw new Exception("Not All Product Loots Were Found In Cart Owners Account. Loots that were not found in cart owners account : ".json_encode(static::parseLootsNotFound($result)));  
+        } 
+
+        $params = [];
+        $selectTable = static::createSelectTableForEnsureLootsHaveTransacted($priceComponentLoots, $accountThatShouldHavePriceComponentLoots, $params);
+        $sql = "SELECT * FROM ($selectTable) st LEFT JOIN loot l ON l.account_id = st.account_id AND l.id = st.loot_id WHERE l.id IS NULL";
+
+        $result = Database::executeSqlQuery($sql, $params);
+        if($result->num_rows > 0)
+        {
+            throw new Exception("Not All Price Component Loots Were Found In Store Owners Account. Loots that were not found in store owners account : ".json_encode(static::parseLootsNotFound($result)));  
+        } 
+    }
+
+    private static function parseLootsNotFound(mysqli_result $result) : array
+    {
+        $loots = [];
+
+        while($row = $result->fetch_assoc())
+        {
+            $notFoundLootId = new vRecordId('', (int)$row["loot_id"]);
+            $loots[] = $notFoundLootId;
+        }
+
+        return $loots;
+    }
+
+    private static function createSelectTableForEnsureLootsHaveTransacted(array $loots, vRecordId $account, array &$params) : string
+    {
+        $selectTable = "";
+
+        for($i = 0; $i < count($loots); $i++)
+        {
+            $loot = $loots[$i];
+
+            array_push($params, $loot->crand, $account->crand);
+
+            if($i === 0)
+            {
+                $selectTable .= "SELECT ? as 'loot_id', ? as 'account_id'";
+                continue;
+            }
+
+            $selectTable .= " UNION ALL SELECT ?, ?";
+        }
+
+        return $selectTable;
     }
 
     private static function markCouponCartProductLinksAsCheckedOut(vCart $cart) : void
@@ -700,6 +872,7 @@ class StoreController
         $selectTable = static::createSelectTableForMarkCartProductsAsCheckedOut($cart->cartProducts, $params);
         $sql = "UPDATE cart_product_link cpl JOIN ($selectTable) cp ON cp.ctime = cpl.ctime AND cp.crand = cpl.crand SET checked_out = 1;";
 
+
         $result = database::executeSqlQuery($sql, $params);
 
         if(!$result) throw new Exception("result returned false while attempting to mark cart products as checked out");
@@ -713,14 +886,14 @@ class StoreController
         {
             $cartProduct = $cartProducts[$i];
 
-            if($i === 0)
+            if($i == 0)
             {
-                $selectTable = "(SELECT ? as ctime, ? as crand)";
+                $selectTable .= "(SELECT ? as ctime, ? as crand)";
                 array_push($params, $cartProduct->ctime, $cartProduct->crand);
                 continue;
             }
 
-            $selectTable = "UNION ALL (SELECT ?, ?)";
+            $selectTable .= "UNION ALL (SELECT ?, ?)";
             array_push($params, $cartProduct->ctime, $cartProduct->crand);
         }
 
@@ -831,17 +1004,26 @@ class StoreController
     {
         $resp = new Response(false, "unkown error in materializing product reservations", null);
 
+        $insertedLootReservations = [];
+        $newLootReservations = [];
         try
         {   
             $params = [];
             $valueClause = static::createValueClauseForMaterializeProductReservations($productReservations, $productLootReservations, $params);
             $sql = "INSERT INTO loot_reservation (ctime, crand, ref_loot_ctime, ref_loot_crand, quantity, expiry_time, close_time) $valueClause";
 
+            $lootReservationSelectResult = Database::executeSqlQuery($valueClause, $params);
+            if(!$lootReservationSelectResult) throw new Exception("result returned false while attempting to select the inserted reservations for the root products in cart");
+
+            $insertedLootReservations = static::lootReservationsFromResultForMaterializeProductReservations($lootReservationSelectResult);
+
+            $newLootReservations = static::reserveDescendantLootFromBaseRows($insertedLootReservations);
+
             $result = Database::executeSqlQuery($sql, $params);
 
             if(!$result) throw new Exception("result returned false while attempting to insert loot reservations from materialized product reservations");
-
-            $materializedLoots = static::getLootFromMaterializedLootReservations($productLootReservations);
+            
+            $materializedLoots = static::getLootFromMaterializedLootReservations($insertedLootReservations);
 
             $resp->success = true;
             $resp->message = "returned materialized loots from product reservations";
@@ -849,11 +1031,347 @@ class StoreController
         }
         catch(Exception $e)
         {
+            if(count($newLootReservations) > 0) static::removeLootReservations($newLootReservations);
+
             throw new Exception("exception caught while materializing product reseravations : $e");
         }
 
         return $resp;
     }
+
+    private static function lootReservationsFromResultForMaterializeProductReservations(mysqli_result $lootReservationsResult) : array
+    {
+        $lootReservations = [];
+
+        while($row = $lootReservationsResult->fetch_assoc())
+        {
+            $lootReservation = new vLootReservation($row["ctime"], (int)$row["crand"]);
+            $lootReservation->lootId = new ForeignRecordId($row["ref_loot_ctime"], $row["ref_loot_crand"]);
+            $lootReservation->quantity = (int)$row["quantity"];
+            $lootReservation->expiryTime = DateTime::createFromFormat('Y-m-d H:i:s.u', $row['expiry_time']);
+
+            $lootReservations[] = $lootReservation;
+        }
+
+        return $lootReservations;
+    }
+
+    /**
+     * Given base loot reservations (each row has ctime, crand, ref_loot_crand, expiry_time),
+     * insert additional loot_reservation rows for all descendant loot where
+     * loot.container_loot_id eventually leads to the base ref_loot_crand.
+     *
+     * Requires MySQL 8.0+ (WITH RECURSIVE).
+     *
+     * @param mysqli $conn
+     * @param array $baseRows Array of associative arrays:
+     *   [
+     *     ['ctime' => '2025-12-12 10:00:00.123456', 'crand' => '123', 'ref_loot_crand' => 768, 'expiry_time' => '...'],
+     *     ...
+     *   ]
+     */
+    private static function reserveDescendantLootFromBaseRows(array &$baseLootReservations) : array
+    {
+        $newInsertedReservations = [];
+
+        if (empty($baseLootReservations)) {
+            return $newInsertedReservations;
+        }
+
+        // Existing loot ids already reserved in the input array (lootId->crand is what matters / unique).
+        $existingLootIds = [];
+
+        // Seed table: root_loot_id + expiry_time (carry expiry to descendants).
+        $seedSelects = [];
+        $seedParams  = [];
+        $seedTypes   = "";
+
+        foreach ($baseLootReservations as $lr) {
+            $errors = [];
+
+            if (!isset($lr->lootId) || !isset($lr->lootId->crand)) {
+                $errors[] = 'lootId->crand';
+            }
+            if (!($lr->expiryTime instanceof DateTime)) {
+                $errors[] = 'expiryTime (must be DateTime)';
+            }
+
+            if (!empty($errors)) {
+                throw new InvalidArgumentException(
+                    'LootReservation missing or invalid fields: ' . implode(', ', $errors)
+                );
+            }
+
+            $lootId = (int)$lr->lootId->crand;
+            $existingLootIds[(string)$lootId] = true;
+
+            $seedSelects[] = "SELECT ? AS root_loot_id, ? AS expiry_time";
+            $seedTypes    .= "is";
+            $seedParams[]  = $lootId;
+            $seedParams[]  = $lr->expiryTime->format("Y-m-d H:i:s.u");
+        }
+
+        if (empty($seedSelects)) {
+            return $newInsertedReservations;
+        }
+
+        $seedTableSql = implode(" UNION ALL ", $seedSelects);
+
+        // 1) Discover descendants (exclude the roots themselves)
+        $descendantsSql = "
+            WITH RECURSIVE
+            seed AS (
+                $seedTableSql
+            ),
+            tree AS (
+                SELECT
+                    s.root_loot_id,
+                    s.expiry_time,
+                    s.root_loot_id AS loot_id,
+                    CAST(s.root_loot_id AS CHAR(2000)) AS path
+                FROM seed s
+
+                UNION ALL
+
+                SELECT
+                    t.root_loot_id,
+                    t.expiry_time,
+                    child.Id AS loot_id,
+                    CONCAT(t.path, ',', child.Id) AS path
+                FROM tree t
+                JOIN loot child
+                ON child.container_loot_id = t.loot_id
+                AND FIND_IN_SET(child.Id, t.path) = 0
+            )
+            SELECT
+                t.loot_id AS ref_loot_crand,
+                MIN(t.expiry_time) AS expiry_time
+            FROM tree t
+            WHERE t.loot_id <> t.root_loot_id
+            GROUP BY t.loot_id
+        ";
+
+        $conn = Database::getConnection();
+
+        $stmt = $conn->prepare($descendantsSql);
+        if (!$stmt) {
+            throw new RuntimeException("Prepare failed (descendantsSql): " . $conn->error);
+        }
+
+        $bindArgs = [$seedTypes];
+        foreach ($seedParams as $k => $v) {
+            $bindArgs[] = &$seedParams[$k];
+        }
+        if (!call_user_func_array([$stmt, 'bind_param'], $bindArgs)) {
+            throw new RuntimeException("bind_param failed (descendantsSql): " . $stmt->error);
+        }
+        if (!$stmt->execute()) {
+            throw new RuntimeException("Execute failed (descendantsSql): " . $stmt->error);
+        }
+
+        $result = $stmt->get_result();
+        if (!$result) {
+            throw new RuntimeException("get_result() failed (enable mysqlnd): " . $stmt->error);
+        }
+
+        $descendants = [];
+        while ($row = $result->fetch_assoc()) {
+            $lootId = (int)$row['ref_loot_crand'];
+
+            // Only add descendants not already present in the input array
+            if (isset($existingLootIds[(string)$lootId])) {
+                continue;
+            }
+
+            $descendants[] = [
+                'ref_loot_crand' => $lootId,
+                'expiry_time'    => $row['expiry_time'],
+            ];
+        }
+        $stmt->close();
+
+        if (empty($descendants)) {
+            return $newInsertedReservations;
+        }
+
+        // 2) Build ONE INSERT for those descendant loots,
+        // and keep a list of the NEW ids we attempted to insert.
+        $insertSelects = [];
+        $insertParams  = [];
+        $insertTypes   = "";
+
+        // attempted rows keyed by lootId => [ctime, crand, expiry_time]
+        $attemptedByLootId = [];
+
+        foreach ($descendants as $d) {
+            $id = new RecordId(); // new reservation id per inserted row
+            $lootId = (int)$d['ref_loot_crand'];
+
+            $attemptedByLootId[(string)$lootId] = [
+                'ctime'       => (string)$id->ctime,
+                'crand'       => (int)$id->crand,
+                'expiry_time' => (string)$d['expiry_time'],
+            ];
+
+            $insertSelects[] = "
+                SELECT
+                    ? AS ctime,
+                    ? AS crand,
+                    '0000-00-00 00:00:00' AS ref_loot_ctime,
+                    ? AS ref_loot_crand,
+                    1 AS quantity,
+                    ? AS expiry_time,
+                    NULL AS close_time
+            ";
+
+            // ctime(s), crand(i), ref_loot_crand(i), expiry_time(s)
+            $insertTypes    .= "siis";
+            $insertParams[]  = (string)$id->ctime;
+            $insertParams[]  = (int)$id->crand;
+            $insertParams[]  = $lootId;
+            $insertParams[]  = (string)$d['expiry_time'];
+        }
+
+        $insertSql = "
+            INSERT IGNORE INTO loot_reservation
+                (ctime, crand, ref_loot_ctime, ref_loot_crand, quantity, expiry_time, close_time)
+            " . implode(" UNION ALL ", $insertSelects);
+
+        $stmt2 = $conn->prepare($insertSql);
+        if (!$stmt2) {
+            throw new RuntimeException("Prepare failed (insertSql): " . $conn->error);
+        }
+
+        $bindArgs2 = [$insertTypes];
+        foreach ($insertParams as $k => $v) {
+            $bindArgs2[] = &$insertParams[$k];
+        }
+        if (!call_user_func_array([$stmt2, 'bind_param'], $bindArgs2)) {
+            throw new RuntimeException("bind_param failed (insertSql): " . $stmt2->error);
+        }
+
+        if (!$stmt2->execute()) {
+            throw new RuntimeException("Execute failed (insertSql): " . $stmt2->error);
+        }
+        $stmt2->close();
+
+        // 3) Confirm which rows actually got inserted by selecting back the attempted (ctime, crand).
+        $idSelects = [];
+        $idParams  = [];
+        $idTypes   = "";
+
+        foreach ($attemptedByLootId as $lootIdStr => $a) {
+            $idSelects[] = "SELECT ? AS ctime, ? AS crand, ? AS ref_loot_crand";
+            $idTypes    .= "sii";
+            $idParams[]  = $a['ctime'];
+            $idParams[]  = $a['crand'];
+            $idParams[]  = (int)$lootIdStr;
+        }
+
+        $idTableSql = implode(" UNION ALL ", $idSelects);
+
+        $confirmSql = "
+            SELECT
+                lr.ctime,
+                lr.crand,
+                lr.ref_loot_crand,
+                lr.expiry_time
+            FROM loot_reservation lr
+            JOIN (
+                $idTableSql
+            ) x
+            ON x.ctime = lr.ctime
+            AND x.crand = lr.crand
+            AND x.ref_loot_crand = lr.ref_loot_crand
+        ";
+
+        $stmt3 = $conn->prepare($confirmSql);
+        if (!$stmt3) {
+            throw new RuntimeException("Prepare failed (confirmSql): " . $conn->error);
+        }
+
+        $bindArgs3 = [$idTypes];
+        foreach ($idParams as $k => $v) {
+            $bindArgs3[] = &$idParams[$k];
+        }
+        if (!call_user_func_array([$stmt3, 'bind_param'], $bindArgs3)) {
+            throw new RuntimeException("bind_param failed (confirmSql): " . $stmt3->error);
+        }
+
+        if (!$stmt3->execute()) {
+            throw new RuntimeException("Execute failed (confirmSql): " . $stmt3->error);
+        }
+
+        $result3 = $stmt3->get_result();
+        if (!$result3) {
+            throw new RuntimeException("get_result() failed (confirmSql): " . $stmt3->error);
+        }
+
+        // 4) Add NEW records to the input array AND also return them
+        while ($row = $result3->fetch_assoc()) {
+            $lootId = (int)$row['ref_loot_crand'];
+
+            // obey your uniqueness rule: lootId is unique for the array
+            if (isset($existingLootIds[(string)$lootId])) {
+                continue;
+            }
+
+            $new = new vLootReservation($row['ctime'], (int)$row['crand']);
+            $new->lootId = new ForeignRecordId('0000-00-00 00:00:00', $lootId);
+
+            $new->expiryTime = DateTime::createFromFormat("Y-m-d H:i:s.u", $row['expiry_time'])
+                ?: new DateTime($row['expiry_time']);
+
+            if (property_exists($new, 'quantity')) {
+                $new->quantity = 1;
+            }
+
+            $baseLootReservations[] = $new;
+            $newInsertedReservations[] = $new;
+
+            $existingLootIds[(string)$lootId] = true;
+        }
+
+        $stmt3->close();
+
+        return $newInsertedReservations;
+    }
+
+
+
+
+
+        /**
+     * Reconstructs the SQL by replacing each ? with the quoted parameter value.
+     * This shows exactly what mysqli_execute_query() is sending to MySQL.
+     */
+    private static function interpolateSql(string $sql, array $params): string
+    {
+        $i = 0;
+
+        return preg_replace_callback('/\?/', function() use (&$i, $params) {
+            if (!array_key_exists($i, $params)) {
+                return '?'; // shouldn't happen
+            }
+
+            $value = $params[$i++];
+            
+            // NULL
+            if ($value === null) {
+                return "NULL";
+            }
+
+            // Numeric (but mysqli binds as string, so must quote)
+            if (is_int($value) || is_float($value)) {
+                // For debug, mysqli sends numeric as string, so quote it.
+                return "'" . addslashes((string)$value) . "'";
+            }
+
+            // Everything else → treat as string
+            return "'" . addslashes((string)$value) . "'";
+        }, $sql);
+    }
+
 
     private static function getLootFromMaterializedLootReservations(array $lootReservations) : array
     {
@@ -900,7 +1418,7 @@ class StoreController
 
     private static function createWhereClauseForGetLootFromMaterializedLootReservations(array $reservations, array &$params) : string
     {
-        if(count($reservations) < 0) throw new InvalidArgumentException("\$reservations array must contain at least one element");
+        if(count($reservations) <= 0) throw new InvalidArgumentException("\$reservations array must contain at least one element");
 
         $whereClause = "";
 
@@ -908,7 +1426,7 @@ class StoreController
         {
             $reservation = $reservations[$i];
 
-            if($i !== count($reservations)-1) $whereClause .= " OR ";
+            if($i != 0) $whereClause .= " OR ";
 
             $whereClause .= "(vlr.ctime = ? AND vlr.crand = ?)";
 
@@ -918,48 +1436,101 @@ class StoreController
         return $whereClause;
     }
 
-    private static function createValueClauseForMaterializeProductReservations(array $productReservations, array &$lootReservations, array &$params) : string
+    private static function createValueClauseForMaterializeProductReservations(array $productReservations,array &$lootReservations,array &$params) : string
     {
-        $valueClause = "";
+        $reservationTable = static::createReservationTableForCreateValueClauseForMaterializeProductReservations($productReservations, $lootReservations, $params);    
 
-        for($i = 0; $i < count($productReservations); $i++)
-        {
-            $productReservation = $productReservations[$i];
-
-            if($i !== 0) $valueClause .= " UNION ALL ";
-
-            $lootReservation = new lootReservation();
-
-            $expiryTime = new DateTime($lootReservation->ctime);
-            $expiryTime->modify("+" . static::$productReservationTimeInSeconds . " seconds");
-            $lootReservation->expiryTime = $expiryTime;
-
-            $valueClause .= "(SELECT ? as 'ctime', ? as 'crand', '0000-00-00 00:00:00' as 'ref_loot_ctime', 
-            (SELECT l.Id FROM loot l 
-            JOIN product_loot_link pll ON pll.ref_loot_crand = l.Id 
-            LEFT JOIN v_loot_reservation_total rlt ON rlt.loot_crand = l.Id 
-            WHERE (COALESCE(rlt.quantity_available, l.quantity) >= ?  OR rlt.quantity_available IS NULL) AND pll.ref_product_ctime = ? AND pll.ref_product_crand = ? LIMIT 1) as 'ref_loot_crand',
-            ? as 'quantity',
-            ? as 'expiry_time',
-            null as 'close_time')";
-
-            $formattedExpiryTime = $expiryTime->format("Y-m-d H:i:s.u");
-            array_push($params,
-                $lootReservation->ctime,
-                $lootReservation->crand,
-                $productReservation->quantity,
-                $productReservation->productId->ctime,
-                $productReservation->productId->crand,
-                $productReservation->quantity,
-                $formattedExpiryTime
-            );
-
-            array_push($lootReservations, $lootReservation);
-        }
+        $valueClause = "
+            SELECT
+                r.ctime,
+                r.crand,
+                '0000-00-00 00:00:00' AS ref_loot_ctime,
+                l.Id AS ref_loot_crand,
+                1 AS quantity,
+                r.expiry_time,
+                NULL AS close_time
+            FROM (
+                SELECT
+                    t.*,
+                    @rn_r := IF(@last_prod_ctime = t.product_ctime 
+                                AND @last_prod_crand = t.product_crand,
+                                @rn_r + 1,
+                                1) AS rn_res,
+                    @last_prod_ctime := t.product_ctime,
+                    @last_prod_crand := t.product_crand
+                FROM (
+                    $reservationTable
+                ) AS t
+                CROSS JOIN (SELECT @rn_r := 0, @last_prod_ctime := NULL, @last_prod_crand := NULL) AS vars_r
+                ORDER BY t.product_ctime, t.product_crand, t.ctime, t.crand
+            ) AS r
+            JOIN (
+                SELECT
+                    x.*,
+                    @rn_l := IF(@last_l_prod_ctime = x.ref_product_ctime 
+                                AND @last_l_prod_crand = x.ref_product_crand,
+                                @rn_l + 1,
+                                1) AS rn_loot,
+                    @last_l_prod_ctime := x.ref_product_ctime,
+                    @last_l_prod_crand := x.ref_product_crand
+                FROM (
+                    SELECT 
+                        l.Id,
+                        pll.ref_product_ctime,
+                        pll.ref_product_crand
+                    FROM loot l
+                    JOIN product_loot_link pll ON pll.ref_loot_crand = l.Id
+                    LEFT JOIN v_loot_reservation_total rlt ON rlt.loot_crand = l.Id
+                    WHERE COALESCE(rlt.quantity_available, l.quantity) >= 1 AND removed = 0
+                    ORDER BY pll.ref_product_ctime, pll.ref_product_crand, l.Id
+                ) AS x
+                CROSS JOIN (SELECT @rn_l := 0, @last_l_prod_ctime := NULL, @last_l_prod_crand := NULL) AS vars_l
+            ) AS l
+                ON r.product_ctime = l.ref_product_ctime
+            AND r.product_crand = l.ref_product_crand
+            AND r.rn_res = l.rn_loot
+        ";
 
         return $valueClause;
     }
 
+    private static function createReservationTableForCreateValueClauseForMaterializeProductReservations(array $productReservations, array &$lootReservations, array &$params) : string
+    {
+        $reservationRows = [];
+        $params = [];
+
+        foreach ($productReservations as $reservation) 
+        {
+            for ($i = 0; $i < $reservation->quantity; $i++) 
+            {
+                $lootReservation = new lootReservation();
+
+                $expiryTime = new DateTime($lootReservation->ctime);
+                $expiryTime->modify('+' . static::$productReservationTimeInSeconds . ' seconds');
+                $formattedExpiry = $expiryTime->format("Y-m-d H:i:s.u");
+
+                $lootReservation->expiryTime = $expiryTime;
+                $lootReservations[] = $lootReservation;
+
+                $reservationRows[] = "SELECT ? as 'ctime', ? as 'crand', 1 as 'quantity', ? as 'expiry_time', ? as 'product_ctime', ? as 'product_crand'";
+
+                $params[] = $lootReservation->ctime;
+                $params[] = $lootReservation->crand;
+                $params[] = $formattedExpiry;
+                $params[] = $reservation->productId->ctime;
+                $params[] = $reservation->productId->crand;
+            }
+        }
+
+        if (empty($reservationRows)) 
+        {
+            return "SELECT 1 WHERE 0";
+        }
+
+        $reservationTable = implode(" UNION ALL ", $reservationRows);
+
+        return $reservationTable;
+    }
     
     private static function executeQueriesToTransactMaterializedLootsForProducts(vCart $cart, array $loots) : void
     {
@@ -976,7 +1547,7 @@ class StoreController
     {
         $params = [];
         $valueClause = static::createValueClauseForTransactNonFungibleLoot($newOwner, $loots, $params);
-        $sql = "UPDATE loot l JOIN ($valueClause) la ON la.loot_id = l.Id SET l.account_Id = la.account_id";
+        $sql = "UPDATE loot l JOIN ($valueClause) la ON la.loot_id = l.Id SET l.account_Id = la.account_id AND dateObtained = NOW()";
 
         $result = Database::executeSqlQuery($sql, $params);
 
@@ -1070,7 +1641,7 @@ class StoreController
         $sql = "INSERT INTO loot
             (Id, `description`, account_id, item_id, quest_id, dateObtained, redeemed, container_loot_id, quantity, Opened)
             SELECT
-            i.Id, i.`description`, i.account_id, i.item_id, i.quest_id, NOW(), 1, NULL, i.quantity, 0
+            i.Id, i.`description`, i.account_id, i.item_id, i.quest_id, NOW(), 0, NULL, i.quantity, 0
             FROM ($valueClause) AS i
             LEFT JOIN loot AS l
             ON  l.account_id = i.account_id
@@ -1145,6 +1716,8 @@ class StoreController
         $buyer = $cart->account;
         $seller = $cart->store->owner;
 
+        if($buyer->equals($seller)) throw new LogicException("Cannot create trade records in which both accounts are the same");
+
         static::createTradeEntriesForProductReservations($buyer, $seller, $productLoots);
         static::createTradeEntriesForPriceComponentReservations($buyer, $seller, $priceComponentLootReservations);
     } 
@@ -1154,7 +1727,7 @@ class StoreController
         $params = [];
         $valueClause = static::createValueClauseForCreateTradeEntriesForProductReservations($buyer, $seller, $productLoots, $params);
 
-        $sql = "INSERT INTO trade (id, from_account_id, to_account_id, loot_id, from_account_obtain_date, quantity) $valueClause";
+        $sql = "INSERT INTO trade (from_account_id, to_account_id, loot_id, from_account_obtain_date, quantity) $valueClause";
 
         $result = database::executeSqlQuery($sql, $params);
 
@@ -1173,13 +1746,13 @@ class StoreController
 
             if($i === 0)
             {
-                $valueClause .= "(SELECT ? AS id, ? AS from_account_id, ? AS to_account_id, ? AS loot_id, ? AS from_account_obtain_date, ? AS quantity)";
-                array_push($params, $trade->crand, $trade->fromAccountId->crand, $trade->toAccountId->crand, $loot->crand, $loot->dateObtained->value->format("Y-m-d H:i:s.u"), $loot->quantity);
+                $valueClause .= "(SELECT ? AS from_account_id, ? AS to_account_id, ? AS loot_id, ? AS from_account_obtain_date, ? AS quantity)";
+                array_push($params, $trade->fromAccountId->crand, $trade->toAccountId->crand, $loot->crand, $loot->dateObtained->value->format("Y-m-d H:i:s.u"), $loot->quantity);
                 continue;
             }
 
-            $valueClause .= "(SELECT ?,?,?,?,?,?)";
-            array_push($params, $trade->crand, $trade->fromAccountId->crand, $trade->toAccountId->crand, $loot->crand, $loot->dateObtained->format("Y-m-d H:i:s.u"), $loot->quantity);
+            $valueClause .= "UNION ALL (SELECT ?,?,?,?,?)";
+            array_push($params, $trade->fromAccountId->crand, $trade->toAccountId->crand, $loot->crand, $loot->dateObtained->value->format("Y-m-d H:i:s.u"), $loot->quantity);
         }
 
         return $valueClause;
@@ -1189,7 +1762,7 @@ class StoreController
     {
         $params = [];
         $valueClause = static::createValueClauseForCreateTradeEntriesForPriceComponentReservations($buyer, $seller, $priceComponentLootReservations, $params);
-        $sql = "INSERT INTO trade (id, from_account_id, to_account_id, loot_id, trade_date, from_account_obtain_date, quantity) $valueClause;";
+        $sql = "INSERT INTO trade (from_account_id, to_account_id, loot_id, trade_date, from_account_obtain_date, quantity) $valueClause;";
 
         $result = Database::executeSqlQuery($sql, $params);
 
@@ -1208,13 +1781,13 @@ class StoreController
 
             if($i === 0)
             {
-                $valueClause .= "(SELECT ? AS id, ? as from_account_id, ? as to_account_id, ? as loot_id, ? as trade_date, (SELECT dateObtained FROM loot WHERE id = ? LIMIT 1) as from_account_obtain_date, ? as quantity)";
-                array_push($params, $trade->crand, $trade->fromAccountId->crand, $trade->toAccountId->crand, $trade->lootId->crand, $trade->ctime, $trade->lootId->crand, $trade->quantity);
+                $valueClause .= "(SELECT ? as from_account_id, ? as to_account_id, ? as loot_id, ? as trade_date, (SELECT dateObtained FROM loot WHERE id = ? LIMIT 1) as from_account_obtain_date, ? as quantity)";
+                array_push($params, $trade->fromAccountId->crand, $trade->toAccountId->crand, $trade->lootId->crand, $trade->ctime, $trade->lootId->crand, $trade->quantity);
                 continue;
             }
 
-            $valueClause .= "UNION ALL (SELECT ?, ?, ?, ?, ?, (SELECT dateObtained FROM loot WHERE id = ? LIMIT 1), ?)";
-            array_push($params, $trade->crand, $trade->fromAccountId->crand, $trade->toAccountId->crand, $trade->lootId->crand, $trade->ctime, $trade->lootId->crand, $trade->quantity);
+            $valueClause .= "UNION ALL (SELECT ?, ?, ?, ?, (SELECT dateObtained FROM loot WHERE id = ? LIMIT 1), ?)";
+            array_push($params, $trade->fromAccountId->crand, $trade->toAccountId->crand, $trade->lootId->crand, $trade->ctime, $trade->lootId->crand, $trade->quantity);
             continue;
         }
 
@@ -1243,12 +1816,12 @@ class StoreController
             $loot = $productLoots[$i];
             if($i === 0)
             {
-                $valueClause .= "SELECT ? as loot_id";
+                $valueClause .= "(SELECT ? as loot_id)";
                 array_push($params, $loot->crand);
                 continue;
             }
 
-            $valueClause .= "SELECT ?";
+            $valueClause .= " UNION ALL (SELECT ?)";
             array_push($params, $loot->crand);
         }
 
@@ -1375,8 +1948,14 @@ class StoreController
 
         try
         {   
+            // Get the loot which matches needed items for price
+            $lootsForprice = static::getLootForPriceForCart($cart); 
 
-            $valueClause = static::returnValueClauseForReserveLootForprice($cart->totals);
+            // Consolidate loot to only the amount needed for the totals
+            $consolidatedLootForCartTotals = static::consolidateLootForCartTotals($cart->totals, $lootsForprice); 
+
+            $valueClause = "";
+            $params = static::returnParamsForReserveLootForprice($cart->totals, $consolidatedLootForCartTotals, $valueClause); 
             $sql = "INSERT INTO loot_reservation (ctime,
                 crand,
                 ref_loot_ctime,
@@ -1384,16 +1963,8 @@ class StoreController
                 quantity,
                 expiry_time,
                 close_time) 
-                VALUES ($valueClause)
+                VALUES $valueClause
             ";
-
-            // Get the loot which matches needed items for price
-            $lootsForprice = static::getLootForpriceForCart($cart); 
-
-            // Consolidate loot to only the amount needed for the totals
-            $consolidatedLootForCartTotals = static::consolidateLootForCartTotals($cart->totals, $lootsForprice); 
-
-            $params = static::returnParamsForReserveLootForprice($cart->totals, $consolidatedLootForCartTotals); 
 
             $result = Database::executeSqlQuery($sql, $params);
 
@@ -1447,8 +2018,10 @@ class StoreController
         return $reservations;
     }
 
-    private static function returnParamsForReserveLootForprice(array $cartTotals, array $cartOwnerCartLoot) : array
+    private static function returnParamsForReserveLootForprice(array $cartTotals, array $cartOwnerCartLoot, string &$valueClause) : array
     {
+        $valueClause = "";
+
         $params = [];
 
         for($i = 0; $i < count($cartTotals); $i++)
@@ -1482,6 +2055,9 @@ class StoreController
                 $expiryTime->modify("+" . static::$productReservationTimeInSeconds . " seconds");
                 $formattedExpiryTime = $expiryTime->format("Y-m-d H:i:s.u");
 
+                if($i != 0) $valueClause .= ", ";
+                $valueClause .= "(?,?,?,?,?,?,?)";
+
                 array_push($params,
                     $reservation->ctime,
                     $reservation->crand,
@@ -1503,7 +2079,7 @@ class StoreController
         return $params;
     }
 
-    private static function returnValueClauseForReserveLootForprice(array $cartprice) : string
+    private static function returnValueClauseForReserveLootForPrice(array $cartprice) : string
     {
         if(count($cartprice) === 0) throw new InvalidArgumentException("\$cartprice array must contain at least one element");
 
@@ -1511,7 +2087,7 @@ class StoreController
 
         for($i = 0; $i < count($cartprice); $i++)
         {
-            $valueClause .= "?,?,?,?,?,?,?";
+            $valueClause .= "(?,?,?,?,?,?,?)";
 
             if($i != count($cartprice)-1) $valueClause .= ",";
         }
@@ -1522,14 +2098,14 @@ class StoreController
     private static function unittest_returnValueClauseForReserveLootForprice() : void
     {
         $cartProducts = [0];
-        assert("?,?,?,?,?,?,?" === static::returnValueClauseForReserveLootForprice($cartProducts), 
-        new Exception("UNIT TEST FAILED : Expected '?,?,?,?,?,?,?' | Actual : '".static::returnValueClauseForReserveLootForprice($cartProducts))."'");
+        assert("?,?,?,?,?,?,?" === static::returnValueClauseForReserveLootForPrice($cartProducts), 
+        new Exception("UNIT TEST FAILED : Expected '?,?,?,?,?,?,?' | Actual : '".static::returnValueClauseForReserveLootForPrice($cartProducts))."'");
         $cartProducts = [0,0];
-        assert("?,?,?,?,?,?,?,?,?,?,?,?,?,?" === static::returnValueClauseForReserveLootForprice($cartProducts), 
-        new Exception("UNIT TEST FAILED : Expected '?,?,?,?,?,?,?,?,?,?,?,?,?,?' | Actual : '".static::returnValueClauseForReserveLootForprice($cartProducts))."'");
+        assert("?,?,?,?,?,?,?,?,?,?,?,?,?,?" === static::returnValueClauseForReserveLootForPrice($cartProducts), 
+        new Exception("UNIT TEST FAILED : Expected '?,?,?,?,?,?,?,?,?,?,?,?,?,?' | Actual : '".static::returnValueClauseForReserveLootForPrice($cartProducts))."'");
         $cartProducts = [0,0,0];
-        assert("?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?" === static::returnValueClauseForReserveLootForprice($cartProducts), 
-        new Exception("UNIT TEST FAILED : Expected '?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?' | Actual : '".static::returnValueClauseForReserveLootForprice($cartProducts))."'");
+        assert("?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?" === static::returnValueClauseForReserveLootForPrice($cartProducts), 
+        new Exception("UNIT TEST FAILED : Expected '?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?' | Actual : '".static::returnValueClauseForReserveLootForPrice($cartProducts))."'");
     }
 
 
@@ -1559,7 +2135,7 @@ class StoreController
 
             if(!$areCartItemsInStockResp->data)
             {
-                $resp->message = "Some items in cart are out-of-stock";
+                $resp->message = "Some items in cart are out-of-stock : $areCartItemsInStockResp->message";
                 $resp->data = $unavailableCartProducts;
                 return $resp;
             }
@@ -1612,15 +2188,15 @@ class StoreController
             *  [4] - $reservation->productId->ctime
             *  [5] - $reservation->productId->crand
             *  [6] - $reservation->quantity
-            *  [7] - $reservation->expiryTime?->format("Y-m-d H:i:s:u")
-            *  [8] - $reservation->closeTime?->format("Y-m-d H:i:s:u")
+            *  [7] - $reservation->expiryTime?->format("Y-m-d H:i:s.u")
+            *  [8] - $reservation->closeTime?->format("Y-m-d H:i:s.u")
             */
 
             $cartId = new vRecordId($params[$i+2],$params[$i+3]);
             $productId = new vRecordId($params[$i+4],$params[$i+5]);
             $quantity = $params[$i+6];
-            $expiryTime = is_null($params[$i+7]) ? null : DateTime::createFromFormat("Y-m-d H:i:s:u", $params[$i+7]);
-            $closeTime = is_null($params[$i+8]) ? null : DateTime::createFromFormat("Y-m-d H:i:s:u", $params[$i+8]);
+            $expiryTime = is_null($params[$i+7]) ? null : DateTime::createFromFormat("Y-m-d H:i:s.u", $params[$i+7]);
+            $closeTime = is_null($params[$i+8]) ? null : DateTime::createFromFormat("Y-m-d H:i:s.u", $params[$i+8]);
 
             $reservation = new vProductReservation(
                 $params[$i],
@@ -1673,8 +2249,8 @@ class StoreController
                     $reservation->productId->ctime,
                     $reservation->productId->crand,
                     $reservation->quantity,
-                    $reservation->expiryTime?->format("Y-m-d H:i:s:u"),
-                    $reservation->closeTime?->format("Y-m-d H:i:s:u")
+                    $reservation->expiryTime?->format("Y-m-d H:i:s.u"),
+                    $reservation->closeTime?->format("Y-m-d H:i:s.u")
                 );
             } 
             else 
@@ -1788,9 +2364,10 @@ class StoreController
             {
                 $matchingCartProductAvailability = null;
 
+                $amountToBeBought = 0;
+
                 foreach($cart->cartProducts as $cartProduct)
                 {
-                    $amountToBeBought = 0;
 
                     if($cartProduct->product->ctime === $product["ctime"] &&
                         $cartProduct->product->crand === $product["crand"]
@@ -1817,7 +2394,7 @@ class StoreController
             else
             {
                 $resp->success = true;
-                $resp->message = "One or more products are currently out of availability";
+                $resp->message = "One or more products are currently out of availability. ".json_encode($nonAvailableProducts);
                 $resp->data = false;
             }
         }
@@ -1891,7 +2468,7 @@ class StoreController
 
         try
         {
-            $allLootsForpriceInCart = static::getLootForpriceForCart($cart);
+            $allLootsForpriceInCart = static::getLootForPriceForCart($cart);
             $allLootsForCartItemsFromStoreOwner = static::getStoreOwnerCartItemsLoot($cart);
 
 
@@ -2103,7 +2680,7 @@ class StoreController
      * @param vCart $cart the cart to get the loot from
      * @return array the array populated with vLoot of the appropriate loot
      */
-    private static function getLootForpriceForCart(vCart $cart) : array
+    private static function getLootForPriceForCart(vCart $cart) : array
     {
         $whereArrayClause = static::getWhereArrayClauseForGetLootForpriceForCart($cart->totals);
 
@@ -2331,13 +2908,13 @@ class StoreController
             $containerLootCrand = is_null($loot->containerLoot) ? null : $loot->containerLoot->crand;
             $params = [
                 $Id->crand, 
-                $loot->opened, 
+                0, 
                 $loot->description, 
                 $toAccount->crand, 
                 $loot->item->crand, 
                 $questIdCrand, 
                 $Id->ctime, 
-                $loot->opened, 
+                0, 
                 $containerLootCrand, 
                 $quantity];
 
@@ -2475,7 +3052,7 @@ class StoreController
         $whereClause = static::returnWhereClauseForcanAccountAffordItemPriceInCart($cart->cartProducts);
         $params = static::returnParamsForCanAccountAffordItemPriceForCart($cart);
 
-        $sql = "SELECT item_id, SUM(Quantity) AS `amount` FROM loot WHERE account_id = ? AND opened = 1 AND redeemed = 1$whereClause GROUP BY item_id;";
+        $sql = "SELECT l.item_id, SUM(l.Quantity) AS `amount` FROM loot l LEFT JOIN raffle_submissions rs ON l.Id = rs.loot_id WHERE rs.loot_id IS NULL AND l.account_id = ? $whereClause GROUP BY l.item_id;";
 
         $result = Database::executeSqlQuery($sql, $params);
 
@@ -2538,7 +3115,7 @@ class StoreController
             {
                 if(is_null($priceComponent->item)) continue;
 
-                $priceComponentWhereClause .= "item_id = ? OR ";
+                $priceComponentWhereClause .= "l.item_id = ? OR ";
             }
 
             //trim the last "OR" off
@@ -2585,7 +3162,7 @@ class StoreController
      */
     public static function calculateCartTotalPriceCompnents(array $cartItems) : array
     {
-        $totalprice = [];
+        $totals = [];
 
         foreach($cartItems as $cartItem)
         {
@@ -2593,38 +3170,41 @@ class StoreController
 
             foreach($price as $priceComponent)
             {
-                $priceComponentAlreadyExists = null;
+                $alreadyExistingTotal = null;
 
-                foreach($totalprice as $total)
+                foreach($totals as $total)
                 {
 
                     //Does priceComponent being checked match an already existing total
                     if(
-                        (!is_null($priceComponent->item) && !is_null($total->item) 
-                        && $priceComponent->item->ctime == $total->item->ctime && $priceComponent->item->crand == $total->item->crand)
+                        (!is_null($priceComponent->item) && !is_null($total->item) && 
+                        $priceComponent->item->ctime == $total->item->ctime && $priceComponent->item->crand == $total->item->crand)
                         ||
                         (!is_null($priceComponent->currencyCode) && !is_null($total->currencyCode) &&
                         $priceComponent->currencyCode == $total->currencyCode)
                     )
                     {
-                        $priceComponentAlreadyExists = $total;
+                        $alreadyExistingTotal = $total;
                         break;
                     }
                 }
 
                 //Add amount of already existing total or create new total
-                if(is_null($priceComponentAlreadyExists))
+                if(is_null($alreadyExistingTotal))
                 {
-                    array_push($totalprice, $priceComponent);
+                    //Clone price component so we don't affect the idividual price of items in the cart
+                    $totalComponent = new vPriceComponent('', 0, $priceComponent->amount, $priceComponent->item, $priceComponent->currencyCode);
+
+                    array_push($totals, $totalComponent);
                 }
                 else
                 {
-                    $priceComponentAlreadyExists->amount = $priceComponentAlreadyExists->amount + $priceComponent->amount;
+                    $alreadyExistingTotal->amount = $alreadyExistingTotal->amount + $priceComponent->amount;
                 }
             }
         }
 
-        return $totalprice;
+        return $totals;
     }
 
     public static string $columnsInCartView = "
@@ -2937,8 +3517,8 @@ class StoreController
             $params = [
                 $cartProductLink->ctime, 
                 $cartProductLink->crand, 
-                $cartProductLink->removed, 
-                $cartProductLink->checkedOut, 
+                0, 
+                0, 
                 $cartProductLink->cartId->ctime, 
                 $cartProductLink->cartId->crand, 
                 $cartProductLink->productId->ctime, 
@@ -2961,7 +3541,9 @@ class StoreController
         }
         catch(Exception $e)
         {
-            throw new Exception("Execption caught while linking product to cart : $e");
+            $debugInfo = json_encode(["product"=>$product,"cart"=>$cart]);
+            throw new Exception("Execption caught while linking product to cart | Debug Info $debugInfo : $e");
+            //throw new Exception("Execption caught while linking product to cart : $e");
         }
 
         return $resp;
@@ -3045,15 +3627,15 @@ class StoreController
         $cart = new Cart($accountId->ctime, $accountId->crand, $storeId->ctime, $storeId->crand);
 
         $sql = "INSERT INTO cart (
-            ctime, crand,
+            ctime, crand, checked_out, void,
             ref_account_ctime, ref_account_crand,
             ref_store_ctime, ref_store_crand
         )
-        SELECT ?, ?, ?, ?, ?, ?
+        SELECT ?, ?, 0, 0, ?, ?, ?, ?
         WHERE NOT EXISTS (
             SELECT 1
             FROM cart
-            WHERE ref_account_crand = ? AND ref_store_ctime = ? AND ref_store_crand = ?
+            WHERE ref_account_crand = ? AND ref_store_ctime = ? AND ref_store_crand = ? AND checked_out = 0 AND void = 0
         );";
 
         $params = [$cart->ctime, $cart->crand, $accountId->ctime, $accountId->crand, $storeId->ctime, $storeId->crand, $accountId->crand, $storeId->ctime, $storeId->crand];
@@ -3073,7 +3655,7 @@ class StoreController
             $selectSql = "SELECT
                 ".static::$columnsInCartView."
                 FROM v_cart
-                WHERE account_crand = ? AND store_ctime = ? AND store_crand = ?;
+                WHERE account_crand = ? AND store_ctime = ? AND store_crand = ? AND checked_out = 0 AND void = 0;
             ";
 
             $params = [$accountId->crand, $storeId->ctime, $storeId->crand];
@@ -3314,6 +3896,8 @@ class StoreController
             $item->iconBig = $largeMedia;
             $item->iconBack = $backMedia;
 
+            $item->applyMediaFallbacks();
+
             $item->fungible = boolval($row["price_component_item_is_fungible"]);
 
             $priceComponent->item = $item;
@@ -3374,7 +3958,7 @@ class StoreController
         $cart->transaction = new vTransaction();
 
         $cart->account->username = $row["account_username"];
-        $cart->account->ctime = $row["account_ctime"];
+        $cart->account->ctime = "";
         $cart->account->crand = $row["account_crand"];
 
         $cart->store->name = $row["store_name"];
@@ -4061,6 +4645,78 @@ class StoreController
         {
             throw new Exception("Exception caught while inserting product : $e");
         }
+
+        return $resp;
+    }
+
+    /**
+     * Helper to build and persist a product from an existing base item reference.
+     * The helper will persist the product, link its price components, and optionally
+     * link a set of loot entries as starting stock for shipment fulfillment.
+     *
+     * @param vItem $item The base item used for naming/media defaults
+     * @param vStore $store The store that will own the product
+     * @param array<vPriceComponent> $priceComponents The price components for the product
+     * @param array<vLoot> $stockLoots Optional loot entries to link as stock
+     * @param string|null $nameOverride Optional override for the product display name
+     * @param string|null $descriptionOverride Optional override for the product description
+     * @param string|null $locatorOverride Optional locator override; a generated locator is used when null
+     *
+     * @return Response data => ['productId' => vRecordId]
+     */
+    public static function createProductFromItemAndPrice(
+        vItem $item,
+        vStore $store,
+        array $priceComponents,
+        array $stockLoots = [],
+        ?string $nameOverride = null,
+        ?string $descriptionOverride = null,
+        ?string $locatorOverride = null
+    ) : Response {
+        $resp = new Response(false, "unknown error while creating product from item", null);
+
+        if (!static::validatePriceComponentArray($priceComponents)) {
+            $resp->message = "Price components must contain only vPriceComponent or PriceComponent objects.";
+            return $resp;
+        }
+
+        $name = $nameOverride !== null && $nameOverride !== '' ? $nameOverride : $item->name;
+        $description = $descriptionOverride !== null && $descriptionOverride !== '' ? $descriptionOverride : $item->description;
+        $locator = $locatorOverride ?? strtolower(preg_replace('/\s+/', '-', $name)) . "-" . $store->crand;
+
+        $product = new Product(
+            $name,
+            $description,
+            false,
+            $locator,
+            'shipment',
+            [],
+            $store,
+            $priceComponents,
+            $item->iconBig,
+            $item->iconSmall,
+            $item->iconBack ?? $item->iconSmall
+        );
+
+        $product->categories = [];
+
+        $upsertResp = static::upsertProduct($product);
+        if (!$upsertResp->success) {
+            $resp->message = "Failed to persist product: {$upsertResp->message}";
+            return $resp;
+        }
+
+        if (!empty($stockLoots)) {
+            $linkResp = static::linkLootsToProductAsStock($product, $stockLoots);
+            if (!$linkResp->success) {
+                $resp->message = "Product created but failed to link stock: {$linkResp->message}";
+                return $resp;
+            }
+        }
+
+        $resp->success = true;
+        $resp->message = "Product created from base item.";
+        $resp->data = ['productId' => new vRecordId($product->ctime, $product->crand)];
 
         return $resp;
     }
@@ -4779,6 +5435,7 @@ class StoreController
             $item->iconSmall = $iconSmall;
             $item->iconBig = $iconLarge;
             $item->iconBack = $iconBack;
+            $item->applyMediaFallbacks();
             $item->fungible = boolval($row["item_is_fungible"]);
 
         $currencyCode = $row["currency_code"] != null ? CurrencyCode::from($row["currency_code"]) : null;
@@ -4837,7 +5494,41 @@ class StoreController
             throw new Exception("Exception caught while getting store by account Id : $e");
         }
 
-        return $resp;  
+        return $resp;
+    }
+
+    public static function getAllStores() : Response
+    {
+        $resp = new Response(false, "Failed to load stores");
+
+        try
+        {
+            $sql = "SELECT ctime, crand, `name`, locator, `description`, owner_username, owner_ctime, owner_crand FROM v_store ORDER BY name";
+            $result = Database::executeSqlQuery($sql, []);
+
+            if($result === false)
+            {
+                $resp->message = "Unable to execute store query";
+                return $resp;
+            }
+
+            $stores = [];
+
+            while($row = $result->fetch_assoc())
+            {
+                $stores[] = static::rowToVStore($row);
+            }
+
+            $resp->success = true;
+            $resp->message = "Stores returned";
+            $resp->data = $stores;
+        }
+        catch(Exception $e)
+        {
+            $resp->message = "Failed to load stores: $e";
+        }
+
+        return $resp;
     }
 
     public static function getStoreByLocator(string $locator) : Response
@@ -5151,6 +5842,7 @@ class StoreController
             $item->iconSmall = $iconSmall;
             $item->iconBig = $iconBig;
             $item->iconBack = $iconBack;
+            $item->applyMediaFallbacks();
         $priceComponent->item = $item;
         
         return $priceComponent;
@@ -5286,7 +5978,7 @@ class StoreController
             $cartProductId = $pair["cartProductId"];
             $priceComponent = $pair["priceComponent"];
 
-            $link = new recordId();
+            $link = new RecordId();
 
             array_push($params, $link->ctime, $link->crand, $cartProductId->ctime, $cartProductId->crand, $priceComponent->ctime, $priceComponent->crand);
 
@@ -6021,6 +6713,8 @@ class StoreController
             required_quantity_of_product,
             product_ctime,
             product_crand,
+            store_ctime,
+            store_crand,
             times_used,
             max_times_used,
             max_times_used_per_account,
@@ -6099,6 +6793,7 @@ class StoreController
         $coupon->description = $row["description"];
         $coupon->requiredQuantityOfProduct = $row["required_quantity_of_product"];
         $coupon->productId = new vRecordId($row["product_ctime"], $row["product_crand"]);
+        $coupon->storeId = new vRecordId($row["store_ctime"], $row["store_crand"]);
         $coupon->timesUsed = $row["times_used"];
         $coupon->maxTimesUsed = $row["max_times_used"];
         $coupon->maxTimesUsedPerAccount = $row["max_times_used_per_account"];
@@ -6114,7 +6809,7 @@ class StoreController
         $sql = "SELECT 1 FROM cart c 
         JOIN v_cart_item vci ON c.ctime = vci.cart_ctime AND c.crand = vci.cart_crand
         JOIN account a ON a.id = c.ref_account_crand
-        WHERE c.checked_out = 0 AND c.removed = 0 AND
+        WHERE c.checked_out = 0 AND c.void = 0 AND
         c.ref_account_crand = ? AND vci.cart_product_link_ctime = ? AND vci.cart_product_link_crand = ?;";
         $params = [$account->crand, $cartProduct->ctime, $cartProduct->crand];
 
@@ -6124,4 +6819,63 @@ class StoreController
 
         return $result->num_rows > 0;
     }
+
+
+    public static function createTransactionForCart(vCart $cart, array $productLoots, array $priceComponentLoots) : vTransaction
+    {
+        $products = $cart->cartProducts;
+
+        $transaction = new Transaction();
+        $transaction->complete = false;
+        $transaction->void = false;
+        $transaction->description = "Cart Checkout Transaction For ".$cart->account->username."'s Cart. Cart Id : ($cart->ctime, $cart->crand)";
+        $transaction->type = "CART";
+
+        $transaction->firstAccount = $cart->account;
+        $transaction->firstAccount->ctime = "0000-00-00 00:00:00";
+
+        $transaction->secondAccount = $cart->store->owner;
+        $transaction->secondAccount->ctime = "0000-00-00 00:00:00";
+
+        for($i = 0; $i < count($productLoots); $i++)
+        {
+            $loot = $productLoots[$i];
+
+            $productTransactionComponent = new TransactionComponent();
+            $productTransactionComponent->transaction = $transaction;
+            $productTransactionComponent->fromAccount = $cart->store->owner;
+            $productTransactionComponent->toAccount = $cart->account;
+            $productTransactionComponent->toAccount->ctime = "0000-00-00 00:00:00";
+
+            $productTransactionComponent->amount = $loot->quantity;
+            $productTransactionComponent->loot = $loot;
+
+            $transaction->addComponent($productTransactionComponent);
+        }
+
+        for($i = 0; $i < count($priceComponentLoots); $i++)
+        {
+            $loot = $priceComponentLoots[$i];
+
+            $productTransactionComponent = new TransactionComponent();
+            $productTransactionComponent->transaction = $transaction;
+            $productTransactionComponent->fromAccount = $cart->account;
+            $productTransactionComponent->toAccount = $cart->store->owner;
+            $productTransactionComponent->toAccount->ctime = "0000-00-00 00:00:00";
+
+            $productTransactionComponent->amount = $loot->quantity;
+            $productTransactionComponent->loot = $loot;
+
+            $transaction->addComponent($productTransactionComponent);
+        }
+
+        TransactionController::insertTransaction($transaction);
+
+        $transactionResp = TransactionController::getTransactionById($transaction);
+
+        if(!$transactionResp->success) throw new Exception("Failed to retreive transaction after insertion : $transactionResp->message");
+
+        return $transactionResp->data;
+    }
+
 }

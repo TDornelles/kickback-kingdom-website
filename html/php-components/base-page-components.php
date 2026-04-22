@@ -55,6 +55,12 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
     $redirectUri = substr($redirectUri, strlen($betaPrefix) + 1);
 }
 
+$supportPath = 'tickets/new-ticket.php';
+$supportNavHref = Version::urlBetaPrefix() . '/' . $supportPath;
+if (!Session::isLoggedIn()) {
+    $supportNavHref = Version::urlBetaPrefix() . '/login.php?redirect=' . urlencode($supportPath);
+}
+
 ?>
 
 <!--CONFETTI-->
@@ -64,12 +70,18 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
     </div>
 </div>
 
+<!--FIREWORKS-->
+<div class="fireworks-box">
+    <div class="js-container-fireworks" style="width:100vw; height:100vh;">
+
+    </div>
+</div>
+
 
 
 
 
 <?php if(Session::isLoggedIn()) { ?>
-
 
 
     <?php require(\Kickback\SCRIPT_ROOT . "/php-components/league-viewer.php"); ?>
@@ -201,22 +213,30 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
                             </div>
                             <div id="lichPromptOptions" class="d-none">
                                 <div class="mb-3">
-                                    <label for="imagePromptScenery" class="form-label">Scenery</label>
-                                    <select id="imagePromptScenery" class="form-select">
-                                        <option value="Urban setting">Urban setting</option>
-                                        <option value="Jungle">Jungle</option>
-                                        <option value="Cavern">Cavern</option>
-                                        <option value="Dungeon">Dungeon</option>
-                                        <option value="Military base">Military base</option>
+                                    <label for="imagePromptPreset" class="form-label">Preset</label>
+                                    <select id="imagePromptPreset" class="form-select">
+                                        <option value="">Custom...</option>
                                     </select>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="imagePromptFaction" class="form-label">Faction</label>
-                                    <select id="imagePromptFaction" class="form-select">
-                                        <option value="Enforcers (SWAT, police, military)">Enforcers (SWAT, police, military)</option>
-                                        <option value="Civilians (librarian, common workers)">Civilians (librarian, common workers)</option>
-                                        <option value="Minions (undead and mystical creatures of the lich)">Minions (undead and mystical creatures of the lich)</option>
-                                    </select>
+                                    <label for="imagePromptSceneType" class="form-label">Scene Type</label>
+                                    <input id="imagePromptSceneType" class="form-control" type="text">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="imagePromptScenery" class="form-label">Scenery</label>
+                                    <input id="imagePromptScenery" class="form-control" type="text">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="imagePromptMainSubject" class="form-label">Main Subject</label>
+                                    <input id="imagePromptMainSubject" class="form-control" type="text">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="imagePromptAction" class="form-label">Action</label>
+                                    <input id="imagePromptAction" class="form-control" type="text">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="imagePromptExtraDetails" class="form-label">Extra Details</label>
+                                    <textarea id="imagePromptExtraDetails" class="form-control" rows="2"></textarea>
                                 </div>
                             </div>
                             <div class="mb-3">
@@ -226,10 +246,6 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
                                     <button class="btn btn-outline-secondary" type="button" onclick="copyImagePrompt()">Copy</button>
                                     <button id="usePromptAsCustom" class="btn btn-outline-secondary d-none" type="button" onclick="usePromptAsCustom()">Use as custom</button>
                                 </div>
-                            </div>
-                            <div class="mb-3">
-                                <label for="imagePromptDescription" class="form-label">Description</label>
-                                <textarea id="imagePromptDescription" class="form-control" rows="2"></textarea>
                             </div>
                             <div class="mb-3">
                                 <label for="imageSize" class="form-label">Size</label>
@@ -900,8 +916,8 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
                                                 <h5 class="card-title" id="quest-review-quest-title">Cpt. Longs' Barothon (Continued)</h5>
                                             </a>
                                             <p class="card-text">
-                                                <small class="text-body-secondary">Hosted by <a id="quest-review-quest-host-1" href="/beta/u/hansibaba" class="username">hansibaba</a>
-                                                <span id="quest-review-quest-host-2-span">and <a id="quest-review-quest-host-2" href="/beta/u/hansibaba" class="username">hansibaba</a></span>
+                                                <small class="text-body-secondary">Hosted by <a id="quest-review-quest-host-1" href="/beta/u/hansibaba" class="username" data-account-id="" data-username="hansibaba">hansibaba</a>
+                                                <span id="quest-review-quest-host-2-span">and <a id="quest-review-quest-host-2" href="/beta/u/hansibaba" class="username" data-account-id="" data-username="hansibaba">hansibaba</a></span>
                                                                                     on <span id="quest-review-quest-date" class="date">Jul 21, 2023</span>
                                                 </small>
                                             </p>
@@ -969,54 +985,11 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
             aria-label="Close"></button>
     </div>
     <div class="offcanvas-body">
-        <!-- Shopping Cart Items -->
-        <div class="shopping-cart-items">
+        <div id="offcanvasCartStatus" class="alert alert-info d-none" role="alert"></div>
 
-            <?php
-            // Placeholder for your cart items array
-            if (Kickback\Services\Session::isAdmin())
-            {
-                $cart_items = [
-                    ['id' => 1, 'name' => 'Epic Sword', 'quantity' => 1, 'price' => '120 Coins', 'icon_url' => '/assets/media/items/21.png'],
-                    ['id' => 2, 'name' => 'Mystic Potion', 'quantity' => 2, 'price' => '60 Coins', 'icon_url' => '/assets/media/items/21.png']
-                    // ... more items ...
-                ];
-                $cart_items = [];
-            }
-            else 
-            {
-                $cart_items = [];
-            }
-            if(empty($cart_items)) {
-                echo "<p class='text-muted'>Your cart is empty.</p>";
-            } else {
-                foreach($cart_items as $item) {
-                    echo "
-            <div class='cart-item d-flex justify-content-between align-items-center mb-3'>
-                <div class='item-icon me-2'>
-                    <img class='img img-thumbnail' src='{$item['icon_url']}' alt='{$item['name']}'>
-                </div>
-        
-                <div class='item-details d-flex align-items-center flex-grow-1'>
-                    <div class='me-3'>
-                        <div class='item-title fw-bold fs-5'>{$item['name']}</div>
-                        <div class='item-quantity d-flex align-items-center'>
-                            <button class='quantity-decrease btn btn-outline-secondary btn-sm'>-</button>
-                            <input type='number' value='{$item['quantity']}' class='form-control quantity-input mx-2 form-control-sm' min='1'>
-                            <button class='quantity-increase btn btn-outline-secondary btn-sm'>+</button>
-                        </div>
-                    </div>
-                    <div class='item-price ms-auto me-3'>
-                        <span>{$item['price']}</span>
-                    </div>
-                </div>
-                <div class='item-actions'>
-                    <button class='btn btn-danger btn-sm'><i class='fa-regular fa-trash-can'></i></button>
-                </div>
-            </div>";
-                }
-            }
-        ?>
+        <!-- Shopping Cart Items -->
+        <div class="shopping-cart-items" id="shoppingCartItems">
+            <p class="text-muted mb-0">Loading your cart...</p>
         </div>
 
         <!-- Shopping Cart Total -->
@@ -1024,12 +997,12 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
     <div class="offcanvas-footer p-3 border-top">
         <!-- Shopping Cart Totals Summary -->
         <div class="shopping-cart-summary mb-3 p-2 border-bottom">
-            <p class="summary-line">Subtotal: <span class="subtotal-amount">0 </span></p>
-            <p class="summary-line">Discount Applied: <span class="discount-amount">0 </span></p>
-            <p class="summary-line fw-bold total-line">Total: <span class="final-total-amount">0 </span></p>
+            <ul class="list-group list-group-flush" id="offcanvasCartTotals">
+                <li class="list-group-item d-flex justify-content-between"><span>Total</span><span class="fw-bold">—</span></li>
+            </ul>
         </div>
         <!-- Proceed to Checkout Button -->
-        <a class="btn btn-primary w-100 disabled" href="<?php echo Version::urlBetaPrefix(); ?>/checkout.php" disabled>Proceed to Checkout</a>
+        <a class="btn btn-primary w-100" id="offcanvasCheckoutButton" href="<?php echo Version::urlBetaPrefix(); ?>/checkout.php?store-locator=emberwood-market">Proceed to Checkout</a>
     </div>
 
 </div>
@@ -1080,7 +1053,7 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
                             <img id="inventoryItemImage" src="" class="img-fluid animate__animated" alt="Item Image" style="width: 100%;">
                             <img id="inventoryItemImageSecondary" src="" class="img-fluid animate__animated" alt="Item Image" style="width: 100%; display: none;">
                         </div>
-                        <p class="float-end" style="font-size: .8em;">Artwork by <a class="username" id="inventoryItemArtist" href="#">Artist: Artist Name</a></p>
+                        <p class="float-end" style="font-size: .8em;">Artwork by <a class="username" id="inventoryItemArtist" href="#" data-account-id="" data-username="Artist: Artist Name">Artist: Artist Name</a></p>
                     </div>
                     <div class="col-12 col-md-6">
                         
@@ -1394,16 +1367,25 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
                 <a class="nav-link mobile-menu-item" href="<?php echo Version::urlBetaPrefix(); ?>/games.php"><i class="nav-icon fa-solid fa-gamepad"></i> Games & Activities<i class="fa-solid fa-chevron-right mobile-menu-item-arrow"></i></a>
             </li>
             <li class="nav-item">
+                <a class="nav-link mobile-menu-item" href="<?php echo Version::urlBetaPrefix(); ?>/market.php"><i class="nav-icon fa-solid fa fa-space-shuttle"></i> Emberwood Market<i class="fa-solid fa-chevron-right mobile-menu-item-arrow"></i></a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link mobile-menu-item" href="<?php echo Version::urlBetaPrefix(); ?>/servers.php"><i class="nav-icon fa-regular fa-server"></i> Community Servers <i class="fa-solid fa-chevron-right mobile-menu-item-arrow"></i></a>
             </li>
             <li class="nav-item">
                 <a class="nav-link mobile-menu-item" href="<?php echo Version::urlBetaPrefix(); ?>/business-plan.php"><i class="nav-icon fa-regular fa-file-lines"></i> Business Plan <i class="fa-solid fa-chevron-right mobile-menu-item-arrow"></i></a>
             </li>
+            <!--<li class="nav-item">
+                <a class="nav-link mobile-menu-item" href="<?php echo Version::urlBetaPrefix(); ?>/strategy-viewer.php"><i class="nav-icon fa-solid fa-diagram-project"></i> Strategy Viewer <i class="fa-solid fa-chevron-right mobile-menu-item-arrow"></i></a>
+            </li>-->
             <li class="nav-item">
                 <a class="nav-link mobile-menu-item" href="<?php echo Version::urlBetaPrefix(); ?>/analytics.php"><i class="nav-icon fa-solid fa-chart-line"></i> Analytics <i class="fa-solid fa-chevron-right mobile-menu-item-arrow"></i></a>
             </li>
             <li class="nav-item">
                 <a class="nav-link mobile-menu-item" href="<?php echo Version::urlBetaPrefix(); ?>/guild-halls.php"><i class="nav-icon fa-solid fa-signs-post"></i> Guild Halls <i class="fa-solid fa-chevron-right mobile-menu-item-arrow"></i></a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link mobile-menu-item" href="<?php echo $supportNavHref; ?>"><i class="nav-icon fa-solid fa-headset"></i> Submit a Ticket <i class="fa-solid fa-chevron-right mobile-menu-item-arrow"></i></a>
             </li>
             <?php
 
@@ -1412,6 +1394,9 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
                 ?>
             <li class="nav-item">
                 <a class="nav-link mobile-menu-item" href="<?php echo Version::urlBetaPrefix(); ?>/admin-dashboard.php"><i class="nav-icon fa-solid fa-shield-halved"></i> Admin Dashboard <i class="fa-solid fa-chevron-right mobile-menu-item-arrow"></i></a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link mobile-menu-item" href="<?php echo Version::urlBetaPrefix(); ?>/admin-ability-manager.php"><i class="nav-icon fa-solid fa-wand-magic-sparkles"></i> Ability Manager <i class="fa-solid fa-chevron-right mobile-menu-item-arrow"></i></a>
             </li>
             <?php } ?>
             <?php
@@ -1548,12 +1533,29 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
                 <li class="nav-item dropdown" data-bs-theme="light">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
                         aria-expanded="false">
+                        <i class="nav-icon fa-solid fa-store "></i> Store
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li>
+                            <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/market.php"><i class="nav-icon fa-solid fa fa-space-shuttle"></i>Emberwood Market</a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/emberwood-delivery.php"><i class="nav-icon fa-solid fa-truck-fast"></i>Emberwood Delivery Schedule</a>
+                        </li>
+                    </ul>
+                </li>
+                <li class="nav-item dropdown" data-bs-theme="light">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
+                        aria-expanded="false">
                         <i class="nav-icon fa-solid fa-chess"></i> About Us
                     </a>
                     <ul class="dropdown-menu">
                         <li>
                             <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/business-plan.php"><i class="nav-icon fa-regular fa-file-lines"></i> Business Plan</a>
                         </li>
+                        <!--<li>
+                            <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/strategy-viewer.php"><i class="nav-icon fa-solid fa-diagram-project"></i> Strategy Viewer</a>
+                        </li>-->
                         <li>
                             <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/analytics.php"><i class="nav-icon fa-solid fa-chart-line"></i> Analytics</a>
                         </li>
@@ -1590,16 +1592,26 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
                         </button>
                     </li>
                     <li class="nav-item">
-                        <button class="btn btn-primary position-relative" type="button" data-bs-toggle="offcanvas"
-                            data-bs-target="#offcanvasMenuRightShoppingCart" aria-controls="offcanvasMenuRightShoppingCart"
-                            aria-label="Toggle navigation">
+                        <button
+                            class="btn btn-primary position-relative"
+                            type="button"
+                            data-bs-toggle="offcanvas"
+                            data-bs-target="#offcanvasMenuRightShoppingCart"
+                            aria-controls="offcanvasMenuRightShoppingCart"
+                            aria-label="Toggle navigation"
+                            style="background-color: transparent !important; border-color: transparent;"
+                            id="navbarCartButton"
+                            data-store-locator="emberwood-market"
+                        >
                             <i class="fa-solid fa-cart-shopping"></i>
-                            <?php if (Kickback\Services\Session::isAdmin()) { ?>
-                            <span class="badge bg-danger position-absolute top-0 start-100 translate-middle rounded-pill">
-                                99+
-                                <span class="visually-hidden">unread messages</span>
+                            <span
+                                class="badge bg-secondary position-absolute top-0 start-100 translate-middle rounded-pill d-none"
+                                id="navbarCartBadge"
+                                aria-live="polite"
+                            >
+                                <i class="fa-solid fa-spinner fa-spin"></i>
+                                <span class="visually-hidden">Loading cart</span>
                             </span>
-                            <?php } ?>
                         </button>
                     </li>
                     <li class="nav-item">
@@ -1650,6 +1662,31 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
                                 <i class="nav-icon fa-solid fa-gear"></i> Account Settings
                             </a>
                         </li>
+                        <li>
+                            <a class="dropdown-item" href="<?= $supportNavHref; ?>">
+                                <i class="nav-icon fa-solid fa-headset"></i> Submit a Ticket
+                            </a>
+                        </li>
+                        <?php if (Kickback\Services\Session::isSteward()) { ?>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/tickets/dashboard.php">
+                                <i class="nav-icon fa-solid fa-list"></i> Support Dashboard
+                            </a>
+                        </li>
+                        <?php } ?>
+                        <?php if (Kickback\Services\Session::isQuestGiver()) { ?>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/quest-giver-dashboard.php">
+                                <i class="nav-icon fa-solid fa-chess-knight"></i> Quest Giver Dashboard
+                            </a>
+                        </li>
+                        <?php } ?>
                         <?php if (Kickback\Services\Session::isAdmin()) { ?>
                         <li>
                             <hr class="dropdown-divider">
@@ -1657,6 +1694,26 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
                         <li>
                             <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/admin-dashboard.php">
                                 <i class="nav-icon fa-solid fa-shield-halved"></i> Admin Dashboard
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/admin-ability-manager.php">
+                                <i class="nav-icon fa-solid fa-wand-magic-sparkles"></i> Ability Manager
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/admin-loot-grant.php">
+                                <i class="nav-icon fa-solid fa-gift"></i> Loot Grant
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/admin-shipment-pool.php">
+                                <i class="nav-icon fa-solid fa-boxes-stacked"></i> Shipment Pool
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/admin-item-manager.php">
+                                <i class="nav-icon fa-solid fa-box-open"></i> Item Manager
                             </a>
                         </li>
                         <li>
@@ -1703,6 +1760,11 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
                         ?>
 
                         <li>
+                            <a class="dropdown-item" href="<?= $supportNavHref; ?>">
+                                <i class="nav-icon fa-solid fa-headset"></i> Submit a Ticket
+                            </a>
+                        </li>
+                        <li>
                             <a class="dropdown-item" href="<?php echo Version::urlBetaPrefix(); ?>/login.php?redirect=<?php echo urlencode($redirectUri); ?>">
                                 <i class="nav-icon fa-solid fa-right-from-bracket"></i> Login
                             </a>
@@ -1728,4 +1790,393 @@ if ($betaPrefix !== '' && strncmp($redirectUri, $betaPrefix . '/', strlen($betaP
         </div>
     </div>
 </nav>
+<script>
+    (() => {
+        const navbarCartBadgeElement = document.getElementById('navbarCartBadge');
+        const navbarCartButtonElement = document.getElementById('navbarCartButton');
+        const offcanvasCartStatus = document.getElementById('offcanvasCartStatus');
+        const cartOffcanvas = document.getElementById('offcanvasMenuRightShoppingCart');
+        const offcanvasCheckoutButton = document.getElementById('offcanvasCheckoutButton');
+        const offcanvasCartItemsContainer = document.getElementById('shoppingCartItems');
+        const offcanvasCartTotalsContainer = document.getElementById('offcanvasCartTotals');
+        const userIsLoggedIn = <?php echo json_encode(Session::isLoggedIn()); ?>;
+
+        const queryParams = new URLSearchParams(window.location.search);
+        const storeLocatorQueryParam = queryParams.get('store-locator');
+        const navbarStoreLocator = storeLocatorQueryParam || navbarCartButtonElement?.dataset.storeLocator || 'emberwood-market';
+
+        if (offcanvasCheckoutButton) {
+            const checkoutBaseUrl = `<?= Version::urlBetaPrefix(); ?>/checkout.php`;
+            offcanvasCheckoutButton.href = `${checkoutBaseUrl}?store-locator=${encodeURIComponent(navbarStoreLocator)}`;
+        }
+
+        const getMediaPath = (media) => media?.fullPath || media?.url || media?.path || '';
+
+        const getProductMediaPath = (product) =>
+            getMediaPath(product?.mediaSmall)
+            || getMediaPath(product?.mediaLarge)
+            || '/assets/media/default.png';
+
+        const normalizePriceComponents = (priceComponents) => {
+            if (Array.isArray(priceComponents)) {
+                return priceComponents;
+            }
+
+            if (priceComponents && typeof priceComponents === 'object') {
+                return Object.values(priceComponents);
+            }
+
+            return [];
+        };
+
+        const formatPriceComponents = (priceComponents) => {
+            const components = normalizePriceComponents(priceComponents);
+
+            if (components.length === 0) {
+                return '<span class="text-muted">Free</span>';
+            }
+
+            return components.map((component) => {
+                const amount = Number(component?.amount ?? 0);
+
+                if (component?.currencyCode) {
+                    const symbol = component.currencyCode === 'ADA'
+                        ? '₳'
+                        : component.currencyCode === 'USD'
+                            ? '$'
+                            : component.currencyCode;
+                    const precision = Math.floor(amount) === amount ? 0 : 2;
+                    return `<span class="fw-semibold">${amount.toFixed(precision)} ${symbol}</span>`;
+                }
+
+                if (component?.item) {
+                    const quantity = Math.max(1, Math.floor(amount));
+                    const icon = component.item?.iconSmall?.fullPath
+                        || component.item?.iconSmall?.path
+                        || component.item?.iconSmall?.url
+                        || '';
+                    const name = component.item?.name || 'Item';
+                    const iconHtml = icon
+                        ? `<img src="${icon}" alt="${name}" style="height:16px; width:16px; object-fit:contain;" class="me-1">`
+                        : '';
+                    return `<span>${quantity}x ${iconHtml}${name}</span>`;
+                }
+
+                return `<span class="text-muted">${amount}</span>`;
+            }).join('<span class="text-muted mx-1">+</span>');
+        };
+
+        const aggregateTotals = (priceComponents) => {
+            const totals = {
+                items: [],
+                ada: 0,
+                usd: 0,
+                otherCurrencies: {},
+            };
+
+            normalizePriceComponents(priceComponents).forEach((component) => {
+                const amount = Number(component?.amount ?? 0);
+
+                if (component?.item) {
+                    totals.items.push({
+                        quantity: Math.max(1, Math.floor(amount)),
+                        name: component.item?.name || 'Item',
+                        icon: component.item?.iconSmall?.fullPath
+                            || component.item?.iconSmall?.path
+                            || component.item?.iconSmall?.url
+                            || '',
+                    });
+                    return;
+                }
+
+                if (component?.currencyCode === 'ADA') {
+                    totals.ada += amount;
+                    return;
+                }
+
+                if (component?.currencyCode === 'USD') {
+                    totals.usd += amount;
+                    return;
+                }
+
+                if (component?.currencyCode) {
+                    const code = component.currencyCode;
+                    totals.otherCurrencies[code] = (totals.otherCurrencies[code] || 0) + amount;
+                }
+            });
+
+            return totals;
+        };
+
+        const renderTotalsList = (targetElement, priceComponents) => {
+            if (!targetElement) {
+                return;
+            }
+
+            const totals = aggregateTotals(priceComponents);
+            targetElement.innerHTML = '';
+
+            const addLine = (label, value, isBold = false) => {
+                const item = document.createElement('li');
+                item.className = 'list-group-item d-flex justify-content-between align-items-center';
+                item.innerHTML = `<span>${label}</span><span class="${isBold ? 'fw-bold' : ''}">${value}</span>`;
+                targetElement.appendChild(item);
+            };
+
+            const hasTotals = totals.items.length > 0
+                || totals.ada !== 0
+                || totals.usd !== 0
+                || Object.keys(totals.otherCurrencies).length > 0;
+
+            const formatNumber = (value, symbol) => {
+                const precision = Math.floor(value) === value ? 0 : 2;
+                return `${symbol}${value.toFixed(precision)}`;
+            };
+
+            const itemsValue = totals.items.length
+                ? totals.items.map((item) => {
+                    const iconHtml = item.icon
+                        ? `<img src="${item.icon}" alt="${item.name}" style="height:16px; width:16px; object-fit:contain;" class="me-1">`
+                        : '';
+                    return `${item.quantity}x ${iconHtml}${item.name}`;
+                }).join(', ')
+                : '0 items';
+
+            if (!hasTotals) {
+                addLine('Items', itemsValue);
+                addLine('ADA', formatNumber(0, '₳'));
+                addLine('USD', formatNumber(0, '$'), true);
+                return;
+            }
+
+            addLine('Items', itemsValue);
+            addLine('ADA', formatNumber(totals.ada, '₳'));
+            addLine('USD', formatNumber(totals.usd, '$'), true);
+
+            Object.entries(totals.otherCurrencies).forEach(([code, amount]) => {
+                addLine(code, formatNumber(amount, ''));
+            });
+        };
+
+        let offcanvasCartData = null;
+
+        const setOffcanvasStatus = (message, state = 'info') => {
+            if (!offcanvasCartStatus) {
+                return;
+            }
+
+            offcanvasCartStatus.className = `alert alert-${state}`;
+            offcanvasCartStatus.textContent = message;
+            offcanvasCartStatus.classList.remove('d-none');
+        };
+
+        const clearOffcanvasStatus = () => {
+            if (!offcanvasCartStatus) {
+                return;
+            }
+
+            offcanvasCartStatus.className = 'alert alert-info d-none';
+            offcanvasCartStatus.textContent = '';
+        };
+
+        const renderOffcanvasCart = (cartData) => {
+            offcanvasCartData = cartData;
+
+            if (!offcanvasCartItemsContainer) {
+                return;
+            }
+
+            offcanvasCartItemsContainer.innerHTML = '';
+
+            if (!userIsLoggedIn) {
+                offcanvasCartItemsContainer.innerHTML = '<p class="text-muted mb-0">Log in to view your cart.</p>';
+                renderTotalsList(offcanvasCartTotalsContainer, []);
+                return;
+            }
+
+            const cartProducts = Array.isArray(cartData?.cartProducts) ? cartData.cartProducts : [];
+
+            if (!cartProducts.length) {
+                offcanvasCartItemsContainer.innerHTML = '<p class="text-muted mb-0">Your cart is empty.</p>';
+                renderTotalsList(offcanvasCartTotalsContainer, cartData?.totals || []);
+                return;
+            }
+
+            cartProducts.forEach((cartProduct, index) => {
+                const product = cartProduct?.product || {};
+                const quantity = Math.max(1, Number(cartProduct?.quantity) || 1);
+                const media = getProductMediaPath(product);
+                const priceDisplay = formatPriceComponents(product?.price || []);
+                const couponText = cartProduct?.coupon
+                    ? `<div class="text-success small">Coupon: ${cartProduct.coupon?.name || cartProduct.coupon?.code || 'Applied'}</div>`
+                    : '';
+
+                const item = document.createElement('div');
+                item.className = 'cart-item d-flex justify-content-between align-items-center mb-3';
+                item.innerHTML = `
+                    <div class="item-icon me-2">
+                        <img class="img img-thumbnail" src="${media}" alt="${product?.name || 'Product'}" style="height:64px; width:64px; object-fit:cover;">
+                    </div>
+                    <div class="item-details d-flex align-items-center flex-grow-1">
+                        <div class="me-3">
+                            <div class="item-title fw-bold fs-6 mb-1">${product?.name || 'Product'} <span class="badge text-bg-secondary">x${quantity}</span></div>
+                            <div class="item-price text-nowrap">${priceDisplay}</div>
+                            ${couponText}
+                        </div>
+                    </div>
+                    <div class="item-actions">
+                        <button class="btn btn-danger btn-sm" data-index="${index}"><i class="fa-regular fa-trash-can"></i></button>
+                    </div>
+                `;
+
+                const removeButton = item.querySelector('button[data-index]');
+                removeButton?.addEventListener('click', async () => {
+                    await removeOffcanvasCartProduct(index);
+                });
+
+                offcanvasCartItemsContainer.appendChild(item);
+            });
+
+            renderTotalsList(offcanvasCartTotalsContainer, cartData?.totals || []);
+        };
+
+        const removeOffcanvasCartProduct = async (index) => {
+            if (!offcanvasCartData || !Array.isArray(offcanvasCartData.cartProducts)) {
+                return;
+            }
+
+            const cartProduct = offcanvasCartData.cartProducts[index];
+
+            if (!cartProduct) {
+                return;
+            }
+
+            const productLocator = cartProduct?.product?.locator;
+            if (!productLocator) {
+                setOffcanvasStatus('Unable to remove item because its product locator is missing.', 'danger');
+                return;
+            }
+
+            try {
+                setOffcanvasStatus('Removing item...', 'info');
+                await StoreClient.removeProductFromCart(productLocator);
+                clearOffcanvasStatus();
+                await fetchCart({ showLoading: false });
+            } catch (error) {
+                console.error('Failed to remove product from cart', error);
+                setOffcanvasStatus(error?.message || 'Unable to remove this item right now.', 'danger');
+            }
+        };
+
+        let showNavbarCartLoading = null;
+        let showNavbarCartError = null;
+        let updateNavbarCartBadgeCount = null;
+
+        if (navbarCartBadgeElement && navbarCartButtonElement) {
+            if (!userIsLoggedIn) {
+                navbarCartBadgeElement.classList.add('d-none');
+                return;
+            }
+
+            const showNavbarCartBadge = (htmlContent, title) => {
+                navbarCartBadgeElement.innerHTML = htmlContent;
+                navbarCartBadgeElement.title = title;
+                navbarCartBadgeElement.classList.remove('d-none');
+            };
+
+            showNavbarCartLoading = () => {
+                showNavbarCartBadge('<i class="fa-solid fa-spinner fa-spin"></i><span class="visually-hidden">Loading cart</span>', 'Loading cart');
+            };
+
+            showNavbarCartError = (errorMessage) => {
+                const errorText = errorMessage || 'Unable to load cart';
+                showNavbarCartBadge('<i class="fa-solid fa-triangle-exclamation"></i><span class="visually-hidden">' + errorText + '</span>', errorText);
+            };
+
+            updateNavbarCartBadgeCount = (count) => {
+                const parsedCount = Number.isFinite(Number(count)) ? Number(count) : 0;
+                const accessibleText = `Cart has ${parsedCount} item${parsedCount === 1 ? '' : 's'}`;
+                navbarCartBadgeElement.innerHTML = '';
+                navbarCartBadgeElement.textContent = `${parsedCount}`;
+                const screenReaderText = document.createElement('span');
+                screenReaderText.className = 'visually-hidden';
+                screenReaderText.textContent = accessibleText;
+                navbarCartBadgeElement.appendChild(screenReaderText);
+                navbarCartBadgeElement.title = accessibleText;
+                navbarCartBadgeElement.classList.remove('d-none');
+            };
+        }
+
+        const fetchCart = async ({ showLoading = true, storeLocatorOverride = null } = {}) => {
+            const locatorToUse = storeLocatorOverride || navbarStoreLocator;
+
+            if (!locatorToUse) {
+                setOffcanvasStatus('Missing store information for this cart.', 'danger');
+                renderOffcanvasCart(null);
+                return null;
+            }
+
+            if (!userIsLoggedIn) {
+                setOffcanvasStatus('Log in to view your cart.', 'info');
+                renderOffcanvasCart(null);
+                return null;
+            }
+
+            if (showLoading) {
+                setOffcanvasStatus('Loading your cart...', 'info');
+            }
+
+            if (typeof showNavbarCartLoading === 'function') {
+                showNavbarCartLoading();
+            }
+
+            try {
+                const cartResponse = await StoreClient.getCart(locatorToUse);
+                clearOffcanvasStatus();
+
+                const cartData = cartResponse?.data ?? null;
+
+                renderOffcanvasCart(cartData);
+
+                if (cartData) {
+                    const cartProducts = Array.isArray(cartData?.cartProducts)
+                        ? cartData.cartProducts
+                        : [];
+
+                    if (typeof updateNavbarCartBadgeCount === 'function') {
+                        updateNavbarCartBadgeCount(cartProducts.length);
+                    }
+                }
+
+                return cartData;
+            } catch (cartLoadError) {
+                console.error('Failed to fetch cart', cartLoadError);
+                setOffcanvasStatus(cartLoadError?.message || 'Unable to load cart right now.', 'danger');
+                renderOffcanvasCart(null);
+
+                if (typeof showNavbarCartError === 'function') {
+                    showNavbarCartError(cartLoadError?.message);
+                }
+
+                return null;
+            }
+        };
+
+        if (cartOffcanvas) {
+            cartOffcanvas.addEventListener('show.bs.offcanvas', () => {
+                fetchCart();
+            });
+        }
+
+        window.fetchCart = fetchCart;
+
+        const preloadCart = () => fetchCart({ showLoading: false });
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', preloadCart);
+        } else {
+            preloadCart();
+        }
+    })();
+</script>
 <?php } ?>
