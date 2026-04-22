@@ -15,7 +15,7 @@ class Database {
         // calling \mysqli::close()), clear it so a fresh connection can be created.
         if (self::$conn !== null) {
             try {
-                if (!@self::$conn->ping()) {
+                if (self::$conn->stat() === false) {
                     self::$conn = null;
                 }
             } catch (\Throwable $e) {
