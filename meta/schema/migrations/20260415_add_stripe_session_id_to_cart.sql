@@ -6,7 +6,7 @@ ALTER TABLE `cart`
   AFTER `void`;
 
 -- Update v_cart view to include stripe_session_id and all columns expected by PDOCartDAO
--- Note: cart has no transaction columns; store owner uses ref_account_ctime/crand
+-- Note: store owner columns are ref_owner_ctime/crand (not ref_account_ctime/crand)
 CREATE OR REPLACE VIEW `v_cart` AS
   SELECT
     `c`.`ctime` AS `ctime`,
@@ -20,8 +20,8 @@ CREATE OR REPLACE VIEW `v_cart` AS
     `a`.`Id` AS `account_crand`,
     `s`.`ctime` AS `store_ctime`,
     `s`.`crand` AS `store_crand`,
-    `s`.`ref_account_ctime` AS `store_owner_ctime`,
-    `s`.`ref_account_crand` AS `store_owner_crand`,
+    `s`.`ref_owner_ctime` AS `store_owner_ctime`,
+    `s`.`ref_owner_crand` AS `store_owner_crand`,
     NULL AS `transaction_ctime`,
     NULL AS `transaction_crand`,
     `c`.`stripe_session_id` AS `stripe_session_id`

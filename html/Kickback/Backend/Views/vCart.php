@@ -21,6 +21,8 @@ class vCart extends vRecordId
     public array $cartProducts;
 
     public array $totals;
+
+    public ?string $stripeSessionId = null;
 }
 
 
