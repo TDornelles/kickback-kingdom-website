@@ -19,7 +19,7 @@ class StoreClient {
                 "storeLocator": locator
             };
 
-            const response = await fetch(`/api/v2/server/store/get-by-locator`, {
+            const response = await fetch(`/api/v2/server/store/get-by-locator.php`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
@@ -63,7 +63,7 @@ class StoreClient {
                 "accountId": accountId
             };
 
-            const response = await fetch(`/api/v2/server/store/get-by-account`, {
+            const response = await fetch(`/api/v2/server/store/get-by-account.php`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
@@ -103,7 +103,7 @@ class StoreClient {
                 "storeLocator": storeLocator
             };
 
-            const response = await fetch(`/api/v2/server/store/get-cart`, {
+            const response = await fetch(`/api/v2/server/store/get-cart.php`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
@@ -148,7 +148,7 @@ class StoreClient {
         };
 
         try {
-            const response = await fetch(`/api/v2/server/store/add-product-to-cart-by-id`, {
+            const response = await fetch(`/api/v2/server/store/add-product-to-cart-by-id.php`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
@@ -196,7 +196,7 @@ class StoreClient {
         };
 
         try {
-            const response = await fetch(`/api/v2/server/store/add-product-to-cart-by-locator`, {
+            const response = await fetch(`/api/v2/server/store/add-product-to-cart-by-locator.php`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
@@ -244,7 +244,7 @@ class StoreClient {
         };
 
         try {
-            const response = await fetch(`/api/v2/server/store/remove-product-from-cart`, {
+            const response = await fetch(`/api/v2/server/store/remove-product-from-cart.php`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
@@ -298,7 +298,7 @@ class StoreClient {
         };
 
         try {
-            const response = await fetch(`/api/v2/server/payments/initiate-checkout`, {
+            const response = await fetch(`/api/v2/server/payments/initiate-checkout.php`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
@@ -356,7 +356,7 @@ class StoreClient {
         };
 
         try {
-            const response = await fetch(`/api/v2/server/payments/checkout-status`, {
+            const response = await fetch(`/api/v2/server/payments/checkout-status.php`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
@@ -404,7 +404,7 @@ class StoreClient {
         };
 
         try {
-            const response = await fetch(`/api/v2/server/store/checkout-cart`, {
+            const response = await fetch(`/api/v2/server/store/checkout-cart.php`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
@@ -457,7 +457,7 @@ class StoreClient {
         };
 
         try {
-            const response = await fetch(`/api/v2/server/store/apply-coupon`, {
+            const response = await fetch(`/api/v2/server/store/apply-coupon.php`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
@@ -501,7 +501,7 @@ class StoreClient {
         };
 
         try {
-            const response = await fetch(`/api/v2/server/store/remove-coupon-from-product`, {
+            const response = await fetch(`/api/v2/server/store/remove-coupon-from-product.php`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
