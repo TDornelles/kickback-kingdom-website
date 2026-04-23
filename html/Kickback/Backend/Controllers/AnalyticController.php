@@ -128,16 +128,13 @@ class AnalyticController
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         if (curl_errno($ch)) {
             $error = 'Curl error: ' . curl_error($ch);
-            curl_close($ch);
             return new Response(false, $error, null);
         }
         if ($httpCode != 200) {
             $error = 'Failed to retrieve data, HTTP status code: ' . $httpCode;
-            curl_close($ch);
             return new Response(false, $error, null);
         }
-    
-        curl_close($ch);
+
         return new Response(true, "Data fetched successfully", json_decode($response, true));
     }
     
