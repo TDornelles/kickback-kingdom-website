@@ -678,10 +678,10 @@ class PDOProductDAO implements ProductDAO
     private static function priceComponentToView(array $row) : vPriceComponent
     {
         $iconSmall = new vMedia();
-        $iconSmall->setMediaPath($row["media_path_small"]);
+        if (!empty($row["media_path_small"])) $iconSmall->setMediaPath($row["media_path_small"]);
 
         $iconLarge = new vMedia();
-        $iconLarge->setMediaPath($row["media_path_large"]);
+        if (!empty($row["media_path_large"])) $iconLarge->setMediaPath($row["media_path_large"]);
 
         $iconBack = new vMedia();
         if (!empty($row["media_path_back"]))$iconBack->setMediaPath($row["media_path_back"]);

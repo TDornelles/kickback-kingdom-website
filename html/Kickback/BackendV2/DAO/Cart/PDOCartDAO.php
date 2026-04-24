@@ -1959,9 +1959,9 @@ class PDOCartDAO implements CartDAO
             $item->name = $row["price_component_item_name"];
             $item->description = $row["price_component_item_desc"]; 
                 $smallMedia = new vMedia();
-                $smallMedia->setMediaPath($row["price_component_media_path_small"]);
+                if(!empty($row["price_component_media_path_small"])) $smallMedia->setMediaPath($row["price_component_media_path_small"]);
                 $largeMedia = new vMedia();
-                $largeMedia->setMediaPath($row["price_component_media_path_large"]);
+                if(!empty($row["price_component_media_path_large"])) $largeMedia->setMediaPath($row["price_component_media_path_large"]);
                 $backMedia = new vMedia();
                 if(!empty($row["price_component_media_path_back"]))$backMedia->setMediaPath($row["price_component_media_path_back"]);
             $item->iconSmall = $smallMedia;
@@ -2002,11 +2002,11 @@ class PDOCartDAO implements CartDAO
             $product->description = $row["product_description"];
 
             $product->mediaSmall = new vMedia();
-            $product->mediaSmall->setMediaPath($row["product_small_media_path"]);
+            if (!empty($row["product_small_media_path"])) $product->mediaSmall->setMediaPath($row["product_small_media_path"]);
             $product->mediaLarge = new vMedia();
-            $product->mediaLarge->setMediaPath($row["product_large_media_path"]);
+            if (!empty($row["product_large_media_path"])) $product->mediaLarge->setMediaPath($row["product_large_media_path"]);
             $product->mediaBack = new vMedia();
-            $product->mediaBack->setMediaPath($row["product_back_media_path"]);
+            if (!empty($row["product_back_media_path"])) $product->mediaBack->setMediaPath($row["product_back_media_path"]);
         $cartItem->product = $product;
 
         $cart = new vCart();
