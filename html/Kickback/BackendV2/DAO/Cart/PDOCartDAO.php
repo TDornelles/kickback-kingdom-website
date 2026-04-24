@@ -1977,7 +1977,7 @@ class PDOCartDAO implements CartDAO
         
         if(!empty($row["price_component_currency_code"]))
         {
-            $priceComponent = CurrencyCode::from($row["price_component_currency_code"]);
+            $priceComponent->currencyCode = CurrencyCode::from($row["price_component_currency_code"]);
         }
 
         $priceComponent->ctime = $row["price_component_ctime"];
