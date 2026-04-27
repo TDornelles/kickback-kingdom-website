@@ -27,7 +27,7 @@ namespace Kickback\InitializationScripts;
 */
 function initializeErrorHandling(): void
 {
-    error_reporting(E_ALL);
+    error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
 
     set_error_handler("Kickback\InitializationScripts\\fatalErrorHandler");
     register_shutdown_function("Kickback\InitializationScripts\\shutdownHandler");
