@@ -223,7 +223,7 @@ class PaymentController
      * Checks the payment status for a cart's Stripe session.
      *
      * @param ?vAccount $account the authenticated account
-     * @param ?string $jsonRequest JSON with {"storeLocator": "..."}
+     * @param ?string $jsonRequest JSON with {"storeLocator": "..."} and optionally {"sessionId": "cs_..."}
      * @param ?Response $response the out response
      *
      * @return int HTTP status code
@@ -242,23 +242,37 @@ class PaymentController
                 return 400;
             }
 
-            if (!array_key_exists("storeLocator", $assocRequest))
+            $sessionId = $assocRequest["sessionId"] ?? null;
+            $cart = null;
+
+            // Prefer lookup by Stripe session id when provided — that finds the just-paid
+            // cart even after it transitions to checked_out=1 (which the storeLocator
+            // lookup excludes, since it returns the buyer's *active* cart).
+            if (is_string($sessionId) && $sessionId !== '')
             {
-                $response->message = "key \"storeLocator\" is missing from request body";
-                return 400;
+                $cart = $this->cartDAO->getCartByStripeSessionId($sessionId);
             }
 
-            $storeLocator = $assocRequest["storeLocator"];
-
-            $getCartResp = $this->cartService->getCartForAccountWithStoreLocator($account, $storeLocator);
-
-            if (!$getCartResp->success || is_null($getCartResp->data))
+            if (is_null($cart))
             {
-                $response->message = "Failed to get cart";
-                return 500;
-            }
+                if (!array_key_exists("storeLocator", $assocRequest))
+                {
+                    $response->message = "key \"storeLocator\" is missing from request body";
+                    return 400;
+                }
 
-            $cart = $getCartResp->data;
+                $storeLocator = $assocRequest["storeLocator"];
+
+                $getCartResp = $this->cartService->getCartForAccountWithStoreLocator($account, $storeLocator);
+
+                if (!$getCartResp->success || is_null($getCartResp->data))
+                {
+                    $response->message = "Failed to get cart";
+                    return 500;
+                }
+
+                $cart = $getCartResp->data;
+            }
 
             if ($cart->checkedOut)
             {

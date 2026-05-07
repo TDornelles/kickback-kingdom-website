@@ -340,20 +340,24 @@ class StoreClient {
     /**
      * Get the checkout/payment status for a cart.
      * @param {string|Object} storeLocatorOrCart - Store locator string or cart object
+     * @param {string} [sessionId] - Optional Stripe session id; preferred when present
      * @returns {Promise<Object>} API response with {status, checkedOut, sessionId}
      */
-    static async getCheckoutStatus(storeLocatorOrCart){
+    static async getCheckoutStatus(storeLocatorOrCart, sessionId){
         const storeLocator = typeof storeLocatorOrCart === 'string'
             ? storeLocatorOrCart
             : storeLocatorOrCart?.store?.locator;
 
-        if (!storeLocator) {
-            throw new Error('Store Locator is required');
+        if (!storeLocator && !sessionId) {
+            throw new Error('Store Locator or Stripe session id is required');
         }
 
         const bodyData = {
-            "storeLocator": storeLocator,
+            "storeLocator": storeLocator || '',
         };
+        if (sessionId) {
+            bodyData.sessionId = sessionId;
+        }
 
         try {
             const response = await fetch(`/api/v2/server/payments/checkout-status.php`, {

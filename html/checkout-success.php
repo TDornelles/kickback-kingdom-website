@@ -61,6 +61,7 @@ $sessionId = $_GET['session_id'] ?? null;
                 <script src="/api/v2/client/js/store-client.js"></script>
                 <script>
                     const storeLocator = sessionStorage.getItem('storeLocator');
+                    const sessionId = <?php echo json_encode($sessionId); ?>;
                     let pollCount = 0;
                     const maxPolls = 20;
 
@@ -91,8 +92,8 @@ $sessionId = $_GET['session_id'] ?? null;
                     }
 
                     async function pollCheckoutStatus() {
-                        if (!storeLocator) {
-                            // No store locator — this was likely a loot-only checkout
+                        if (!storeLocator && !sessionId) {
+                            // No store locator and no Stripe session — likely a loot-only checkout
                             showSuccess();
                             return;
                         }
@@ -104,7 +105,7 @@ $sessionId = $_GET['session_id'] ?? null;
                         }
 
                         try {
-                            const result = await StoreClient.getCheckoutStatus(storeLocator);
+                            const result = await StoreClient.getCheckoutStatus(storeLocator, sessionId);
                             const statusData = result.data;
 
                             if (statusData.checkedOut || statusData.status === 'completed') {
