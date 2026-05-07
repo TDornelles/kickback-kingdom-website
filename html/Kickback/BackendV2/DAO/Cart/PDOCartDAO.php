@@ -1951,7 +1951,11 @@ class PDOCartDAO implements CartDAO
     {
         $priceComponent = new vPriceComponent();
 
-        if(!is_null($row["price_component_item_ctime"]) && !is_null($row["price_component_item_crand"]))
+        $itemCtime = $row["price_component_item_ctime"] ?? null;
+        $itemCrand = $row["price_component_item_crand"] ?? null;
+        $hasItem = !is_null($itemCtime) && !is_null($itemCrand) && $itemCtime !== '0000-00-00 00:00:00';
+
+        if($hasItem)
         {
             $item = new vItem();
             $item->ctime = $row["price_component_item_ctime"];

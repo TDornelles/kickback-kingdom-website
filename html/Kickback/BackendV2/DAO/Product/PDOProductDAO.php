@@ -677,25 +677,33 @@ class PDOProductDAO implements ProductDAO
 
     private static function priceComponentToView(array $row) : vPriceComponent
     {
-        $iconSmall = new vMedia();
-        if (!empty($row["media_path_small"])) $iconSmall->setMediaPath($row["media_path_small"]);
+        $itemCtime = $row["item_ctime"] ?? null;
+        $itemCrand = $row["item_crand"] ?? null;
+        $hasItem = !is_null($itemCtime) && !is_null($itemCrand) && $itemCtime !== '0000-00-00 00:00:00';
 
-        $iconLarge = new vMedia();
-        if (!empty($row["media_path_large"])) $iconLarge->setMediaPath($row["media_path_large"]);
+        $item = null;
+        if ($hasItem)
+        {
+            $iconSmall = new vMedia();
+            if (!empty($row["media_path_small"])) $iconSmall->setMediaPath($row["media_path_small"]);
 
-        $iconBack = new vMedia();
-        if (!empty($row["media_path_back"]))$iconBack->setMediaPath($row["media_path_back"]);
+            $iconLarge = new vMedia();
+            if (!empty($row["media_path_large"])) $iconLarge->setMediaPath($row["media_path_large"]);
 
-        $item = new vItem($row["item_ctime"], $row["item_crand"]);
-        $item->name = $row["item_name"];
-        $item->description = $row["item_desc"];
-        $item->iconSmall = $iconSmall;
-        $item->iconBig = $iconLarge;
-        $item->iconBack = $iconBack;
-        $item->applyMediaFallbacks();
-        $item->fungible = boolval($row["item_is_fungible"]);
+            $iconBack = new vMedia();
+            if (!empty($row["media_path_back"])) $iconBack->setMediaPath($row["media_path_back"]);
 
-        $currencyCode = $row["currency_code"] !== null ? CurrencyCode::from($row["currency_code"]) : null;
+            $item = new vItem($itemCtime, $itemCrand);
+            $item->name = $row["item_name"];
+            $item->description = $row["item_desc"];
+            $item->iconSmall = $iconSmall;
+            $item->iconBig = $iconLarge;
+            $item->iconBack = $iconBack;
+            $item->applyMediaFallbacks();
+            $item->fungible = boolval($row["item_is_fungible"]);
+        }
+
+        $currencyCode = !empty($row["currency_code"]) ? CurrencyCode::from($row["currency_code"]) : null;
 
         return new vPriceComponent(
             $row["ctime"],
